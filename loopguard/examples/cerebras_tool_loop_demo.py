@@ -1,5 +1,5 @@
-from loopguard.cerebras_demo import run
+from loopguard.live_demo import run_live
 
 
 if __name__ == "__main__":
-    run()
+    run_live()
