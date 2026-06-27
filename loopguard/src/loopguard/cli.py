@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Literal
+from enum import Enum
 
 import typer
 from rich import print
@@ -14,19 +14,30 @@ from .storage import read_jsonl
 app = typer.Typer(help="LoopGuard semantic circuit breaker")
 
 
+class DemoMode(str, Enum):
+    guard = "guard"
+    no_guard = "no-guard"
+
+
+class DemoScenario(str, Enum):
+    single = "single"
+    pingpong = "pingpong"
+    cerebras = "cerebras"
+
+
 @app.command()
 def demo(
-    mode: Literal["guard", "no-guard"] = "guard",
-    scenario: Literal["single", "pingpong", "cerebras"] = "single",
+    mode: DemoMode = DemoMode.guard,
+    scenario: DemoScenario = DemoScenario.single,
 ):
-    if scenario == "single":
-        from examples.broken_agent import run
+    if scenario == DemoScenario.single:
+        from .demos import run_broken_agent
 
-        run(use_guard=mode != "no-guard")
-    elif scenario == "pingpong":
-        from examples.broken_multi_agent import run
+        run_broken_agent(use_guard=mode != DemoMode.no_guard)
+    elif scenario == DemoScenario.pingpong:
+        from .demos import run_pingpong_demo
 
-        run()
+        run_pingpong_demo()
     else:
         if not os.getenv("CEREBRAS_API_KEY"):
             print(
@@ -34,7 +45,7 @@ def demo(
             )
             print('Setup: export CEREBRAS_API_KEY="..." && pip install "loopguard[cerebras]"')
             raise typer.Exit(0)
-        from examples.cerebras_tool_loop_demo import run
+        from .cerebras_demo import run
 
         run()
 

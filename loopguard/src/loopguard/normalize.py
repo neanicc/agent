@@ -11,7 +11,7 @@ from .event import LoopEvent
 _UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
 _HASH = re.compile(r"\b[a-f0-9]{32,}\b", re.I)
 _ISO = re.compile(r"\b\d{4}-\d{2}-\d{2}[tT ][\d:.+-]+Z?\b")
-_PATH_PREFIX = re.compile(r"(?<!\w)(?:\./|/app/|/workspace/[^\s\']+/|[A-Za-z]:\\)")
+_ABSOLUTE_PREFIX = re.compile(r"(?<!\w)(?:/workspace/[^\s\']+/|[A-Za-z]:\\)")
 _WS = re.compile(r"\s+")
 
 
@@ -23,7 +23,7 @@ def _clean_text(value: str) -> str:
     value = _UUID.sub("<uuid>", value)
     value = _HASH.sub("<hash>", value)
     value = _ISO.sub("<timestamp>", value)
-    value = _PATH_PREFIX.sub("", value)
+    value = _ABSOLUTE_PREFIX.sub("<path>/", value)
     value = _WS.sub(" ", value).strip().lower()
     return value[:2000]
 

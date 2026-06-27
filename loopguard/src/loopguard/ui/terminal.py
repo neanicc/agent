@@ -18,6 +18,9 @@ def show_warning(decision: LoopDecision) -> None:
     if decision.similarity is not None:
         console.print(f"Similarity: {decision.similarity:.2f}")
     events = decision.matching_events
+    tools = sorted({event.tool_name for event in events if event.tool_name})
+    if tools:
+        console.print(f"Tool: {', '.join(tools)}")
     console.print(
         f"Estimated tokens: {sum(e.tokens for e in events)}  cost: ${sum(e.cost_usd for e in events):.3f}"
     )
