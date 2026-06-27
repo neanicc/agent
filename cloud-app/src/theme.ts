@@ -1,0 +1,15 @@
+export const theme = {
+  bg: "#0A0A0A",
+  surface: "#141414",
+  surfaceHigh: "#1C1C1F",
+  border: "#262629",
+  text: "#EDEDED",
+  textDim: "#8A8A8F",
+  accent: "#3B82F6",
+  ok: "#22C55E",
+  warn: "#F59E0B",
+  danger: "#EF4444",
+  radius: 14,
+  space: (n: number) => n * 4,
+  mono: "Inter_400Regular",
+};
