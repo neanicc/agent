@@ -1,8 +1,11 @@
 # LoopGuard
 
-**LoopGuard is a local semantic circuit breaker for AI agents. It catches runaway loops before they burn your API tokens.**
+**LoopGuard is a circuit breaker for AI agents. It catches runaway loops before they burn your API tokens.**
 
-LoopGuard wraps agent LLM/tool-call events, detects repeated exact states, semantic near-duplicates, ping-pong exchanges, and budget runaway, then warns or pauses locally in your terminal.
+LoopGuard works in two layers:
+
+- **Layer 1 — deterministic detection (always on, free, offline, no API key).** It normalizes agent events and flags repeated exact states, semantic near-duplicates, ping-pong exchanges, and budget runaway. Same input → same decision, every time.
+- **Layer 2 — LLM judge (optional, any model).** When Layer 1 flags a suspected loop and a model is configured, LoopGuard asks a real LLM whether the agent is *genuinely* stuck or actually making progress, and — if stuck — generates a **specific correction** for that exact problem. This suppresses false positives and turns a flag into a real fix.
 
 ## Problem
 Autonomous agents often silently loop: retrying the same tool with tiny parameter changes or passing the same failure between agents until your token bill grows.
@@ -28,6 +31,8 @@ Estimated tokens: 1284  cost: $0.004
 │ 2 │ repo-agent │ tool_call │ read_file │ package.json not found │
 │ 3 │ repo-agent │ tool_call │ read_file │ package.json not found │
 └───┴────────────┴───────────┴───────────┴───────────────────────┘
+Judge: agent is stuck retrying the same path; this is a Python project (confidence 0.92)
+Suggested fix: Stop looking for package.json — read pyproject.toml instead.
 [t] terminate  [c] continue once  [a] allowlist  [i] inject correction
 Action [t]:
 ```
@@ -54,36 +59,53 @@ decision = guard.observe(LoopEvent(
 
 ## CLI demos
 ```bash
-loopguard demo --mode no-guard
-loopguard demo
-loopguard demo --scenario pingpong
+loopguard demo                                   # offline, no key, real failing tool, honest $0
+loopguard demo --live                            # real LLM agent (Cerebras default), Layer 1 + 2
+loopguard demo --live --model openai/gpt-4o      # any provider/model
+loopguard demo --live --mode auto                # auto-repair: inject the fix and continue
+loopguard demo --live --mode flag                # detect + report, non-blocking
+loopguard demo --scenario pingpong               # A-B-A-B multi-agent loop
+loopguard inspect runs/last.jsonl                # Rich table of the last run
 loopguard init-config
-loopguard inspect runs/last.jsonl
 ```
 
-## How semantic detection works
-Core LoopGuard needs no API key. It normalizes events, redacts secrets, removes volatile fields, then embeds normalized text with a deterministic local HashingVectorizer-style embedder from scikit-learn. Cosine similarity across the last `trip_count` states trips when all pairs exceed the threshold.
+The offline demo performs **real disk reads** against a real (empty) workspace, genuinely loops on missing files, and reports an honest **$0** (no LLM). The `--live` demo runs a **real** agent against real files: it genuinely loops hunting for `package.json` in a Python repo, the judge reasons that it should read `pyproject.toml` instead, and that real file is really read — real tokens, real cost, real recovery.
 
-## Manual integration
-Create `LoopEvent` objects for LLM calls, tool calls, tool results, agent messages, or errors and call `guard.observe(event)` before continuing execution. Use `wrap_tool()` for simple tool wrappers.
+## Action modes
+- `pause` (default) — interactive terminal: stop and let a human choose.
+- `flag` — detect + report the loop and the suggested fix, non-blocking.
+- `auto` — auto-repair: inject the LLM-generated correction and continue with no human.
 
-## Cerebras setup
-Core LoopGuard does not need Cerebras. Cerebras is only for a live LLM/tool-calling demo; local semantic detection remains provider-independent.
+## Providers (any model)
+LoopGuard's judge and live agent are provider-agnostic via LiteLLM routing strings (`cerebras/gpt-oss-120b`, `openai/gpt-4o`, `anthropic/...`, `ollama/llama3`, ...). Pick one with `--model`/`--provider`.
 
 ```bash
-export CEREBRAS_API_KEY="..."
-export CEREBRAS_MODEL="gpt-oss-120b"
-pip install "loopguard[cerebras]"
-loopguard demo --scenario cerebras
+pip install "loopguard[litellm]"   # universal provider (recommended)
+pip install "loopguard[cerebras]"  # direct Cerebras SDK (minimal deps)
 ```
+
+## How Layer 1 (deterministic) works
+No API key. It normalizes events, redacts secrets, removes volatile fields, then embeds normalized text with a deterministic local HashingVectorizer from scikit-learn. Cosine similarity across the last `trip_count` states trips when all pairs exceed the threshold.
+
+## Integrations
+- **Manual:** create `LoopEvent`s and call `guard.observe(event, task=...)` before continuing. Use `wrap_tool()` for simple tool wrappers.
+- **Any LiteLLM agent:** register one callback and every LLM call is guarded automatically — see [`examples/litellm_guarded_agent.py`](examples/litellm_guarded_agent.py):
+  ```python
+  import litellm
+  from loopguard import LoopGuard, LoopGuardConfig
+  from loopguard.integrations.litellm_callback import LoopGuardLiteLLMCallback
+
+  guard = LoopGuard(LoopGuardConfig(action="flag"))
+  litellm.callbacks = [LoopGuardLiteLLMCallback(guard)]
+  ```
 
 ## Why not just LangSmith/Langfuse/AgentOps?
 Observability platforms show traces after or during execution. LoopGuard intervenes locally during execution: it can pause, warn, raise, allowlist, or accept a correction prompt before more tokens are spent.
 
 ## Limitations
-- Hashing embeddings are fast and local, not as nuanced as large embedding models.
-- The terminal pause UI is designed for development, not unattended production.
-- Integrations are intentionally lightweight for the MVP.
+- Layer 1 hashing embeddings are fast and local, but match surface text — great for "same tool, tweaked args," weaker when an agent rephrases its reasoning each turn.
+- Layer 2 (the LLM judge) costs real tokens and is not perfectly deterministic; it is opt-in and is only consulted after Layer 1 flags a candidate.
+- The terminal UI is one front-end. The core engine returns structured `LoopDecision`s with no terminal code, so it can later be wrapped by a cloud service + app (planned).
 
 ## Hackathon demo script
 See [`docs/demo_script.md`](docs/demo_script.md).

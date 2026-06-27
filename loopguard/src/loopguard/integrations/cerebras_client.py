@@ -29,8 +29,9 @@ class CerebrasLLMClient:
         parallel_tool_calls: bool = False,
         temperature: float = 0.2,
         max_tokens: int = 512,
+        response_format=None,
     ):
-        return self.client.chat.completions.create(
+        kwargs: dict[str, Any] = dict(
             model=self.model,
             messages=messages,
             tools=tools,
@@ -38,3 +39,6 @@ class CerebrasLLMClient:
             temperature=temperature,
             max_tokens=max_tokens,
         )
+        if response_format is not None:
+            kwargs["response_format"] = response_format
+        return self.client.chat.completions.create(**kwargs)

@@ -4,48 +4,70 @@ from typing import Any
 
 from loopguard.event import LoopEvent
 from loopguard.guard import LoopGuard
+from loopguard.pricing import cost_for
+
+try:  # subclass the real base when litellm is installed; duck-type otherwise
+    from litellm.integrations.custom_logger import CustomLogger as _Base
+except Exception:  # noqa: BLE001
+    class _Base:  # minimal stand-in
+        pass
 
 
-class LoopGuardLiteLLMCallback:
+def _usage(response_obj: Any) -> tuple[int, int, int]:
+    usage = getattr(response_obj, "usage", None) or {}
+    get = (lambda k: getattr(usage, k, None)) if not isinstance(usage, dict) else usage.get
+    pt = int(get("prompt_tokens") or 0)
+    ct = int(get("completion_tokens") or 0)
+    tt = int(get("total_tokens") or (pt + ct))
+    return pt, ct, tt
+
+
+def _model(kwargs: dict, response_obj: Any) -> str:
+    return (kwargs or {}).get("model") or getattr(response_obj, "model", "") or "unknown"
+
+
+def _cost(kwargs: dict, response_obj: Any, pt: int, ct: int) -> float:
+    try:
+        import litellm
+
+        c = litellm.completion_cost(completion_response=response_obj)
+        if c:
+            return float(c)
+    except Exception:  # noqa: BLE001
+        pass
+    return cost_for(_model(kwargs, response_obj), pt, ct)
+
+
+class LoopGuardLiteLLMCallback(_Base):
     def __init__(self, guard: LoopGuard, run_id: str = "litellm", agent: str = "litellm"):
+        super().__init__()
         self.guard = guard
         self.run_id = run_id
         self.agent = agent
 
-    def log_pre_api_call(self, model: str, messages: list[dict[str, Any]], kwargs: dict[str, Any]):
+    def log_success_event(self, kwargs, response_obj, start_time=None, end_time=None):
+        pt, ct, tt = _usage(response_obj)
         self.guard.observe(
             LoopEvent(
                 run_id=self.run_id,
                 agent=self.agent,
                 kind="llm_call",
-                input_text=str(messages),
-                metadata={"model": model, **(kwargs or {})},
-            )
-        )
-
-    def log_success_event(
-        self, kwargs: dict[str, Any], response_obj: Any, start_time=None, end_time=None
-    ):
-        self.guard.observe(
-            LoopEvent(
-                run_id=self.run_id,
-                agent=self.agent,
-                kind="agent_message",
+                input_text=str((kwargs or {}).get("messages", "")),
                 output_text=str(response_obj),
-                metadata=kwargs or {},
+                tokens=tt,
+                cost_usd=_cost(kwargs, response_obj, pt, ct),
+                metadata={"model": _model(kwargs, response_obj)},
             )
         )
 
-    def log_failure_event(
-        self, kwargs: dict[str, Any], response_obj: Any, start_time=None, end_time=None
-    ):
+    def log_failure_event(self, kwargs, response_obj, start_time=None, end_time=None):
         self.guard.observe(
             LoopEvent(
                 run_id=self.run_id,
                 agent=self.agent,
                 kind="error",
                 error=str(response_obj),
-                metadata=kwargs or {},
+                metadata={"model": _model(kwargs, response_obj)},
             )
         )
 

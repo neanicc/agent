@@ -16,7 +16,8 @@ class LoopGuardConfig(BaseModel):
     enable_budget: bool = True
     max_tool_calls: int | None = 30
     max_cost_usd: float | None = 1.00
-    action: Literal["pause", "raise", "warn"] = "pause"
+    action: Literal["pause", "raise", "warn", "flag", "auto"] = "pause"
+    enable_judge: bool = True
     allowlisted_tools: list[str] = Field(default_factory=list)
     ignored_arg_keys: list[str] = Field(
         default_factory=lambda: ["timestamp", "nonce", "request_id", "trace_id", "session_id"]
