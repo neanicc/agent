@@ -26,4 +26,5 @@ class LLMProvider(Protocol):
         tools: list | None = None,
         temperature: float = 0.2,
         max_tokens: int = 512,
+        response_format: dict | None = None,
     ) -> LLMResult: ...

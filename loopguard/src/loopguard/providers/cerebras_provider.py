@@ -11,9 +11,15 @@ class CerebrasProvider:
         self._client = CerebrasLLMClient(model=model)
         self.model = self._client.model
 
-    def complete(self, messages, *, tools=None, temperature=0.2, max_tokens=512) -> LLMResult:
+    def complete(
+        self, messages, *, tools=None, temperature=0.2, max_tokens=512, response_format=None
+    ) -> LLMResult:
         resp = self._client.chat(
-            messages, tools=tools, temperature=temperature, max_tokens=max_tokens
+            messages,
+            tools=tools,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            response_format=response_format,
         )
         msg = resp.choices[0].message
         usage = getattr(resp, "usage", None)

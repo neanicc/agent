@@ -42,6 +42,36 @@ def test_judge_unparseable_defers_to_detector():
     assert verdict.confidence == 0.0
 
 
+def test_judge_requests_json_mode_then_falls_back():
+    # A provider that rejects response_format (older models) must still work.
+    class _StrictProvider:
+        model = "x"
+
+        def __init__(self):
+            self.saw_response_format = False
+
+        def complete(self, messages, *, tools=None, temperature=0.2, max_tokens=512,
+                     response_format=None):
+            if response_format is not None:
+                self.saw_response_format = True
+                raise TypeError("response_format not supported")
+            return LLMResult(text='{"is_loop": true, "reasoning": "ok"}', cost_usd=0.0)
+
+    prov = _StrictProvider()
+    verdict = LLMJudge(prov).judge([tool_event()])
+    assert prov.saw_response_format is True  # tried JSON mode first
+    assert verdict.is_loop is True  # then succeeded on the plain fallback
+
+
+def test_judge_parses_fenced_json():
+    provider = _ScriptedProvider(
+        '```json\n{"is_loop": false, "reasoning": "fenced", "confidence": 0.7}\n```'
+    )
+    verdict = LLMJudge(provider).judge([tool_event()])
+    assert verdict.is_loop is False
+    assert verdict.confidence == 0.7
+
+
 def test_judge_provider_error_defers_to_detector():
     class _Boom:
         model = "x"

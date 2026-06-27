@@ -9,7 +9,7 @@ from .config import LoopGuardConfig
 from .guard import LoopGuard
 from .judge import LLMJudge
 from .providers import make_provider
-from .tools import READ_FILE_SCHEMA, read_file
+from .tools import LIST_DIR_SCHEMA, READ_FILE_SCHEMA, list_dir, read_file
 
 console = Console()
 
@@ -64,8 +64,11 @@ def run_live(
             prov,
             system=_SYSTEM,
             task=_TASK,
-            tools_schema=[READ_FILE_SCHEMA],
-            tool_impls={"read_file": lambda path: read_file(path, root=workspace)},
+            tools_schema=[READ_FILE_SCHEMA, LIST_DIR_SCHEMA],
+            tool_impls={
+                "read_file": lambda path: read_file(path, root=workspace),
+                "list_dir": lambda path=".": list_dir(path, root=workspace),
+            },
             guard=guard,
             run_id="live-demo",
             agent_name="repo-inspector",

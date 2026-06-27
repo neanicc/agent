@@ -17,14 +17,19 @@ class LiteLLMProvider:
         self.model = model
         self._litellm = _import_litellm()
 
-    def complete(self, messages, *, tools=None, temperature=0.2, max_tokens=512) -> LLMResult:
-        resp = self._litellm.completion(
+    def complete(
+        self, messages, *, tools=None, temperature=0.2, max_tokens=512, response_format=None
+    ) -> LLMResult:
+        kwargs = dict(
             model=self.model,
             messages=messages,
             tools=tools,
             temperature=temperature,
             max_tokens=max_tokens,
         )
+        if response_format is not None:
+            kwargs["response_format"] = response_format
+        resp = self._litellm.completion(**kwargs)
         msg = resp.choices[0].message
         usage = getattr(resp, "usage", None)
         pt = int(getattr(usage, "prompt_tokens", 0) or 0)

@@ -42,20 +42,30 @@ class LLMJudge:
         detector: str | None = None,
     ) -> JudgeVerdict:
         prompt = self._render(events, task, detector)
+        messages = [
+            {"role": "system", "content": _JUDGE_SYSTEM},
+            {"role": "user", "content": prompt},
+        ]
         try:
-            result = self.provider.complete(
-                [
-                    {"role": "system", "content": _JUDGE_SYSTEM},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.0,
-                max_tokens=400,
-            )
+            result = self._complete(messages)
         except Exception as exc:  # noqa: BLE001 - any provider failure must fail safe
             return _defer(f"judge unavailable ({exc}); deferring to detector")
         verdict = self._parse(result.text)
         verdict.cost_usd = result.cost_usd
         return verdict
+
+    def _complete(self, messages):
+        # Prefer JSON mode for reliable parsing; fall back to a plain call if the
+        # provider/model rejects response_format.
+        try:
+            return self.provider.complete(
+                messages,
+                temperature=0.0,
+                max_tokens=400,
+                response_format={"type": "json_object"},
+            )
+        except Exception:  # noqa: BLE001 - JSON mode unsupported -> retry without it
+            return self.provider.complete(messages, temperature=0.0, max_tokens=400)
 
     @staticmethod
     def _render(events: list[LoopEvent], task: str | None, detector: str | None) -> str:
@@ -72,6 +82,10 @@ class LLMJudge:
     @staticmethod
     def _parse(text: str) -> JudgeVerdict:
         raw = (text or "").strip()
+        if raw.startswith("```"):  # strip markdown code fences if present
+            raw = raw.strip("`")
+            if raw.lower().startswith("json"):
+                raw = raw[4:].strip()
         start, end = raw.find("{"), raw.rfind("}")
         if start != -1 and end != -1 and end > start:
             try:
