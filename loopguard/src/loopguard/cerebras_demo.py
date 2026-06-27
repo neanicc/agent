@@ -51,7 +51,7 @@ def _read_file(path: str, correction_injected: bool = False) -> str:
     return f"Error: {path} not found."
 
 
-def run() -> None:
+def run(use_guard: bool = True) -> None:
     if not os.getenv("CEREBRAS_API_KEY"):
         console.print(
             "[red]CEREBRAS_API_KEY is not set.[/red]\n"
@@ -69,17 +69,33 @@ def run() -> None:
         return
 
     console.rule(f"[bold cyan]LoopGuard × Cerebras  ({client.model})")
-    console.print("[dim]The agent will try to find package.json — and loop. Watch LoopGuard trip.[/dim]\n")
-
-    guard = LoopGuard(
-        LoopGuardConfig(
-            trip_count=3,
-            semantic_threshold=0.86,
-            action="pause",
-            enable_budget=True,
-            max_tool_calls=15,
+    if use_guard:
+        console.print(
+            "[dim]The agent will try to find package.json — and loop. Watch LoopGuard trip.[/dim]\n"
         )
-    )
+        guard = LoopGuard(
+            LoopGuardConfig(
+                trip_count=3,
+                semantic_threshold=0.86,
+                action="pause",
+                enable_budget=True,
+                max_tool_calls=15,
+            )
+        )
+    else:
+        console.print(
+            "[bold yellow]UNGUARDED run:[/bold yellow] no LoopGuard — the agent will loop "
+            "and burn tokens until the step cap.\n"
+        )
+        # Detectors disabled so the guard only records events and never trips.
+        guard = LoopGuard(
+            LoopGuardConfig(
+                enable_exact=False,
+                enable_semantic=False,
+                enable_pingpong=False,
+                enable_budget=False,
+            )
+        )
 
     messages: list[dict] = [
         {"role": "system", "content": _SYSTEM},
@@ -88,6 +104,19 @@ def run() -> None:
 
     correction_injected = False
 
+    try:
+        _run_loop(client, guard, messages, correction_injected, use_guard)
+    finally:
+        guard.export_jsonl("runs/last.jsonl")
+
+
+def _run_loop(
+    client,
+    guard: LoopGuard,
+    messages: list[dict],
+    correction_injected: bool,
+    use_guard: bool,
+) -> None:
     for step in range(1, 14):
         try:
             response = client.chat(messages, tools=_TOOLS)
@@ -145,9 +174,9 @@ def run() -> None:
             )
             try:
                 decision = guard.observe(event)
-                if decision.suggested_message:
+                if use_guard and decision.suggested_message:
                     correction = decision.suggested_message
-                elif decision.tripped and not decision.allowed:
+                elif use_guard and decision.tripped and not decision.allowed:
                     console.print("[bold red]LoopGuard terminated the agent.[/bold red]")
                     _print_summary(guard)
                     return
@@ -162,7 +191,11 @@ def run() -> None:
             console.print(f"\n[bold green]Injected correction:[/bold green] {correction}\n")
 
     _print_summary(guard)
-    console.print("\n[bold green]Demo complete.[/bold green]")
+    if use_guard:
+        console.print("\n[bold green]Demo complete.[/bold green]")
+    else:
+        console.print("\n[bold yellow]Unguarded run complete — burned tokens with no protection.[/bold yellow]")
+    console.print("[dim]Saved run to runs/last.jsonl[/dim]")
 
 
 def _print_summary(guard: LoopGuard) -> None:

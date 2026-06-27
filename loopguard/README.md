@@ -7,8 +7,30 @@ LoopGuard wraps agent LLM/tool-call events, detects repeated exact states, seman
 ## Problem
 Autonomous agents often silently loop: retrying the same tool with tiny parameter changes or passing the same failure between agents until your token bill grows.
 
-## Demo screenshot
-![Terminal demo placeholder](docs/terminal-screenshot-placeholder.png)
+## What it looks like
+```text
+[step 1] read_file("package.json") -> package.json not found
+[step 2] read_file("./package.json") -> package.json not found
+[step 3] read_file("../package.json") -> package.json not found
+
+╭──────────────────╮
+│ LoopGuard tripped │
+╰──────────────────╯
+Detector: semantic
+Similarity: 0.91
+Tool: read_file
+Estimated tokens: 1284  cost: $0.004
+                       Recent events
+┏━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ # ┃ agent      ┃ kind      ┃ tool      ┃ input/error           ┃
+┡━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━┩
+│ 1 │ repo-agent │ tool_call │ read_file │ package.json not found │
+│ 2 │ repo-agent │ tool_call │ read_file │ package.json not found │
+│ 3 │ repo-agent │ tool_call │ read_file │ package.json not found │
+└───┴────────────┴───────────┴───────────┴───────────────────────┘
+[t] terminate  [c] continue once  [a] allowlist  [i] inject correction
+Action [t]:
+```
 
 ## Installation
 ```bash
