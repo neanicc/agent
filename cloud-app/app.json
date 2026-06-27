@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "LoopGuard Cloud",
+    "slug": "loopguard-cloud",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": { "backgroundColor": "#0A0A0A" },
+    "ios": { "supportsTablet": true },
+    "web": { "bundler": "metro" }
+  }
+}

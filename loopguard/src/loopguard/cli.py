@@ -93,3 +93,12 @@ def inspect_run(path: Path):
 def init_config(path: Path = Path("loopguard.json")):
     path.write_text(LoopGuardConfig().model_dump_json(indent=2))
     print(f"Wrote {path}")
+
+
+@app.command()
+def serve(host: str = "0.0.0.0", port: int = 8000):
+    import uvicorn
+
+    from .server import create_app
+
+    uvicorn.run(create_app(), host=host, port=port)

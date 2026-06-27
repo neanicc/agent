@@ -17,9 +17,12 @@ F = TypeVar("F", bound=Callable)
 
 
 class LoopGuard:
-    def __init__(self, config: LoopGuardConfig | None = None, judge=None):
+    def __init__(self, config: LoopGuardConfig | None = None, judge=None,
+                 on_observe=None, on_pause=None):
         self.config = config or LoopGuardConfig()
         self.judge = judge
+        self.on_observe = on_observe
+        self.on_pause = on_pause
         self._events: dict[str, deque[LoopEvent]] = defaultdict(
             lambda: deque(maxlen=self.config.window_size)
         )
@@ -29,6 +32,12 @@ class LoopGuard:
         self._judge_cache: dict[tuple[str, str | None], object] = {}
 
     def observe(self, event: LoopEvent, task: str | None = None) -> LoopDecision:
+        decision = self._evaluate(event, task)
+        if self.on_observe is not None:
+            self.on_observe(event, decision)
+        return decision
+
+    def _evaluate(self, event: LoopEvent, task: str | None = None) -> LoopDecision:
         self._events[event.run_id].append(event)
         self._all.append(event)
         events = list(self._events[event.run_id])
@@ -112,7 +121,8 @@ class LoopGuard:
             return apply_flag(decision)
         if self.config.action == "auto":
             return apply_auto(decision)
-        decision = pause_for_action(decision)
+        handler = self.on_pause or pause_for_action
+        decision = handler(decision)
         if decision.developer_action == "allowlist":
             for e in decision.matching_events:
                 if e.tool_name:

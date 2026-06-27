@@ -84,6 +84,18 @@ pip install "loopguard[litellm]"   # universal provider (recommended)
 pip install "loopguard[cerebras]"  # direct Cerebras SDK (minimal deps)
 ```
 
+## Cloud app (mobile monitoring + intervention)
+Run the engine as a server and monitor/intervene from a phone:
+```bash
+pip install "loopguard[server]"
+loopguard serve --port 8000          # FastAPI + WebSocket
+```
+Then point the Expo app at it (see [`cloud-app/`](../cloud-app/README.md)): it streams a live
+agent's tool calls + a token/$ meter, and on a detected loop shows the judge's reasoning and
+suggested fix with **Terminate / Approve fix / Custom prompt / Ignore once** (flag mode) or an
+auto-applied badge (auto mode). The server is deploy-ready; the demo just runs it locally over
+the network.
+
 ## How Layer 1 (deterministic) works
 No API key. It normalizes events, redacts secrets, removes volatile fields, then embeds normalized text with a deterministic local HashingVectorizer from scikit-learn. Cosine similarity across the last `trip_count` states trips when all pairs exceed the threshold.
 
