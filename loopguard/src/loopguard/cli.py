@@ -39,12 +39,6 @@ def demo(
 
         run_pingpong_demo()
     else:
-        if not os.getenv("CEREBRAS_API_KEY"):
-            print(
-                "CEREBRAS_API_KEY is not set. Run the local demo without Cerebras or set your Cerebras key."
-            )
-            print('Setup: export CEREBRAS_API_KEY="..." && pip install "loopguard[cerebras]"')
-            raise typer.Exit(0)
         from .cerebras_demo import run
 
         run()
