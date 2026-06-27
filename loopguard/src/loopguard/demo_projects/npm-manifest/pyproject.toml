@@ -1,0 +1,6 @@
+[project]
+name = "acme-cli"
+version = "2.3.1"
+description = "Acme command-line tool"
+requires-python = ">=3.10"
+dependencies = ["typer>=0.12", "rich>=13.0"]

@@ -1,12 +1,21 @@
 # LoopGuard Cloud (mobile app)
 
-A React Native (Expo) "mission control" app that monitors a real LoopGuard-guarded agent
-live and lets you intervene from your phone — terminate it, approve the judge's suggested
-fix, send a custom correction, or ignore a flagged loop once.
+A React Native (Expo) "mission control" app for monitoring real LoopGuard-guarded agents and
+intervening from your phone. It talks to the LoopGuard server (`loopguard serve`) over the
+network — for the demo the server runs on your laptop; in production you deploy the same server
+and point the app at its URL.
 
-It talks to the LoopGuard server (`loopguard serve`) over the network. For this demo the
-server runs on your laptop; in production you'd deploy the same server elsewhere and point
-the app at that URL instead — the only change is the URL.
+## Sections
+
+- **Run** — pick a demo project (or the custom one and type any task), choose **Flag** or
+  **Auto** mode, and launch a real agent. Shows agents currently running.
+- **Mission Control** (opens on launch) — live tool calls, a tokens/$ meter (agent **and** judge
+  cost), inline auto-fix badges, and on a flagged loop a decision card with the four genuine
+  actions: **Approve fix · Continue once · Allow tool · Terminate**, plus a free-text correction.
+- **Agents** — every run, live and past: status, agents, cost, what it concluded, with a detail
+  view of events and auto-fixes.
+- **Auto-fixes** — the feed of loops the guard caught and resolved on its own (auto mode).
+- **Allowlist** — tools you told the guard to stop flagging, and why.
 
 ## Prerequisites
 
@@ -15,7 +24,7 @@ the app at that URL instead — the only change is the URL.
   ```bash
   cd ../loopguard
   pip install -e ".[server,cerebras]"      # or [server,litellm]
-  export CEREBRAS_API_KEY=...              # the model the agent + judge use
+  echo "CEREBRAS_API_KEY=..." > .env        # the model the agent + judge use
   loopguard serve --port 8000
   ```
 
@@ -28,39 +37,34 @@ npx expo start
 ```
 
 Then:
+- **Browser:** press `w` (the server sends permissive CORS headers, so web works).
 - **iOS simulator:** press `i` (requires Xcode).
 - **Physical phone:** install **Expo Go** and scan the QR code.
-- **Browser (quickest):** press `w` (Expo web).
 
 ## Connect
 
-On the first screen, enter the server URL:
+On the first screen, enter the server URL (it's remembered for next launch):
 - Simulator / web on the same machine: `http://localhost:8000`
-- Physical phone: your laptop's LAN IP, e.g. `http://192.168.1.42:8000` (run `ipconfig getifaddr en0` on macOS). The phone and laptop must be on the same network.
-
-## Using it
-
-1. **Start** a run in **flag** (pause and ask you) or **auto** (auto-apply the judge's fix) mode.
-2. **Mission Control** streams the agent's real tool calls and a live tokens/$ meter.
-3. When LoopGuard detects a loop (flag mode), a **decision card** shows the judge's reasoning
-   and suggested fix. Choose **Approve fix**, **Ignore once**, **Terminate**, or type a custom
-   correction. (In auto mode the fix is applied automatically.)
+- Physical phone: your laptop's LAN IP, e.g. `http://192.168.1.42:8000`
+  (`ipconfig getifaddr en0` on macOS). The phone and laptop must be on the same network.
 
 ## Tests
 
 ```bash
-npm test          # pure run-reducer unit tests (jest-expo)
+npm test          # run-reducer unit tests (jest-expo)
 npx tsc --noEmit  # typecheck
 npx expo export --platform web   # prove the bundle builds
 ```
 
-> Note: the native mobile UI is best verified by running it (simulator / Expo Go). The reducer
-> logic, types, and web bundle are checked automatically; the visual layer is verified by hand.
+> The reducer logic, client types, and web bundle are checked automatically; the native visual
+> layer is verified by running the app (simulator / Expo Go / web).
 
-## Known limitations
+## Notes & limitations
 
-- **No automatic WebSocket reconnect yet.** If the socket drops mid-run, the app shows an error
-  rather than reconnecting. The run keeps going server-side and the server supports resync — re-open
-  the app and it can fetch `GET /runs/{id}` (events + any pending decision are replayed on connect).
-  Auto-reconnect is a straightforward follow-up.
-- The server keeps run state in memory only (no persistence); restarting it clears past runs.
+- **Reconnect:** the app remembers the server URL and reconnects on launch. Opening a run (from
+  Run or Agents) connects to its WebSocket, and the server replays the run's events + any pending
+  decision — so you can rejoin a run already in flight. There is no automatic mid-session socket
+  reconnect yet; if the socket drops, re-open the run.
+- **Server state is in memory only** (no persistence); restarting `loopguard serve` clears past
+  runs, the auto-fix feed, and the allowlist.
+- The server has **CORS open and no auth** — fine for a local/LAN demo, not a public deployment.

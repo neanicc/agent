@@ -1,0 +1,12 @@
+{
+  "service": "acme-api",
+  "database": {
+    "host": "db.acme.internal",
+    "port": 5432,
+    "name": "acme_prod"
+  },
+  "cache": {
+    "backend": "redis",
+    "ttl_seconds": 300
+  }
+}

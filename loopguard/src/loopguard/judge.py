@@ -13,6 +13,11 @@ _JUDGE_SYSTEM = (
     "actions as a possible repetitive loop. Decide whether the agent is genuinely STUCK "
     "(repeating without progress) or actually making progress. If stuck, write a SPECIFIC, "
     "actionable correction telling the agent exactly what to do differently to break out. "
+    "When the agent keeps trying to read a file that does not exist, infer the SINGLE most "
+    "likely real file for this kind of project (e.g. a Python project keeps its metadata and "
+    "dependencies in pyproject.toml, not package.json or requirements.txt) and tell the agent "
+    "the exact file path to read instead. Name a concrete path the agent can act on with the "
+    "tools it already has. "
     'Respond with ONLY a JSON object: {"is_loop": boolean, "reasoning": string, '
     '"suggested_correction": string or null, "confidence": number between 0 and 1}.'
 )
@@ -32,8 +37,12 @@ def _defer(reason: str) -> JudgeVerdict:
 
 
 class LLMJudge:
-    def __init__(self, provider: LLMProvider):
+    def __init__(self, provider: LLMProvider, context: str | None = None):
         self.provider = provider
+        # Optional repo context (e.g. the list of files that actually exist). A real
+        # deployment guards a real repo, so the judge can name the exact right file
+        # instead of guessing — this is what turns a flag into a working fix.
+        self.context = context
 
     def judge(
         self,
@@ -42,6 +51,8 @@ class LLMJudge:
         detector: str | None = None,
     ) -> JudgeVerdict:
         prompt = self._render(events, task, detector)
+        if self.context:
+            prompt = f"{prompt}\n\nFiles that actually exist in the project:\n{self.context}"
         messages = [
             {"role": "system", "content": _JUDGE_SYSTEM},
             {"role": "user", "content": prompt},
@@ -54,6 +65,11 @@ class LLMJudge:
         verdict.cost_usd = result.cost_usd
         return verdict
 
+    # Reasoning models (e.g. gpt-oss) spend completion tokens "thinking" before they
+    # emit the JSON answer, so the budget must be generous or the JSON gets truncated
+    # mid-object and becomes unparseable.
+    _MAX_TOKENS = 1200
+
     def _complete(self, messages):
         # Prefer JSON mode for reliable parsing; fall back to a plain call if the
         # provider/model rejects response_format.
@@ -61,11 +77,13 @@ class LLMJudge:
             return self.provider.complete(
                 messages,
                 temperature=0.0,
-                max_tokens=400,
+                max_tokens=self._MAX_TOKENS,
                 response_format={"type": "json_object"},
             )
         except Exception:  # noqa: BLE001 - JSON mode unsupported -> retry without it
-            return self.provider.complete(messages, temperature=0.0, max_tokens=400)
+            return self.provider.complete(
+                messages, temperature=0.0, max_tokens=self._MAX_TOKENS
+            )
 
     @staticmethod
     def _render(events: list[LoopEvent], task: str | None, detector: str | None) -> str:

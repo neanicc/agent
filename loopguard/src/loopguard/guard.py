@@ -18,11 +18,12 @@ F = TypeVar("F", bound=Callable)
 
 class LoopGuard:
     def __init__(self, config: LoopGuardConfig | None = None, judge=None,
-                 on_observe=None, on_pause=None):
+                 on_observe=None, on_pause=None, on_auto=None):
         self.config = config or LoopGuardConfig()
         self.judge = judge
         self.on_observe = on_observe
         self.on_pause = on_pause
+        self.on_auto = on_auto
         self._events: dict[str, deque[LoopEvent]] = defaultdict(
             lambda: deque(maxlen=self.config.window_size)
         )
@@ -120,6 +121,8 @@ class LoopGuard:
         if self.config.action == "flag":
             return apply_flag(decision)
         if self.config.action == "auto":
+            if self.on_auto is not None:  # non-terminal front-end (e.g. cloud server)
+                return self.on_auto(decision)
             return apply_auto(decision)
         handler = self.on_pause or pause_for_action
         decision = handler(decision)
@@ -155,6 +158,9 @@ class LoopGuard:
             self._events.pop(run_id, None)
             self._all = [e for e in self._all if e.run_id != run_id]
             self._judge_cache = {k: v for k, v in self._judge_cache.items() if k[0] != run_id}
+
+    def allowlisted_tools(self) -> list[str]:
+        return sorted(self._allowlisted)
 
     def summary(self) -> dict[str, float | int]:
         return {
