@@ -84,17 +84,38 @@ pip install "loopguard[litellm]"   # universal provider (recommended)
 pip install "loopguard[cerebras]"  # direct Cerebras SDK (minimal deps)
 ```
 
+## Demo projects (real agents, no scripted loops)
+The agents that loop are real LLM agents, not canned scripts. Each project is a real workspace
+plus a system prompt that biases the agent toward the wrong well-known file, while the task is
+solvable by reading a file that is actually present. The agent loops on its assumption; the
+judge — which is given the workspace's real file listing — names the exact correct file; the
+agent reads it and finishes. List and run them:
+
+```bash
+loopguard projects                              # npm-manifest, requirements-hunt, config-hunt, two-agent-manifest, custom
+loopguard run npm-manifest --mode auto          # auto-repair: judge's fix injected, agent recovers
+loopguard run config-hunt --mode pause          # interactive: [t]erminate [c]ontinue [a]llowlist [i]nject
+loopguard run two-agent-manifest --mode auto    # two real agents ping-pong, guard catches it
+loopguard run custom --task "Read settings.yaml and report the cache backend."  # any task you type
+```
+
 ## Cloud app (mobile monitoring + intervention)
 Run the engine as a server and monitor/intervene from a phone:
 ```bash
-pip install "loopguard[server]"
-loopguard serve --port 8000          # FastAPI + WebSocket
+pip install "loopguard[server,cerebras]"   # or [server,litellm]
+loopguard serve --port 8000                # FastAPI + WebSocket; loads CEREBRAS_API_KEY from .env
 ```
-Then point the Expo app at it (see [`cloud-app/`](../cloud-app/README.md)): it streams a live
-agent's tool calls + a token/$ meter, and on a detected loop shows the judge's reasoning and
-suggested fix with **Terminate / Approve fix / Custom prompt / Ignore once** (flag mode) or an
-auto-applied badge (auto mode). The server is deploy-ready; the demo just runs it locally over
-the network.
+Then point the Expo app at it (see [`cloud-app/`](../cloud-app/README.md)). The app: picks a
+project and mode, streams the live agent's tool calls + a real token/$ meter (agent **and**
+judge cost), and on a detected loop (flag mode) shows the judge's reasoning + suggested fix with
+**Approve fix / Continue once / Allow tool / Terminate** plus a free-text correction box. Auto
+mode applies the fix and logs it. Separate tabs show running/past agents, the auto-fix feed, and
+the allowlist. HTTP API the app uses: `GET /projects`, `POST /runs`, `GET /runs[/{id}]`,
+`POST /runs/{id}/intervene`, `GET /allowlist`, `GET /autofixes`, `WS /runs/{id}/ws`.
+
+> Scope: the server keeps run state **in memory** (restarting clears history) and ships with
+> **CORS open and no auth** — fine for a local/LAN demo, not for a public deployment. Add an auth
+> layer and a datastore before exposing it.
 
 ## How Layer 1 (deterministic) works
 No API key. It normalizes events, redacts secrets, removes volatile fields, then embeds normalized text with a deterministic local HashingVectorizer from scikit-learn. Cosine similarity across the last `trip_count` states trips when all pairs exceed the threshold.
@@ -117,7 +138,11 @@ Observability platforms show traces after or during execution. LoopGuard interve
 ## Limitations
 - Layer 1 hashing embeddings are fast and local, but match surface text — great for "same tool, tweaked args," weaker when an agent rephrases its reasoning each turn.
 - Layer 2 (the LLM judge) costs real tokens and is not perfectly deterministic; it is opt-in and is only consulted after Layer 1 flags a candidate.
-- The terminal UI is one front-end. The core engine returns structured `LoopDecision`s with no terminal code, so it can later be wrapped by a cloud service + app (planned).
+- The judge's fix is only as good as its repo context and the available tools. In the demos the
+  judge is given the workspace file listing so it names the exact file; without that context it
+  must guess. It can only suggest actions the agent's tools can actually perform.
+- The core engine returns structured `LoopDecision`s with no terminal code, so the same engine
+  drives the terminal UI, the FastAPI server, and the mobile app (see above).
 
 ## Hackathon demo script
 See [`docs/demo_script.md`](docs/demo_script.md).

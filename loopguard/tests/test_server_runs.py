@@ -2,19 +2,42 @@ import threading
 import time
 
 from loopguard.decision import LoopDecision
+from loopguard.event import LoopEvent
 from loopguard.judge import JudgeVerdict
 from loopguard.providers.base import LLMResult
+from loopguard.server.projects import get_project
 from loopguard.server.runs import Run, RunRegistry, apply_intervention
-from loopguard.server.schemas import InterveneRequest, StartRunRequest, decision_message
+from loopguard.server.schemas import (
+    InterveneRequest,
+    StartRunRequest,
+    decision_message,
+    event_message,
+)
+
+NPM = get_project("npm-manifest")  # real workspace with no package.json -> genuine loop
+
+
+def _run(run_id, mode, emit):
+    return Run(id=run_id, project=NPM, mode=mode, model="fake/model", emit=emit)
+
+
+def _await(run, status="awaiting_decision", tries=200):
+    for _ in range(tries):
+        if run.state.status == status:
+            return True
+        time.sleep(0.02)
+    return False
 
 
 def test_start_run_defaults():
     r = StartRunRequest()
-    assert r.mode == "flag" and r.model == "cerebras/gpt-oss-120b" and r.provider == "auto"
+    assert r.project_id == "npm-manifest" and r.mode == "flag"
+    assert r.model == "cerebras/gpt-oss-120b" and r.provider == "auto"
 
 
 def test_intervene_request_validates_action():
     assert InterveneRequest(action="approve").message is None
+    assert InterveneRequest(action="allowlist").action == "allowlist"
     assert InterveneRequest(action="inject", message="do x").message == "do x"
 
 
@@ -24,11 +47,18 @@ def test_decision_message_shape():
         judged=True, judge_reasoning="stuck", judge_confidence=0.9,
         suggested_message="read pyproject.toml",
     )
-    msg = decision_message(d)
-    assert msg["type"] == "decision_required"
-    assert msg["data"]["detector"] == "semantic"
-    assert msg["data"]["judge_reasoning"] == "stuck"
-    assert msg["data"]["suggested_message"] == "read pyproject.toml"
+    data = decision_message(d)["data"]
+    assert data["detector"] == "semantic" and data["judge_reasoning"] == "stuck"
+    assert data["suggested_message"] == "read pyproject.toml"
+
+
+def test_event_message_total_cost_includes_judge():
+    ev = LoopEvent(run_id="r", agent="planner", kind="tool_call",
+                   tool_name="read_file", cost_usd=0.002)
+    data = event_message(ev, LoopDecision(),
+                         {"tokens": 100, "cost_usd": 0.01, "judge_cost_usd": 0.003})["data"]
+    assert abs(data["total_cost"] - 0.013) < 1e-9  # agent + judge
+    assert data["judge_cost"] == 0.003 and data["agent"] == "planner"
 
 
 class _TC:
@@ -78,67 +108,80 @@ def test_apply_intervention_maps_actions():
     apply_intervention(d4, "continue_once", None)
     assert d4.allowed and d4.suggested_message is None
 
+    d5 = LoopDecision(tripped=True, suggested_message="x")
+    apply_intervention(d5, "allowlist", None)
+    assert d5.allowed and d5.developer_action == "allowlist" and d5.suggested_message is None
 
-def test_flag_run_pauses_then_resumes_on_approve(tmp_path):
+
+def test_flag_run_pauses_then_resumes_on_approve():
     messages = []
-    run = Run(id="r1", mode="flag", model="fake/model", emit=messages.append, root=str(tmp_path))
+    run = _run("r1", "flag", messages.append)
     t = threading.Thread(target=run.execute, args=(_LoopProvider(), _Judge()), daemon=True)
     t.start()
-
-    for _ in range(100):
-        if run.state.status == "awaiting_decision":
-            break
-        time.sleep(0.02)
-    assert run.state.status == "awaiting_decision"
+    assert _await(run)
     assert any(m["type"] == "decision_required" for m in messages)
-
     run.intervene("approve")
     t.join(timeout=5)
     assert run.state.status in ("completed", "stopped")
     assert any(m["type"] == "done" for m in messages)
 
 
-def test_terminate_stops_the_run(tmp_path):
-    run = Run(id="r2", mode="flag", model="fake/model", emit=lambda m: None, root=str(tmp_path))
+def test_terminate_stops_the_run():
+    run = _run("r2", "flag", lambda m: None)
     t = threading.Thread(target=run.execute, args=(_LoopProvider(), _Judge()), daemon=True)
     t.start()
-    for _ in range(100):
-        if run.state.status == "awaiting_decision":
-            break
-        time.sleep(0.02)
+    assert _await(run)
     run.intervene("terminate")
     t.join(timeout=5)
-    assert run.state.stopped_by_guard is True
-    assert run.state.status == "stopped"
+    assert run.state.stopped_by_guard is True and run.state.status == "stopped"
 
 
-def test_intervene_ignored_when_not_paused(tmp_path):
-    # An out-of-window intervention (e.g. a stray double-tap) must not leak into a
-    # later pause round.
-    run = Run(id="r3", mode="flag", model="fake/model", emit=lambda m: None, root=str(tmp_path))
+def test_allowlist_action_records_and_emits():
+    messages = []
+    run = _run("r-allow", "flag", messages.append)
+    t = threading.Thread(target=run.execute, args=(_LoopProvider(), _Judge()), daemon=True)
+    t.start()
+    assert _await(run)
+    run.intervene("allowlist")
+    t.join(timeout=5)
+    assert "read_file" in run.state.allowlist
+    assert run.state.allowlist_log and run.state.allowlist_log[0]["tools"] == ["read_file"]
+    assert any(m["type"] == "allowlisted" for m in messages)
+
+
+def test_auto_mode_logs_the_fix():
+    messages = []
+    run = _run("r-auto", "auto", messages.append)
+    t = threading.Thread(target=run.execute, args=(_LoopProvider(), _Judge()), daemon=True)
+    t.start()
+    t.join(timeout=5)
+    assert run.state.auto_actions, "auto mode should log the intervention"
+    assert run.state.auto_actions[0]["applied_fix"] == "STOP now"
+    assert any(m["type"] == "auto_fix" for m in messages)
+    assert run.state.status == "completed"
+
+
+def test_intervene_ignored_when_not_paused():
+    run = _run("r3", "flag", lambda m: None)
     run.intervene("terminate")  # before any pause -> must be ignored
     assert run._response is None and run._awaiting is False
 
 
-def test_double_intervene_does_not_leak_to_next_round(tmp_path):
-    run = Run(id="r4", mode="flag", model="fake/model", emit=lambda m: None, root=str(tmp_path))
+def test_double_intervene_does_not_leak_to_next_round():
+    run = _run("r4", "flag", lambda m: None)
     t = threading.Thread(target=run.execute, args=(_LoopProvider(), _Judge()), daemon=True)
     t.start()
-    for _ in range(100):
-        if run.state.status == "awaiting_decision":
-            break
-        time.sleep(0.02)
-    run.intervene("approve")   # resolves the pause
+    assert _await(run)
+    run.intervene("approve")    # resolves the pause
     run.intervene("terminate")  # late duplicate after resume -> must be ignored
     t.join(timeout=5)
-    # The approve injected the judge's "STOP now" correction, so the run completed normally;
-    # the stray terminate must NOT have flipped it to stopped.
     assert run.state.status == "completed"
 
 
 def test_registry_create_get_list():
     reg = RunRegistry()
-    run = reg.create("abc", "auto", "m", emit=lambda m: None)
-    assert reg.get("abc") is run
-    assert reg.get("missing") is None
-    assert any(s["id"] == "abc" for s in reg.list())
+    run = reg.create("abc", NPM, "auto", "m", emit=lambda m: None)
+    assert reg.get("abc") is run and reg.get("missing") is None
+    listed = reg.list()
+    assert any(s["id"] == "abc" for s in listed)
+    assert reg.allowlist() == []

@@ -37,7 +37,7 @@ class _Judge:
 
 def _app():
     return create_app(provider_factory=lambda model, provider: _QuickProvider(),
-                      judge_factory=lambda provider: _Judge())
+                      judge_factory=lambda provider, context=None: _Judge())
 
 
 def test_health():
@@ -59,6 +59,39 @@ def test_start_run_returns_id_and_lists():
 def test_unknown_run_404():
     client = TestClient(_app())
     assert client.get("/runs/nope").status_code == 404
+
+
+def test_projects_endpoint_lists_real_projects():
+    client = TestClient(_app())
+    projects = client.get("/projects").json()
+    ids = {p["id"] for p in projects}
+    assert {"npm-manifest", "config-hunt", "two-agent-manifest", "custom"} <= ids
+    custom = next(p for p in projects if p["id"] == "custom")
+    assert custom["customizable"] is True and custom["hint"]
+    multi = next(p for p in projects if p["id"] == "two-agent-manifest")
+    assert multi["kind"] == "multi" and len(multi["agents"]) == 2
+
+
+def test_unknown_project_is_400():
+    client = TestClient(_app())
+    r = client.post("/runs", json={"project_id": "does-not-exist"})
+    assert r.status_code == 400 and "does-not-exist" in r.json()["detail"]
+
+
+def test_run_detail_exposes_new_sections():
+    client = TestClient(_app())
+    run_id = client.post("/runs", json={"project_id": "npm-manifest", "mode": "auto"}).json()[
+        "run_id"
+    ]
+    body = client.get(f"/runs/{run_id}").json()
+    for key in ("project_id", "agents", "task", "auto_actions", "allowlist_log", "allowlist"):
+        assert key in body
+    assert body["project_id"] == "npm-manifest"
+
+
+def test_allowlist_endpoint_starts_empty():
+    client = TestClient(_app())
+    assert client.get("/allowlist").json() == []
 
 
 def test_websocket_streams_until_done():

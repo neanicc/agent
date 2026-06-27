@@ -1,0 +1,5 @@
+{
+  "service": "acme-data",
+  "source": "s3://acme-data/raw",
+  "batch_size": 500
+}
