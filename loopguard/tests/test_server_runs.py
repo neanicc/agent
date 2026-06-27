@@ -112,6 +112,30 @@ def test_terminate_stops_the_run(tmp_path):
     assert run.state.status == "stopped"
 
 
+def test_intervene_ignored_when_not_paused(tmp_path):
+    # An out-of-window intervention (e.g. a stray double-tap) must not leak into a
+    # later pause round.
+    run = Run(id="r3", mode="flag", model="fake/model", emit=lambda m: None, root=str(tmp_path))
+    run.intervene("terminate")  # before any pause -> must be ignored
+    assert run._response is None and run._awaiting is False
+
+
+def test_double_intervene_does_not_leak_to_next_round(tmp_path):
+    run = Run(id="r4", mode="flag", model="fake/model", emit=lambda m: None, root=str(tmp_path))
+    t = threading.Thread(target=run.execute, args=(_LoopProvider(), _Judge()), daemon=True)
+    t.start()
+    for _ in range(100):
+        if run.state.status == "awaiting_decision":
+            break
+        time.sleep(0.02)
+    run.intervene("approve")   # resolves the pause
+    run.intervene("terminate")  # late duplicate after resume -> must be ignored
+    t.join(timeout=5)
+    # The approve injected the judge's "STOP now" correction, so the run completed normally;
+    # the stray terminate must NOT have flipped it to stopped.
+    assert run.state.status == "completed"
+
+
 def test_registry_create_get_list():
     reg = RunRegistry()
     run = reg.create("abc", "auto", "m", emit=lambda m: None)

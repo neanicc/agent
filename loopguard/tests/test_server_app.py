@@ -44,6 +44,7 @@ def test_health():
     client = TestClient(_app())
     r = client.get("/health")
     assert r.status_code == 200 and r.json()["status"] == "ok"
+    assert "version" in r.json()
 
 
 def test_start_run_returns_id_and_lists():

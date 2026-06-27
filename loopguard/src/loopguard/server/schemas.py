@@ -19,11 +19,12 @@ class InterveneRequest(BaseModel):
     message: str | None = None
 
 
-def event_message(event: LoopEvent, decision: LoopDecision, totals: dict) -> dict:
+def event_message(event: LoopEvent, decision: LoopDecision, totals: dict, step: int = 0) -> dict:
     is_err = bool(event.error)
     return {
         "type": "event",
         "data": {
+            "step": step,
             "tool": event.tool_name,
             "args": event.tool_args or {},
             "output": (event.error or event.output_text or "")[:300],

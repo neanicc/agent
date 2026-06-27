@@ -56,3 +56,11 @@ npx expo export --platform web   # prove the bundle builds
 
 > Note: the native mobile UI is best verified by running it (simulator / Expo Go). The reducer
 > logic, types, and web bundle are checked automatically; the visual layer is verified by hand.
+
+## Known limitations
+
+- **No automatic WebSocket reconnect yet.** If the socket drops mid-run, the app shows an error
+  rather than reconnecting. The run keeps going server-side and the server supports resync — re-open
+  the app and it can fetch `GET /runs/{id}` (events + any pending decision are replayed on connect).
+  Auto-reconnect is a straightforward follow-up.
+- The server keeps run state in memory only (no persistence); restarting it clears past runs.

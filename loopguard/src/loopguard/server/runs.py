@@ -66,32 +66,47 @@ class Run:
         self.state = RunState(id=id, mode=mode, model=model)
         self._emit = emit
         self._root = Path(root) if root else _repo_root()
-        self._decision_event = threading.Event()
+        # Condition guards the cross-thread pause/resume handoff. `_awaiting` scopes a
+        # response to exactly one pause round, so a duplicate/out-of-window intervention
+        # (e.g. a double-tap, or REST + WS both delivering) cannot leak into a later one.
+        self._cond = threading.Condition()
         self._response: dict | None = None
+        self._awaiting = False
+        self._step = 0
         self._guard: LoopGuard | None = None
 
     def intervene(self, action: str, message: str | None = None) -> None:
-        self._response = {"action": action, "message": message}
-        self._decision_event.set()
+        with self._cond:
+            if not self._awaiting:
+                return  # ignore interventions when the run is not paused
+            self._response = {"action": action, "message": message}
+            self._awaiting = False
+            self._cond.notify_all()
 
     def _on_observe(self, event: LoopEvent, decision: LoopDecision) -> None:
+        self._step += 1
         totals = self._guard.summary() if self._guard else {}
-        msg = event_message(event, decision, totals)
+        msg = event_message(event, decision, totals, self._step)
         self.state.events.append(msg["data"])
         self._emit(msg)
 
     def _on_pause(self, decision: LoopDecision) -> LoopDecision:
-        self.state.status = "awaiting_decision"
+        with self._cond:  # open the window before emitting, so a fast reply is never dropped
+            self._awaiting = True
+            self._response = None
         self.state.pending = decision_message(decision)["data"]
+        self.state.status = "awaiting_decision"
         self._emit(decision_message(decision))
-        got = self._decision_event.wait(timeout=PAUSE_TIMEOUT_S)
-        self._decision_event.clear()
-        if not got or self._response is None:
+        with self._cond:
+            ok = self._cond.wait_for(lambda: not self._awaiting, timeout=PAUSE_TIMEOUT_S)
+            resp = self._response
+            self._response = None
+            self._awaiting = False
+        if not ok or resp is None:
             decision.developer_action = "terminate"
             decision.allowed = False
         else:
-            apply_intervention(decision, self._response["action"], self._response.get("message"))
-        self._response = None
+            apply_intervention(decision, resp["action"], resp.get("message"))
         self.state.pending = None
         self.state.status = "running"
         self._emit({"type": "status", "data": {

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import threading
 import uuid
+from importlib.metadata import PackageNotFoundError, version
 from typing import Callable
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -11,6 +12,13 @@ from ..judge import LLMJudge
 from ..providers import make_provider
 from .schemas import InterveneRequest, StartRunRequest
 from .runs import RunRegistry
+
+_VALID_ACTIONS = {"terminate", "approve", "inject", "continue_once"}
+
+try:
+    _VERSION = version("loopguard")
+except PackageNotFoundError:  # pragma: no cover - not installed as a dist
+    _VERSION = "0.0.0"
 
 
 def create_app(provider_factory: Callable | None = None,
@@ -55,7 +63,7 @@ def create_app(provider_factory: Callable | None = None,
 
     @app.get("/health")
     async def health():
-        return {"status": "ok"}
+        return {"status": "ok", "version": _VERSION}
 
     @app.post("/runs")
     async def start_run(req: StartRunRequest):
@@ -113,7 +121,7 @@ def create_app(provider_factory: Callable | None = None,
         try:
             while True:
                 msg = await ws.receive_json()
-                if msg.get("type") == "intervene":
+                if msg.get("type") == "intervene" and msg.get("action") in _VALID_ACTIONS:
                     run = registry.get(run_id)
                     if run is not None:
                         run.intervene(msg.get("action"), msg.get("message"))
