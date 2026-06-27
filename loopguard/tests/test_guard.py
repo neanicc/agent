@@ -19,4 +19,9 @@ def test_summary_counts_tokens_and_cost():
     event.tokens = 12
     event.cost_usd = 0.01
     guard.observe(event)
-    assert guard.summary() == {"events": 1, "tokens": 12, "cost_usd": 0.01}
+    assert guard.summary() == {
+        "events": 1,
+        "tokens": 12,
+        "cost_usd": 0.01,
+        "judge_cost_usd": 0.0,
+    }

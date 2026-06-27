@@ -44,8 +44,43 @@ def show_warning(decision: LoopDecision) -> None:
         )
 
 
+def _render_verdict(decision: LoopDecision) -> None:
+    if decision.judged and decision.judge_reasoning:
+        conf = decision.judge_confidence if decision.judge_confidence is not None else 0.0
+        console.print(
+            f"[bold magenta]Judge:[/bold magenta] {decision.judge_reasoning} "
+            f"(confidence {conf:.2f})"
+        )
+        if decision.suggested_message:
+            console.print(f"[magenta]Suggested fix:[/magenta] {decision.suggested_message}")
+
+
+def apply_flag(decision: LoopDecision) -> LoopDecision:
+    show_warning(decision)
+    _render_verdict(decision)
+    console.print("[yellow]flag mode: reported, not blocking.[/yellow]")
+    decision.allowed = True
+    decision.developer_action = "none"
+    return decision
+
+
+def apply_auto(decision: LoopDecision) -> LoopDecision:
+    show_warning(decision)
+    _render_verdict(decision)
+    if decision.suggested_message:
+        decision.developer_action = "inject"
+        decision.allowed = True
+        console.print("[green]auto mode: injecting correction and continuing.[/green]")
+    else:
+        decision.developer_action = "terminate"
+        decision.allowed = False
+        console.print("[red]auto mode: no correction available; terminating.[/red]")
+    return decision
+
+
 def pause_for_action(decision: LoopDecision) -> LoopDecision:
     show_warning(decision)
+    _render_verdict(decision)
     console.print("[t] terminate  [c] continue once  [a] allowlist  [i] inject correction")
     choice = Prompt.ask("Action", choices=["t", "c", "a", "i"], default="t")
     mapping = {"t": "terminate", "c": "continue_once", "a": "allowlist", "i": "inject"}

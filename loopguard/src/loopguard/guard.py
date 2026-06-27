@@ -11,21 +11,23 @@ from .detectors import budget, exact, pingpong, semantic
 from .event import LoopEvent
 from .exceptions import LoopDetectedError
 from .storage import export_jsonl as write_jsonl
-from .ui.terminal import pause_for_action, show_warning
+from .ui.terminal import apply_auto, apply_flag, pause_for_action, show_warning
 
 F = TypeVar("F", bound=Callable)
 
 
 class LoopGuard:
-    def __init__(self, config: LoopGuardConfig | None = None):
+    def __init__(self, config: LoopGuardConfig | None = None, judge=None):
         self.config = config or LoopGuardConfig()
+        self.judge = judge
         self._events: dict[str, deque[LoopEvent]] = defaultdict(
             lambda: deque(maxlen=self.config.window_size)
         )
         self._all: list[LoopEvent] = []
         self._allowlisted: set[str] = set(self.config.allowlisted_tools)
+        self._judge_cost: float = 0.0
 
-    def observe(self, event: LoopEvent) -> LoopDecision:
+    def observe(self, event: LoopEvent, task: str | None = None) -> LoopDecision:
         self._events[event.run_id].append(event)
         self._all.append(event)
         events = list(self._events[event.run_id])
@@ -40,8 +42,33 @@ class LoopGuard:
             if enabled:
                 decision = detector()
                 if decision.tripped:
+                    decision = self._consult_judge(decision, task)
+                    if not decision.tripped:
+                        return decision
                     return self._handle(decision)
         return LoopDecision()
+
+    def _consult_judge(self, decision: LoopDecision, task: str | None) -> LoopDecision:
+        if not (self.config.enable_judge and self.judge is not None):
+            return decision
+        verdict = self.judge.judge(decision.matching_events, task=task, detector=decision.detector)
+        self._judge_cost += verdict.cost_usd
+        if not verdict.is_loop:
+            return LoopDecision(
+                allowed=True,
+                tripped=False,
+                reason="judge: false positive suppressed",
+                detector=decision.detector,
+                judged=True,
+                judge_reasoning=verdict.reasoning,
+                judge_confidence=verdict.confidence,
+            )
+        decision.judged = True
+        decision.judge_reasoning = verdict.reasoning
+        decision.judge_confidence = verdict.confidence
+        if verdict.suggested_correction:
+            decision.suggested_message = verdict.suggested_correction
+        return decision
 
     def _handle(self, decision: LoopDecision) -> LoopDecision:
         if self.config.action == "raise":
@@ -50,6 +77,10 @@ class LoopGuard:
             show_warning(decision)
             decision.allowed = True
             return decision
+        if self.config.action == "flag":
+            return apply_flag(decision)
+        if self.config.action == "auto":
+            return apply_auto(decision)
         decision = pause_for_action(decision)
         if decision.developer_action == "allowlist":
             for e in decision.matching_events:
@@ -86,6 +117,7 @@ class LoopGuard:
             "events": len(self._all),
             "tokens": sum(e.tokens for e in self._all),
             "cost_usd": sum(e.cost_usd for e in self._all),
+            "judge_cost_usd": self._judge_cost,
         }
 
     def export_jsonl(self, path: str | Path) -> None:

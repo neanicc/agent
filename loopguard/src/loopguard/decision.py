@@ -15,4 +15,7 @@ class LoopDecision(BaseModel):
     similarity: float | None = None
     matching_events: list[LoopEvent] = Field(default_factory=list)
     suggested_message: str | None = None
+    judged: bool = False
+    judge_reasoning: str | None = None
+    judge_confidence: float | None = None
     developer_action: Literal["terminate", "continue_once", "allowlist", "inject", "none"] = "none"
