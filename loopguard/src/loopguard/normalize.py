@@ -12,6 +12,14 @@ _UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 _HASH = re.compile(r"\b[a-f0-9]{32,}\b", re.I)
 _ISO = re.compile(r"\b\d{4}-\d{2}-\d{2}[tT ][\d:.+-]+Z?\b")
 _ABSOLUTE_PREFIX = re.compile(r"(?<!\w)(?:/workspace/[^\s\']+/|[A-Za-z]:\\)")
+# Safety net: redact common provider API keys / bearer tokens that appear in free text,
+# so secrets are never sent to the judge provider or written to the run log.
+_SECRET = re.compile(
+    r"\b(?:(?:sk|csk|pk|rk|ghp|gho|ghs|xoxb|xoxp)[-_][A-Za-z0-9_\-]{8,})"
+    r"|(?:(?:AKIA|AIza)[A-Za-z0-9_\-]{12,})\b",
+    re.I,
+)
+_BEARER = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._\-]{8,}")
 _WS = re.compile(r"\s+")
 
 
@@ -20,6 +28,8 @@ def stable_hash(text: str) -> str:
 
 
 def _clean_text(value: str) -> str:
+    value = _BEARER.sub("bearer <redacted>", value)
+    value = _SECRET.sub("<redacted>", value)
     value = _UUID.sub("<uuid>", value)
     value = _HASH.sub("<hash>", value)
     value = _ISO.sub("<timestamp>", value)

@@ -26,6 +26,7 @@ class LoopGuard:
         self._all: list[LoopEvent] = []
         self._allowlisted: set[str] = set(self.config.allowlisted_tools)
         self._judge_cost: float = 0.0
+        self._judge_cache: dict[tuple[str, str | None], object] = {}
 
     def observe(self, event: LoopEvent, task: str | None = None) -> LoopDecision:
         self._events[event.run_id].append(event)
@@ -33,6 +34,10 @@ class LoopGuard:
         events = list(self._events[event.run_id])
         if event.tool_name in self._allowlisted:
             return LoopDecision(reason="allowlisted")
+        # Hard total-spend ceiling (includes judge cost). A real cap the judge may NOT override.
+        ceiling = self._cost_ceiling(event.run_id)
+        if ceiling is not None:
+            return self._handle(ceiling)
         for enabled, detector in [
             (self.config.enable_budget, lambda: budget.detect(events, self.config)),
             (self.config.enable_exact, lambda: exact.detect(events, self.config)),
@@ -42,17 +47,43 @@ class LoopGuard:
             if enabled:
                 decision = detector()
                 if decision.tripped:
+                    # Budget is a hard resource cap: never let the judge wave it away.
+                    if decision.detector == "budget":
+                        return self._handle(decision)
                     decision = self._consult_judge(decision, task)
                     if not decision.tripped:
                         return decision
                     return self._handle(decision)
         return LoopDecision()
 
+    def _cost_ceiling(self, run_id: str) -> LoopDecision | None:
+        if not self.config.enable_budget or self.config.max_cost_usd is None:
+            return None
+        total = sum(e.cost_usd for e in self._all if e.run_id == run_id) + self._judge_cost
+        if total > self.config.max_cost_usd:
+            tail = list(self._events[run_id])[-self.config.trip_count :]
+            return LoopDecision(
+                allowed=False,
+                tripped=True,
+                reason=f"Total cost budget exceeded: ${total:.4f}>${self.config.max_cost_usd:.4f}",
+                detector="budget",
+                matching_events=tail,
+            )
+        return None
+
     def _consult_judge(self, decision: LoopDecision, task: str | None) -> LoopDecision:
         if not (self.config.enable_judge and self.judge is not None):
             return decision
-        verdict = self.judge.judge(decision.matching_events, task=task, detector=decision.detector)
-        self._judge_cost += verdict.cost_usd
+        run_id = decision.matching_events[0].run_id if decision.matching_events else "default"
+        key = (run_id, decision.detector)
+        # Judge once per (run, detector): an ongoing loop must not re-bill the judge each step.
+        verdict = self._judge_cache.get(key)
+        if verdict is None:
+            verdict = self.judge.judge(
+                decision.matching_events, task=task, detector=decision.detector
+            )
+            self._judge_cost += verdict.cost_usd
+            self._judge_cache[key] = verdict
         if not verdict.is_loop:
             return LoopDecision(
                 allowed=True,
@@ -108,9 +139,12 @@ class LoopGuard:
         if run_id is None:
             self._events.clear()
             self._all.clear()
+            self._judge_cache.clear()
+            self._judge_cost = 0.0
         else:
             self._events.pop(run_id, None)
             self._all = [e for e in self._all if e.run_id != run_id]
+            self._judge_cache = {k: v for k, v in self._judge_cache.items() if k[0] != run_id}
 
     def summary(self) -> dict[str, float | int]:
         return {
