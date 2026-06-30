@@ -1,9 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
-import { theme } from "../theme";
-import { Card, CTAButton, Hero, Pill, Screen } from "../components/ui";
+import { Pressable, Text, View } from "react-native";
+import { statusColor, statusLabel, theme } from "../theme";
+import {
+  ActionButton,
+  EmptyState,
+  LabeledInput,
+  PageHeader,
+  Screen,
+  Section,
+  StatusBadge,
+} from "../components/ui";
 import { LoopGuardClient, Project, RunSummary } from "../client";
-
+import { AppIcon } from "../components/AppIcon";
 
 export function DashboardScreen({
   client,
@@ -54,67 +62,266 @@ export function DashboardScreen({
 
   return (
     <Screen>
-      <Hero
-        eyebrow="Launch deck"
-        title="Launch an agent"
-        subtitle="Choose a scenario, pick human-in-the-loop or autonomous repair, then watch LoopGuard keep the run on rails."
+      <PageHeader
+        subtitle="Choose a project and how LoopGuard should respond when the run gets stuck."
+        title="Run an agent"
       />
 
       {running.length > 0 ? (
-        <Card style={{ borderColor: "rgba(251,191,36,0.32)" }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: theme.warn, fontSize: 12, fontWeight: "900", letterSpacing: 1.2 }}>RUNNING NOW</Text>
-            <Pill label={`${running.length} active`} color={theme.warn} />
-          </View>
+        <Section
+          accessory={<StatusBadge color={theme.warn} label={`${running.length} active`} />}
+          title="Active runs"
+        >
           {running.map((r) => (
-            <Pressable key={r.id} onPress={() => onOpenRun(r.id, r.mode as "flag" | "auto")} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "rgba(2,6,23,0.30)", borderWidth: 1, borderColor: r.status === "awaiting_decision" ? theme.warn : theme.border, borderRadius: theme.radius, padding: theme.space(3) }}>
-              <Text style={{ color: theme.text, fontSize: 13, fontWeight: "700", flex: 1 }}>{r.label}</Text>
-              <Pill label={r.status === "awaiting_decision" ? "needs you" : r.status} color={r.status === "awaiting_decision" ? theme.warn : theme.accent} />
+            <Pressable
+              accessibilityRole="button"
+              key={r.id}
+              onPress={() => onOpenRun(r.id, r.mode as "flag" | "auto")}
+              style={({ pressed }) => ({
+                alignItems: "center",
+                backgroundColor: pressed ? theme.surfaceHigh : theme.surfaceInset,
+                borderColor:
+                  r.status === "awaiting_decision" ? theme.warn : theme.border,
+                borderRadius: theme.radius,
+                borderWidth: 1,
+                flexDirection: "row",
+                gap: theme.space(3),
+                minHeight: 58,
+                padding: theme.space(3),
+              })}
+            >
+              <AppIcon
+                color={statusColor(r.status)}
+                fallback={r.status === "awaiting_decision" ? "alert-triangle" : "activity"}
+                size={18}
+                symbol={
+                  r.status === "awaiting_decision"
+                    ? "exclamationmark.triangle.fill"
+                    : "waveform.path.ecg"
+                }
+              />
+              <View style={{ flex: 1, gap: theme.space(1), minWidth: 0 }}>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: theme.text,
+                    fontFamily: theme.bodySemibold,
+                    fontSize: 15,
+                    lineHeight: 19,
+                  }}
+                >
+                  {r.label}
+                </Text>
+                <Text
+                  style={{
+                    color: theme.textMuted,
+                    fontFamily: theme.body,
+                    fontSize: 12,
+                    lineHeight: 16,
+                  }}
+                >
+                  {r.mode === "auto" ? "Automatic repair" : "Review required on loop"}
+                </Text>
+              </View>
+              <StatusBadge color={statusColor(r.status)} label={statusLabel(r.status)} />
             </Pressable>
           ))}
-        </Card>
+        </Section>
       ) : null}
 
-      {projects.length === 0 && !error ? <ActivityIndicator color={theme.accent} /> : null}
-
-      {projects.map((p) => {
-        const on = selected?.id === p.id;
-        return (
-          <Pressable key={p.id} onPress={() => setSelected(p)}>
-            <Card style={{ borderColor: on ? "rgba(56,189,248,0.66)" : theme.border, backgroundColor: on ? "rgba(23,32,51,0.94)" : theme.surfaceGlass }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(3) }}>
-                <View style={{ width: 46, height: 46, borderRadius: 16, backgroundColor: p.kind === "multi" ? "rgba(192,132,252,0.16)" : "rgba(56,189,248,0.16)", alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 22 }}>{p.kind === "multi" ? "✦" : "▶"}</Text>
-                </View>
-                <Text style={{ color: theme.text, fontWeight: "900", fontSize: 17, flex: 1 }}>{p.label}</Text>
-                <Pill label={p.kind === "multi" ? `${p.agents.length} agents` : "1 agent"} color={p.kind === "multi" ? theme.purple : theme.textDim} />
-              </View>
-              <Text style={{ color: theme.textDim, fontSize: 13, lineHeight: 20 }}>{p.blurb}</Text>
-              {on ? (
-                <View style={{ gap: theme.space(3), marginTop: theme.space(1) }}>
-                  <View style={{ flexDirection: "row", gap: theme.space(2) }}>
-                    {(["flag", "auto"] as const).map((m) => (
-                      <Pressable key={m} onPress={() => setMode(m)} style={{ flex: 1, borderWidth: 1, borderColor: mode === m ? theme.accent : theme.border, backgroundColor: mode === m ? "rgba(56,189,248,0.12)" : "rgba(2,6,23,0.24)", borderRadius: theme.radius, padding: theme.space(3) }}>
-                        <Text style={{ color: theme.text, fontWeight: "900", fontSize: 13 }}>{m === "flag" ? "Flag mode" : "Auto mode"}</Text>
-                        <Text style={{ color: theme.textDim, fontSize: 11, marginTop: 2 }}>{m === "flag" ? "Pause & ask me" : "Auto-apply the fix"}</Text>
-                      </Pressable>
-                    ))}
+      {projects.length > 0 ? (
+        <Section flush title="Projects">
+          {projects.map((project, index) => {
+            const isSelected = selected?.id === project.id;
+            return (
+              <View
+                key={project.id}
+                style={{
+                  borderTopColor: index === 0 ? theme.surface : theme.border,
+                  borderTopWidth: index === 0 ? 0 : 1,
+                  paddingHorizontal: theme.space(4),
+                  paddingVertical: theme.space(3),
+                }}
+              >
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: isSelected, selected: isSelected }}
+                  onPress={() => setSelected(isSelected ? null : project)}
+                  style={({ pressed }) => ({
+                    alignItems: "center",
+                    flexDirection: "row",
+                    gap: theme.space(3),
+                    minHeight: 58,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <View
+                    style={{
+                      alignItems: "center",
+                      backgroundColor: isSelected ? theme.surfaceHigh : theme.surfaceInset,
+                      borderColor: isSelected ? theme.accent : theme.border,
+                      borderRadius: theme.radius,
+                      borderWidth: 1,
+                      height: 42,
+                      justifyContent: "center",
+                      width: 42,
+                    }}
+                  >
+                    <AppIcon
+                      color={isSelected ? theme.accent : theme.textDim}
+                      fallback={project.kind === "multi" ? "layers" : "play"}
+                      size={18}
+                      symbol={project.kind === "multi" ? "rectangle.stack" : "play.fill"}
+                    />
                   </View>
-                  {p.customizable ? (
-                    <View style={{ gap: theme.space(1) }}>
-                      <TextInput value={task} onChangeText={setTask} placeholder="Type any task for the agent…" placeholderTextColor={theme.textMuted} style={{ color: theme.text, borderWidth: 1, borderColor: theme.borderStrong, backgroundColor: "rgba(2,6,23,0.24)", borderRadius: theme.radius, padding: theme.space(3), fontSize: 13 }} />
-                      {p.hint ? <Text style={{ color: theme.textDim, fontSize: 11 }}>{p.hint}</Text> : null}
+                  <View style={{ flex: 1, gap: theme.space(1), minWidth: 0 }}>
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        color: theme.text,
+                        fontFamily: theme.display,
+                        fontSize: 17,
+                        lineHeight: 21,
+                      }}
+                    >
+                      {project.label}
+                    </Text>
+                    <Text
+                      numberOfLines={2}
+                      style={{
+                        color: theme.textDim,
+                        fontFamily: theme.body,
+                        fontSize: 13,
+                        lineHeight: 18,
+                      }}
+                    >
+                      {project.blurb}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: "flex-end", gap: theme.space(2) }}>
+                    <Text
+                      style={{
+                        color: theme.textMuted,
+                        fontFamily: theme.bodyMedium,
+                        fontSize: 12,
+                      }}
+                    >
+                      {project.agents.length} {project.agents.length === 1 ? "agent" : "agents"}
+                    </Text>
+                    <AppIcon
+                      color={theme.textMuted}
+                      fallback={isSelected ? "chevron-up" : "chevron-down"}
+                      size={16}
+                      symbol={isSelected ? "chevron.up" : "chevron.down"}
+                    />
+                  </View>
+                </Pressable>
+                {isSelected ? (
+                  <View
+                    style={{
+                      borderTopColor: theme.border,
+                      borderTopWidth: 1,
+                      gap: theme.space(3),
+                      marginTop: theme.space(3),
+                      paddingTop: theme.space(4),
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: theme.textDim,
+                        fontFamily: theme.bodyMedium,
+                        fontSize: 13,
+                        lineHeight: 17,
+                      }}
+                    >
+                      Intervention mode
+                    </Text>
+                    <View style={{ flexDirection: "row", gap: theme.space(2) }}>
+                      <ActionButton
+                        label="Review"
+                        onPress={() => setMode("flag")}
+                        style={{ flex: 1 }}
+                        variant={mode === "flag" ? "selected" : "secondary"}
+                      />
+                      <ActionButton
+                        label="Auto-fix"
+                        onPress={() => setMode("auto")}
+                        style={{ flex: 1 }}
+                        variant={mode === "auto" ? "selected" : "secondary"}
+                      />
                     </View>
-                  ) : null}
-                  <CTAButton label={launching ? "Launching…" : "Launch agent"} onPress={launch} disabled={launching} />
-                </View>
-              ) : null}
-            </Card>
-          </Pressable>
-        );
-      })}
+                    <Text
+                      style={{
+                        color: theme.textMuted,
+                        fontFamily: theme.body,
+                        fontSize: 13,
+                        lineHeight: 18,
+                      }}
+                    >
+                      {mode === "flag"
+                        ? "Pause when LoopGuard needs a decision."
+                        : "Apply the judge’s correction automatically."}
+                    </Text>
+                    {project.customizable ? (
+                      <LabeledInput
+                        helper={project.hint || "Describe what the agent should accomplish."}
+                        label="Agent task"
+                        onChangeText={setTask}
+                        placeholder="Describe the task"
+                        value={task}
+                      />
+                    ) : null}
+                    <ActionButton
+                      label="Launch agent"
+                      loading={launching}
+                      onPress={launch}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+        </Section>
+      ) : null}
 
-      {error ? <Text style={{ color: theme.danger, fontSize: 13 }}>{error}</Text> : null}
+      {!projects.length && !error ? (
+        <EmptyState
+          body="Projects will appear when the LoopGuard service responds."
+          fallback="server"
+          symbol="server.rack"
+          title="Loading projects"
+        />
+      ) : null}
+
+      {error ? (
+        <View
+          accessibilityLiveRegion="polite"
+          style={{
+            alignItems: "flex-start",
+            flexDirection: "row",
+            gap: theme.space(2),
+            paddingVertical: theme.space(2),
+          }}
+        >
+          <AppIcon
+            color={theme.danger}
+            fallback="alert-circle"
+            size={18}
+            symbol="exclamationmark.circle.fill"
+          />
+          <Text
+            style={{
+              color: theme.danger,
+              flex: 1,
+              fontFamily: theme.body,
+              fontSize: 14,
+              lineHeight: 20,
+            }}
+          >
+            {error}
+          </Text>
+        </View>
+      ) : null}
     </Screen>
   );
 }

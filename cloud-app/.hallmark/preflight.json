@@ -1,0 +1,17 @@
+{
+  "date": "2026-06-30",
+  "framework": "Expo 51 / React Native 0.74",
+  "font_stack": "Space Grotesk + IBM Plex Sans + IBM Plex Mono via expo-font",
+  "palette": "Midnight OKLCH source with opaque native sRGB token export",
+  "motion": "motion-cut; press feedback and state crossfades only",
+  "spacing": "4-point scale",
+  "design_system": "design.md",
+  "preserve": [
+    "screen state machine",
+    "API client",
+    "WebSocket behavior",
+    "AsyncStorage behavior",
+    "screen ownership"
+  ]
+}
+

@@ -1,40 +1,119 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
 import { theme } from "../theme";
 import { LoopGuardClient } from "../client";
 import { loadServerUrl, saveServerUrl } from "../storage";
-import { Card, CTAButton, Hero, Pill, Screen } from "../components/ui";
+import { ActionButton, LabeledInput, PageHeader, Screen, Section } from "../components/ui";
 
 export function ConnectScreen({ onConnected }: { onConnected: (url: string) => void }) {
   const [url, setUrl] = useState("http://localhost:8000");
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { loadServerUrl().then((saved) => { if (saved) setUrl(saved); }); }, []);
+  useEffect(() => {
+    loadServerUrl().then((saved) => {
+      if (saved) setUrl(saved);
+    });
+  }, []);
 
   async function test() {
-    setBusy(true); setStatus("Checking…");
+    setBusy(true);
+    setStatus("Checking…");
     const ok = await new LoopGuardClient(url).health();
-    setBusy(false); setStatus(ok ? "ok" : "unreachable");
-    if (ok) { await saveServerUrl(url); onConnected(url); }
+    setBusy(false);
+    setStatus(ok ? "ok" : "unreachable");
+    if (ok) {
+      await saveServerUrl(url);
+      onConnected(url);
+    }
   }
 
+  const error =
+    status === "unreachable"
+      ? "The server did not respond. Check the URL and confirm that loopguard serve is running."
+      : null;
+
   return (
-    <Screen scroll={false}>
-      <View style={{ flex: 1, justifyContent: "center", gap: theme.space(5) }}>
-        <View style={{ width: 76, height: 76, borderRadius: 24, backgroundColor: "rgba(56,189,248,0.14)", borderWidth: 1, borderColor: "rgba(56,189,248,0.36)", alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 34 }}>🛡️</Text>
-        </View>
-        <Hero eyebrow="LoopGuard cloud" title="Mission control for resilient agents." subtitle="Connect to your LoopGuard server, launch runs, catch loops, and approve fixes from a polished native command deck." />
-        <Card>
-          <View style={{ flexDirection: "row", gap: theme.space(2), flexWrap: "wrap" }}>
-            <Pill label="live runs" /><Pill label="auto-fix" color={theme.purple} /><Pill label="cost guard" color={theme.ok} />
+    <Screen contentStyle={{ justifyContent: "center" }} scroll={false}>
+      <View style={{ gap: theme.space(6) }}>
+        <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space(3) }}>
+          <View
+            style={{
+              alignItems: "center",
+              backgroundColor: theme.surfaceHigh,
+              borderColor: theme.borderStrong,
+              borderRadius: theme.radius,
+              borderWidth: 1,
+              height: 48,
+              justifyContent: "center",
+              width: 48,
+            }}
+          >
+            <Text
+              style={{
+                color: theme.accent,
+                fontFamily: theme.displayBold,
+                fontSize: 16,
+                letterSpacing: -0.4,
+              }}
+            >
+              LG
+            </Text>
           </View>
-          <TextInput value={url} onChangeText={setUrl} autoCapitalize="none" autoCorrect={false} placeholder="http://localhost:8000" placeholderTextColor={theme.textMuted} style={{ color: theme.text, borderWidth: 1, borderColor: theme.borderStrong, backgroundColor: "rgba(2,6,23,0.35)", borderRadius: theme.radius, padding: theme.space(4), fontSize: 15, fontFamily: theme.mono }} />
-          <CTAButton label={busy ? "Connecting…" : "Connect to server"} onPress={test} disabled={busy} />
-          {busy ? <ActivityIndicator color={theme.accent} /> : null}
-          {status && status !== "ok" && !busy ? <Text style={{ color: status === "unreachable" ? theme.danger : theme.textDim, lineHeight: 20 }}>{status === "unreachable" ? "Couldn't reach the server. Check the URL and that `loopguard serve` is running." : status}</Text> : null}
-        </Card>
+          <View>
+            <Text
+              style={{
+                color: theme.text,
+                fontFamily: theme.display,
+                fontSize: 18,
+                lineHeight: 22,
+              }}
+            >
+              LoopGuard
+            </Text>
+            <Text
+              style={{
+                color: theme.textMuted,
+                fontFamily: theme.body,
+                fontSize: 13,
+                lineHeight: 17,
+              }}
+            >
+              Agent operations
+            </Text>
+          </View>
+        </View>
+        <PageHeader
+          subtitle="Point the app at the LoopGuard service that owns your runs."
+          title="Connect to your server"
+        />
+        <Section>
+          <LabeledInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            error={error}
+            helper="Simulator: localhost. Physical phone: use your computer’s LAN address."
+            keyboardType="url"
+            label="Server URL"
+            loading={busy}
+            onChangeText={(value) => {
+              setUrl(value);
+              if (status === "unreachable") setStatus(null);
+            }}
+            onSubmitEditing={test}
+            placeholder="http://localhost:8000"
+            returnKeyType="go"
+            style={{ fontFamily: theme.mono }}
+            value={url}
+          />
+          <ActionButton
+            disabled={!url.trim()}
+            label="Connect to server"
+            loading={busy}
+            onPress={test}
+            state={error ? "error" : "default"}
+          />
+        </Section>
       </View>
     </Screen>
   );

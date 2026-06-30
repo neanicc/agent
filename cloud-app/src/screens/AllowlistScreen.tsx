@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
+import { RefreshControl, Text, View } from "react-native";
 import { theme } from "../theme";
-import { AmbientBackground, Hero } from "../components/ui";
+import { ActionButton, EmptyState, PageHeader, Screen, Section } from "../components/ui";
 import { AllowlistEntry, LoopGuardClient } from "../client";
+import { AppIcon } from "../components/AppIcon";
 
-export function AllowlistScreen({ client }: { client: LoopGuardClient }) {
+export function AllowlistScreen({
+  client,
+  onLaunch,
+}: {
+  client: LoopGuardClient;
+  onLaunch: () => void;
+}) {
   const [items, setItems] = useState<AllowlistEntry[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const load = () => client.allowlist().then(setItems).catch(() => {});
@@ -17,67 +24,127 @@ export function AllowlistScreen({ client }: { client: LoopGuardClient }) {
   const tools = Array.from(new Set(items.flatMap((e) => e.tools)));
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.bg }}
-      contentContainerStyle={{ padding: theme.space(5), paddingTop: theme.space(14), gap: theme.space(3) }}
+    <Screen
       refreshControl={
         <RefreshControl refreshing={refreshing} tintColor={theme.accent}
           onRefresh={() => { setRefreshing(true); load().finally(() => setRefreshing(false)); }} />
       }
     >
-      <AmbientBackground />
-      <Hero eyebrow="Trusted tools" title="Allowlist" subtitle="Tools you told LoopGuard to stop flagging for approved runs." />
+      <PageHeader
+        subtitle="Tools you approved so repeated use no longer interrupts a run."
+        title="Allowlist"
+      />
 
       {tools.length > 0 ? (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space(2), marginTop: theme.space(1) }}>
-          {tools.map((t) => (
-            <Text
-              key={t}
+        <Section title="Allowed tools">
+          {tools.map((tool, index) => (
+            <View
+              key={tool}
               style={{
-                color: theme.purple,
-                borderColor: theme.purple,
-                borderWidth: 1,
-                borderRadius: 999,
-                paddingHorizontal: theme.space(3),
-                paddingVertical: theme.space(1),
-                fontSize: 13,
-                fontFamily: theme.mono,
-                overflow: "hidden",
+                alignItems: "center",
+                borderTopColor: index === 0 ? theme.surface : theme.border,
+                borderTopWidth: index === 0 ? 0 : 1,
+                flexDirection: "row",
+                gap: theme.space(3),
+                minHeight: theme.hitTarget,
               }}
             >
-              {t}
-            </Text>
+              <AppIcon
+                color={theme.ok}
+                fallback="check-circle"
+                size={17}
+                symbol="checkmark.circle.fill"
+              />
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: theme.text,
+                  flex: 1,
+                  fontFamily: theme.monoMedium,
+                  fontSize: 14,
+                  lineHeight: 19,
+                }}
+              >
+                {tool}
+              </Text>
+            </View>
           ))}
-        </View>
+        </Section>
       ) : null}
 
       {items.length === 0 ? (
-        <Text style={{ color: theme.textDim, fontSize: 13, marginTop: theme.space(2) }}>
-          Nothing allowlisted yet. In a flagged loop, tap <Text style={{ color: theme.text }}>Allow tool</Text>.
-        </Text>
+        <Section>
+          <EmptyState
+            action={
+              <ActionButton label="Open Run" onPress={onLaunch} variant="secondary" />
+            }
+            body="When a reviewed loop is safe, choose Allow tool to add it here."
+            fallback="check-circle"
+            symbol="checkmark.shield"
+            title="No tools approved"
+          />
+        </Section>
       ) : null}
 
-      {items.map((e, i) => (
-        <View
-          key={i}
-          style={{
-            backgroundColor: theme.surfaceGlass,
-            borderWidth: 1,
-            borderColor: theme.border,
-            borderRadius: theme.radiusLg,
-            padding: theme.space(4),
-            gap: theme.space(1),
-          }}
-        >
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ color: theme.text, fontWeight: "700", fontSize: 13 }}>
-              {e.tools.join(", ")}
-            </Text>
-            <Text style={{ color: theme.textDim, fontSize: 12 }}>{e.label}</Text>
-          </View>
-          {e.reason ? <Text style={{ color: theme.textDim, fontSize: 12 }}>{e.reason}</Text> : null}
-        </View>
-      ))}
-    </ScrollView>
+      {items.length > 0 ? (
+        <Section flush title="Approval history">
+          {items.map((entry, index) => (
+            <View
+              key={`${entry.run_id}-${entry.ts}-${index}`}
+              style={{
+                borderTopColor: index === 0 ? theme.surface : theme.border,
+                borderTopWidth: index === 0 ? 0 : 1,
+                gap: theme.space(2),
+                padding: theme.space(4),
+              }}
+            >
+              <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space(2) }}>
+                <AppIcon
+                  color={theme.ok}
+                  fallback="shield"
+                  size={17}
+                  symbol="checkmark.shield"
+                />
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: theme.text,
+                    flex: 1,
+                    fontFamily: theme.bodySemibold,
+                    fontSize: 15,
+                    lineHeight: 19,
+                  }}
+                >
+                  {entry.tools.join(", ")}
+                </Text>
+              </View>
+              <Text
+                style={{
+                  color: theme.textMuted,
+                  fontFamily: theme.body,
+                  fontSize: 13,
+                  lineHeight: 18,
+                }}
+              >
+                {entry.label}
+                {entry.detector ? ` · ${entry.detector}` : ""}
+              </Text>
+              {entry.reason ? (
+                <Text
+                  style={{
+                    color: theme.textDim,
+                    fontFamily: theme.body,
+                    fontSize: 14,
+                    lineHeight: 21,
+                  }}
+                >
+                  {entry.reason}
+                </Text>
+              ) : null}
+            </View>
+          ))}
+        </Section>
+      ) : null}
+    </Screen>
   );
 }

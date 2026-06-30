@@ -2,6 +2,7 @@ import React from "react";
 import { Text, View } from "react-native";
 import { theme } from "../theme";
 import { RunEvent } from "../runReducer";
+import { AppIcon } from "./AppIcon";
 
 export function EventRow({ event, index }: { event: RunEvent; index: number }) {
   const color = event.is_error ? theme.danger : theme.ok;
@@ -9,33 +10,89 @@ export function EventRow({ event, index }: { event: RunEvent; index: number }) {
   return (
     <View
       style={{
+        backgroundColor: event.tripped ? theme.surfaceHigh : theme.surface,
+        borderBottomColor: theme.border,
+        borderBottomWidth: 1,
         flexDirection: "row",
         gap: theme.space(2),
-        paddingVertical: theme.space(2),
-        borderBottomWidth: 1,
-        borderBottomColor: theme.border,
-        backgroundColor: event.tripped ? "rgba(245,158,11,0.08)" : undefined,
+        paddingHorizontal: theme.space(3),
+        paddingVertical: theme.space(3),
       }}
     >
-      <Text style={{ color: theme.textDim, width: 22, fontSize: 12, fontFamily: theme.mono }}>
+      <Text
+        style={{
+          color: theme.textMuted,
+          fontFamily: theme.monoMedium,
+          fontSize: 12,
+          lineHeight: 18,
+          width: 24,
+        }}
+      >
         {event.step ?? index + 1}
       </Text>
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: theme.space(2) }}>
+      <View style={{ flex: 1, gap: theme.space(1), minWidth: 0 }}>
+        <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space(2) }}>
           {event.agent ? (
-            <Text style={{ color: theme.purple, fontSize: 11, fontWeight: "700" }}>{event.agent}</Text>
+            <Text
+              numberOfLines={1}
+              style={{
+                color: theme.textDim,
+                fontFamily: theme.bodySemibold,
+                fontSize: 12,
+                lineHeight: 16,
+                maxWidth: 92,
+              }}
+            >
+              {event.agent}
+            </Text>
           ) : null}
-          <Text style={{ color: theme.text, fontSize: 13, fontFamily: theme.mono }}>
-            <Text style={{ color: theme.accent }}>{event.tool}</Text>
+          <Text
+            numberOfLines={1}
+            style={{
+              color: theme.text,
+              flex: 1,
+              fontFamily: theme.mono,
+              fontSize: 13,
+              lineHeight: 18,
+            }}
+          >
+            <Text style={{ color: theme.accent, fontFamily: theme.monoMedium }}>{event.tool}</Text>
             {path ? `("${path}")` : "()"}
           </Text>
           {event.tripped ? (
-            <Text style={{ color: theme.warn, fontSize: 11, fontWeight: "700" }}>⚠ loop</Text>
+            <View style={{ alignItems: "center", flexDirection: "row", gap: theme.space(1) }}>
+              <AppIcon
+                color={theme.warn}
+                fallback="alert-triangle"
+                size={14}
+                symbol="exclamationmark.triangle.fill"
+              />
+              <Text style={{ color: theme.warn, fontFamily: theme.bodySemibold, fontSize: 12 }}>
+                Loop
+              </Text>
+            </View>
           ) : null}
         </View>
-        <Text numberOfLines={1} style={{ color, fontSize: 12, marginTop: 2 }}>
+        <View style={{ alignItems: "flex-start", flexDirection: "row", gap: theme.space(2) }}>
+          <AppIcon
+            color={color}
+            fallback={event.is_error ? "x-circle" : "check-circle"}
+            size={14}
+            symbol={event.is_error ? "xmark.circle.fill" : "checkmark.circle.fill"}
+          />
+          <Text
+            numberOfLines={2}
+            style={{
+              color: theme.textDim,
+              flex: 1,
+              fontFamily: theme.body,
+              fontSize: 13,
+              lineHeight: 18,
+            }}
+          >
           {event.output}
-        </Text>
+          </Text>
+        </View>
       </View>
     </View>
   );

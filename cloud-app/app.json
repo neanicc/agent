@@ -5,8 +5,17 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "splash": { "backgroundColor": "#0A0A0A" },
-    "ios": { "supportsTablet": true },
-    "web": { "bundler": "metro" }
+    "splash": {
+      "backgroundColor": "#04080E"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

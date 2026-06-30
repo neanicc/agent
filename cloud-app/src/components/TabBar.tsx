@@ -1,29 +1,95 @@
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, SafeAreaView, Text, View } from "react-native";
 import { theme } from "../theme";
+import { AppIcon } from "./AppIcon";
 
 export type TabKey = "run" | "history" | "autofix" | "allow";
 
-const TABS: { key: TabKey; label: string; icon: string }[] = [
-  { key: "run", label: "Run", icon: "✦" },
-  { key: "history", label: "Agents", icon: "◎" },
-  { key: "autofix", label: "Fixes", icon: "⚡" },
-  { key: "allow", label: "Allow", icon: "✓" },
-];
+const TABS = [
+  { key: "run", label: "Run", symbol: "play.fill", fallback: "play" },
+  { key: "history", label: "Agents", symbol: "clock.arrow.circlepath", fallback: "clock" },
+  { key: "autofix", label: "Fixes", symbol: "wrench.and.screwdriver", fallback: "tool" },
+  { key: "allow", label: "Allow", symbol: "checkmark.shield", fallback: "check-circle" },
+] as const;
+
+const tabStyle = {
+  alignItems: "center" as const,
+  flex: 1,
+  gap: theme.space(1),
+  justifyContent: "center" as const,
+  minHeight: 54,
+  paddingHorizontal: theme.space(1),
+  position: "relative" as const,
+};
+
+function TabItem({
+  item,
+  active,
+  onPress,
+}: {
+  item: (typeof TABS)[number];
+  active: boolean;
+  onPress: () => void;
+}) {
+  const color = active ? theme.accent : theme.textMuted;
+  return (
+    <Pressable
+      accessibilityLabel={item.label}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      style={({ pressed }) => [tabStyle, { opacity: pressed ? 0.62 : 1 }]}
+    >
+      <View
+        style={{
+          backgroundColor: active ? theme.accent : theme.bg2,
+          height: 2,
+          left: theme.space(5),
+          position: "absolute",
+          right: theme.space(5),
+          top: 0,
+        }}
+      />
+      <AppIcon
+        color={color}
+        fallback={item.fallback}
+        size={19}
+        symbol={item.symbol}
+      />
+      <Text
+        numberOfLines={1}
+        style={{
+          color,
+          fontFamily: active ? theme.bodySemibold : theme.bodyMedium,
+          fontSize: 11,
+          lineHeight: 14,
+        }}
+      >
+        {item.label}
+      </Text>
+    </Pressable>
+  );
+}
 
 export function TabBar({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => void }) {
   return (
-    <View style={{ borderTopWidth: 1, borderTopColor: theme.border, backgroundColor: "rgba(7,10,18,0.94)", paddingHorizontal: theme.space(3), paddingBottom: theme.space(5), paddingTop: theme.space(2) }}>
-      <View style={{ flexDirection: "row", backgroundColor: "rgba(15,23,42,0.82)", borderRadius: 999, borderWidth: 1, borderColor: theme.border, padding: theme.space(1), gap: theme.space(1) }}>
-        {TABS.map((t) => {
-          const on = t.key === active;
-          return (
-            <Pressable key={t.key} onPress={() => onChange(t.key)} style={{ flex: 1, alignItems: "center", paddingVertical: theme.space(2), borderRadius: 999, backgroundColor: on ? "rgba(56,189,248,0.16)" : "transparent" }}>
-              <Text style={{ color: on ? theme.text : theme.textDim, fontSize: 11, fontWeight: on ? "900" : "700" }}>{t.icon} {t.label}</Text>
-            </Pressable>
-          );
-        })}
+    <SafeAreaView
+      style={{
+        backgroundColor: theme.bg2,
+        borderTopColor: theme.border,
+        borderTopWidth: 1,
+      }}
+    >
+      <View style={{ alignSelf: "center", flexDirection: "row", maxWidth: 720, width: "100%" }}>
+        {TABS.map((item) => (
+          <TabItem
+            active={item.key === active}
+            item={item}
+            key={item.key}
+            onPress={() => onChange(item.key)}
+          />
+        ))}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
