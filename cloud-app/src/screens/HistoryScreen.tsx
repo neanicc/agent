@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { theme, statusColor } from "../theme";
+import { AmbientBackground, Hero } from "../components/ui";
 import { LoopGuardClient, RunSummary } from "../client";
 
 function Row({ r, onPress }: { r: RunSummary; onPress: () => void }) {
@@ -10,10 +11,10 @@ function Row({ r, onPress }: { r: RunSummary; onPress: () => void }) {
     <Pressable
       onPress={onPress}
       style={{
-        backgroundColor: theme.surface,
+        backgroundColor: theme.surfaceGlass,
         borderWidth: 1,
         borderColor: theme.border,
-        borderRadius: theme.radius,
+        borderRadius: theme.radiusLg,
         padding: theme.space(4),
         gap: theme.space(1),
       }}
@@ -50,6 +51,7 @@ function Detail({ client, runId, onBack }: { client: LoopGuardClient; runId: str
       style={{ flex: 1, backgroundColor: theme.bg }}
       contentContainerStyle={{ padding: theme.space(5), paddingTop: theme.space(14), gap: theme.space(3) }}
     >
+      <AmbientBackground />
       <Pressable onPress={onBack}>
         <Text style={{ color: theme.accent, fontSize: 14 }}>‹ All agents</Text>
       </Pressable>
@@ -58,7 +60,7 @@ function Detail({ client, runId, onBack }: { client: LoopGuardClient; runId: str
           <Text style={{ color: theme.text, fontSize: 20, fontWeight: "800" }}>{run.label}</Text>
           <Text style={{ color: theme.textDim, fontSize: 13 }}>Task: {run.task}</Text>
           {run.final_text ? (
-            <View style={{ backgroundColor: theme.surface, borderRadius: theme.radius, padding: theme.space(4) }}>
+            <View style={{ backgroundColor: theme.surfaceGlass, borderRadius: theme.radiusLg, padding: theme.space(4) }}>
               <Text style={{ color: theme.textDim, fontSize: 11 }}>RESULT</Text>
               <Text style={{ color: theme.ok, fontSize: 13 }}>{run.final_text}</Text>
             </View>
@@ -104,8 +106,8 @@ export function HistoryScreen({ client }: { client: LoopGuardClient }) {
           onRefresh={() => { setRefreshing(true); load().finally(() => setRefreshing(false)); }} />
       }
     >
-      <Text style={{ color: theme.text, fontSize: 24, fontWeight: "800" }}>Agents</Text>
-      <Text style={{ color: theme.textDim, fontSize: 13 }}>Every run, live and past — what worked, what got stuck, what it cost.</Text>
+      <AmbientBackground />
+      <Hero eyebrow="Timeline" title="Agents" subtitle="Every run, live and past — what worked, what got stuck, and what it cost." />
       {runs.length === 0 ? (
         <Text style={{ color: theme.textDim, fontSize: 13, marginTop: theme.space(2) }}>
           No runs yet. Launch one from the Run tab.

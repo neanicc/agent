@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 import { theme } from "../theme";
+import { AmbientBackground, Hero } from "../components/ui";
 import { AllowlistEntry, LoopGuardClient } from "../client";
 
 export function AllowlistScreen({ client }: { client: LoopGuardClient }) {
@@ -24,11 +25,8 @@ export function AllowlistScreen({ client }: { client: LoopGuardClient }) {
           onRefresh={() => { setRefreshing(true); load().finally(() => setRefreshing(false)); }} />
       }
     >
-      <Text style={{ color: theme.text, fontSize: 24, fontWeight: "800" }}>Allowlist</Text>
-      <Text style={{ color: theme.textDim, fontSize: 13 }}>
-        Tools you told LoopGuard to stop flagging. The guard waves these through for the rest of
-        the run they were approved in.
-      </Text>
+      <AmbientBackground />
+      <Hero eyebrow="Trusted tools" title="Allowlist" subtitle="Tools you told LoopGuard to stop flagging for approved runs." />
 
       {tools.length > 0 ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.space(2), marginTop: theme.space(1) }}>
@@ -63,10 +61,10 @@ export function AllowlistScreen({ client }: { client: LoopGuardClient }) {
         <View
           key={i}
           style={{
-            backgroundColor: theme.surface,
+            backgroundColor: theme.surfaceGlass,
             borderWidth: 1,
             borderColor: theme.border,
-            borderRadius: theme.radius,
+            borderRadius: theme.radiusLg,
             padding: theme.space(4),
             gap: theme.space(1),
           }}

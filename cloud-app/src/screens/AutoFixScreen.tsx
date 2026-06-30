@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 import { theme } from "../theme";
+import { AmbientBackground, Hero } from "../components/ui";
 import { AutoFixEntry, LoopGuardClient } from "../client";
 
 export function AutoFixScreen({ client }: { client: LoopGuardClient }) {
@@ -22,10 +23,8 @@ export function AutoFixScreen({ client }: { client: LoopGuardClient }) {
           onRefresh={() => { setRefreshing(true); load().finally(() => setRefreshing(false)); }} />
       }
     >
-      <Text style={{ color: theme.text, fontSize: 24, fontWeight: "800" }}>Auto-fixes</Text>
-      <Text style={{ color: theme.textDim, fontSize: 13 }}>
-        Loops the guard caught and resolved on its own, with no human in the loop.
-      </Text>
+      <AmbientBackground />
+      <Hero eyebrow="Repair log" title="Auto-fixes" subtitle="Loops the guard caught and resolved on its own, with no human in the loop." />
       {items.length === 0 ? (
         <Text style={{ color: theme.textDim, fontSize: 13, marginTop: theme.space(2) }}>
           Nothing yet. Run a project in <Text style={{ color: theme.text }}>auto</Text> mode.
@@ -35,12 +34,12 @@ export function AutoFixScreen({ client }: { client: LoopGuardClient }) {
         <View
           key={i}
           style={{
-            backgroundColor: theme.surface,
+            backgroundColor: theme.surfaceGlass,
             borderWidth: 1,
             borderLeftWidth: 3,
             borderColor: theme.border,
             borderLeftColor: a.terminated ? theme.danger : theme.purple,
-            borderRadius: theme.radius,
+            borderRadius: theme.radiusLg,
             padding: theme.space(4),
             gap: theme.space(1),
           }}
