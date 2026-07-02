@@ -401,7 +401,124 @@ git add services/control-api/src/loopguard_api services/control-api/tests/test_m
 git commit -m "feat: meter hosted usage with quota safety"
 ```
 
-### Task 9: Complete production readiness and incident response
+### Task 9: Define reproducible hosted infrastructure and deployment
+
+**Files:**
+- Create: `services/control-api/Dockerfile`
+- Create: `infra/terraform/modules/control-plane/versions.tf`
+- Create: `infra/terraform/modules/control-plane/main.tf`
+- Create: `infra/terraform/modules/control-plane/variables.tf`
+- Create: `infra/terraform/modules/control-plane/outputs.tf`
+- Create: `infra/terraform/environments/staging/main.tf`
+- Create: `infra/terraform/environments/staging/backend.hcl.example`
+- Create: `infra/terraform/environments/production/main.tf`
+- Create: `infra/terraform/environments/production/backend.hcl.example`
+- Create: `infra/helm/loopguard/Chart.yaml`
+- Create: `infra/helm/loopguard/values.yaml`
+- Create: `infra/helm/loopguard/values-staging.yaml`
+- Create: `infra/helm/loopguard/values-production.yaml`
+- Create: `infra/helm/loopguard/templates/control-api.yaml`
+- Create: `infra/helm/loopguard/templates/web.yaml`
+- Create: `infra/helm/loopguard/templates/worker.yaml`
+- Create: `infra/helm/loopguard/templates/migration-job.yaml`
+- Create: `infra/helm/loopguard/templates/network-policy.yaml`
+- Create: `infra/tests/test_rendered_manifests.py`
+- Create: `.github/workflows/deploy.yml`
+- Create: `docs/operations/deployment.md`
+
+- [ ] **Step 1: Write failing infrastructure-policy tests**
+
+```python
+def test_workloads_are_non_root_and_resource_bounded(rendered_manifests):
+    for workload in rendered_manifests.workloads:
+        pod = workload["spec"]["template"]["spec"]
+        assert pod["securityContext"]["runAsNonRoot"] is True
+        for container in pod["containers"]:
+            assert container["securityContext"]["allowPrivilegeEscalation"] is False
+            assert container["resources"]["requests"]["cpu"]
+            assert container["resources"]["requests"]["memory"]
+            assert container["resources"]["limits"]["cpu"]
+            assert container["resources"]["limits"]["memory"]
+
+
+def test_database_is_private_and_backups_enabled(terraform_plan):
+    database = terraform_plan.resource("aws_db_instance", "primary")
+    assert database.values["publicly_accessible"] is False
+    assert database.values["storage_encrypted"] is True
+    assert database.values["backup_retention_period"] >= 7
+
+
+def test_production_uses_signed_digest_not_latest(rendered_production):
+    for image in rendered_production.images:
+        assert "@sha256:" in image
+        assert ":latest" not in image
+```
+
+- [ ] **Step 2: Run policy tests against missing infrastructure**
+
+Run:
+
+```bash
+python -m pytest -q infra/tests/test_rendered_manifests.py
+terraform -chdir=infra/terraform/environments/staging validate
+helm lint infra/helm/loopguard
+```
+
+Expected: FAIL because the Terraform module, Helm chart, and rendered manifests do not exist.
+
+- [ ] **Step 3: Implement least-privilege infrastructure and deployment workflow**
+
+Use AWS as the concrete reference deployment so this task does not stop on an unspecified cloud
+provider. Keep region, account IDs, domains, capacity, and retention configurable. Pin Terraform
+and AWS provider versions. The module provisions a multi-AZ VPC, private EKS nodes, RDS PostgreSQL
+with point-in-time recovery, versioned S3 artifact storage, KMS keys, ECR repositories, AWS Load
+Balancer Controller/ACM ingress prerequisites, Route 53 records, CloudWatch/audit sinks, and EKS
+Pod Identity or IRSA. Production and staging use separate AWS accounts, Terraform state buckets,
+lock tables, databases, buckets, keys, and identity boundaries. Backend example files contain no
+real account names or credentials.
+
+Temporal Cloud, the OIDC identity provider, APNs, and customer DNS remain explicitly configured
+external dependencies. Terraform accepts secret ARNs and endpoints for them but never creates or
+stores their credentials. Local and CI validation use fakes. Document the exact human-owned setup
+needed before the first staging apply.
+
+The Helm chart creates control API, web, and Temporal worker deployments, a pre-upgrade migration
+job, service accounts, NetworkPolicies, PodDisruptionBudgets, autoscaling,
+readiness/liveness probes, resource requests/limits, topology spread, and non-root read-only
+containers.
+
+`deploy.yml` authenticates to AWS with GitHub OIDC and a narrowly scoped deploy role, accepts only a
+previously signed ECR image digest, requires environment approval for production, runs migration
+rehearsal, deploys a canary, checks health/SLOs, promotes on success, and rolls back to the prior
+digest on failure. It never stores long-lived AWS credentials in GitHub secrets.
+
+- [ ] **Step 4: Validate plans and rendered manifests without deploying**
+
+Run:
+
+```bash
+terraform fmt -check -recursive infra/terraform
+terraform -chdir=infra/terraform/environments/staging init -backend=false
+terraform -chdir=infra/terraform/environments/staging validate
+terraform -chdir=infra/terraform/environments/production init -backend=false
+terraform -chdir=infra/terraform/environments/production validate
+helm lint infra/helm/loopguard
+helm template loopguard infra/helm/loopguard -f infra/helm/loopguard/values-staging.yaml
+helm template loopguard infra/helm/loopguard -f infra/helm/loopguard/values-production.yaml
+python -m pytest -q infra/tests/test_rendered_manifests.py
+```
+
+Expected: all commands exit 0 without creating or changing cloud resources.
+
+- [ ] **Step 5: Commit deployable infrastructure**
+
+```bash
+git add services/control-api/Dockerfile infra .github/workflows/deploy.yml \
+  docs/operations/deployment.md
+git commit -m "ops: define production control plane deployment"
+```
+
+### Task 10: Complete production readiness and incident response
 
 **Files:**
 - Create: `docs/operations/production-readiness.md`
@@ -441,5 +558,8 @@ git commit -m "docs: complete production readiness review"
 ## Completion gate
 
 Run all local, cloud, security, load, chaos, restore, migration, and release-verification suites.
+Run Terraform formatting/validation, Helm lint/template, and rendered-manifest policy tests without
+deploying.
 Expected: published SLOs have alerts and owners; tenant isolation fails closed; backup/restore meets
-RPO/RTO; releases are signed and attested; and all critical/high readiness items have evidence.
+RPO/RTO; releases are signed and attested; deployable infrastructure validates; and all
+critical/high readiness items have evidence.

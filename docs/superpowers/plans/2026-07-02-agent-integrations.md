@@ -182,6 +182,7 @@ git commit -m "feat: normalize native agent hooks"
 **Files:**
 - Create: `loopguard/src/loopguard/adapters/codex_hooks.py`
 - Create: `loopguard/src/loopguard/adapters/templates/codex-hooks.json`
+- Create: `loopguard/src/loopguard/adapters/templates/codex-hook`
 - Modify: `loopguard/src/loopguard/cli.py`
 - Test: `loopguard/tests/adapters/test_codex_install.py`
 
@@ -205,6 +206,14 @@ def test_codex_install_preserves_existing_hooks(tmp_path):
     assert commands.count("hook-entry codex") == 6
     assert first.changed is True
     assert second.changed is False
+
+
+def test_codex_project_install_uses_committed_git_root_wrapper(tmp_path):
+    repo = make_git_repo(tmp_path)
+    result = install_codex_hooks(repo / ".codex" / "hooks.json", scope="project")
+    assert result.changed is True
+    assert (repo / ".loopguard" / "hooks" / "codex-hook").exists()
+    assert "git rev-parse --show-toplevel" in (repo / ".codex" / "hooks.json").read_text()
 ```
 
 - [ ] **Step 2: Run the test and verify failure**
@@ -212,12 +221,28 @@ def test_codex_install_preserves_existing_hooks(tmp_path):
 Run: `cd loopguard && python -m pytest -q tests/adapters/test_codex_install.py`
 Expected: FAIL because the installer does not exist.
 
-- [ ] **Step 3: Implement managed entries with stable IDs**
+- [ ] **Step 3: Implement LoopGuard entries with stable command signatures**
 
-Create entries for `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`,
-and `Stop`. Tag every LoopGuard-owned matcher group with `"loopguardManaged": true` and replace
-only tagged groups on upgrade. Write through a temporary sibling and `os.replace()` so a failed
-write cannot corrupt the user's file.
+Support user scope at `~/.codex/hooks.json` and project scope at `.codex/hooks.json`. Create entries
+only for the currently documented Codex events `SessionStart`, `UserPromptSubmit`, `PreToolUse`,
+`PostToolUse`, `PreCompact`, and `Stop`; do not invent `FileChanged` or
+`PostToolUseFailure` events for Codex. Identify LoopGuard-owned handlers by an exact versioned
+command prefix and wrapper path supported by the documented schema; do not add private fields to
+Codex hook objects. Replace only those exact handlers on upgrade. Write through a temporary sibling
+and `os.replace()` so a failed write cannot corrupt the user's file.
+
+Project scope installs a committed `.loopguard/hooks/codex-hook` wrapper and resolves it from the
+canonical Git root, matching Codex's documented project-hook trust behavior. The wrapper first
+tries the local socket. If the socket is absent, it may send a signed HTTPS event only when an
+explicit LoopGuard ingest URL and short-lived token are present in the environment; otherwise it
+exits 0. Treat Codex cloud execution of repo-local hooks as conditional until a compatibility
+smoke test against the installed/current Codex surface proves it. Never advertise live cloud
+observation merely because the files were committed.
+
+Codex requires users to review and trust non-managed hook definitions. Preserve that boundary:
+installation reports `trust_required` and tells the user to review the definition in `/hooks`;
+verification remains non-healthy until Codex reports the exact hook hash trusted. Never invoke
+`--dangerously-bypass-hook-trust` or edit Codex trust state behind the user's back.
 
 Expose:
 
@@ -227,7 +252,8 @@ loopguard integrations verify codex --json
 loopguard integrations uninstall codex
 ```
 
-Uninstall must remove only LoopGuard-tagged entries.
+Uninstall must remove only handlers with the exact LoopGuard command signature and leave their
+containing matcher group intact when it still contains unrelated handlers.
 
 - [ ] **Step 4: Run installer and CLI tests**
 
@@ -286,6 +312,9 @@ Project hooks call a committed thin script:
 
 The script first tries the local socket. In cloud mode it sends a signed HTTPS event only when
 `LOOPGUARD_CLOUD_INGEST_URL` and `LOOPGUARD_CLOUD_TOKEN` are configured; otherwise it exits 0.
+Use Claude's documented `CLAUDE_CODE_REMOTE=true` signal only to label cloud execution, not as an
+authentication mechanism. `FileChanged` covers explicitly watched literal files only; the
+Change Journal filesystem watcher remains the source of truth for arbitrary source-file changes.
 
 - [ ] **Step 4: Run local/cloud fixture tests**
 
@@ -400,9 +429,9 @@ type BridgeCommand =
   | { id: string; method: "inject"; params: { sessionId: string; text: string } };
 ```
 
-It uses the official Claude Agent SDK, emits normalized JSONL events, and never exposes SDK
-objects directly to Python. Pin the SDK version in `package-lock.json`. The Python adapter owns
-process lifecycle, timeout, restart, and `ControlEvent` validation.
+It uses the official `@anthropic-ai/claude-agent-sdk`, emits normalized JSONL events, and never
+exposes SDK objects directly to Python. Pin the SDK version in `package-lock.json`. The Python
+adapter owns process lifecycle, timeout, restart, and `ControlEvent` validation.
 
 - [ ] **Step 4: Run Python and TypeScript tests**
 
@@ -456,7 +485,9 @@ Expected: FAIL because `build_report` is missing.
 
 Report installed versions, hook locations, trust status where observable, daemon reachability,
 bridge health, and every capability as `supported`, `conditional`, `experimental`, or
-`unavailable`. Render the same data in CLI JSON and `integration-compatibility.md`.
+`unavailable`. A configured repo-local hook is not sufficient evidence that a hosted surface
+executes it: retain `codex-cloud.observe=conditional` until the compatibility smoke test records a
+real event. Render the same data in CLI JSON and `integration-compatibility.md`.
 
 - [ ] **Step 4: Run all adapter tests**
 

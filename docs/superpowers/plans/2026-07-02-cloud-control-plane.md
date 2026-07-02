@@ -6,7 +6,7 @@
 
 **Architecture:** The local daemon opens an authenticated outbound WebSocket and uploads redacted events in batches. FastAPI persists tenant-scoped records in PostgreSQL before acknowledging them, uses an outbox for realtime delivery, stores large encrypted artifacts in object storage, and delegates long-running work to Temporal.
 
-**Tech Stack:** Python 3.12, FastAPI, Pydantic 2, SQLAlchemy 2 async, PostgreSQL 16, Alembic, Temporal, S3-compatible object storage, OIDC/JWT, Ed25519, pytest, Testcontainers
+**Tech Stack:** Python 3.12, FastAPI, Pydantic 2, SQLAlchemy 2 async, PostgreSQL 16, Alembic, Temporal, S3-compatible object storage, OIDC/JWT, Ed25519/P-256, pytest, Testcontainers
 
 ---
 
@@ -495,6 +495,170 @@ Expected: PASS.
 ```bash
 git add services/control-api
 git commit -m "feat: add durable workflows and immutable audit"
+```
+
+### Task 9: Expose preference, cost, device, and audit control APIs
+
+**Files:**
+- Create: `services/control-api/alembic/versions/0002_control_queries.py`
+- Create: `services/control-api/src/loopguard_api/routes/preferences.py`
+- Create: `services/control-api/src/loopguard_api/routes/costs.py`
+- Create: `services/control-api/src/loopguard_api/routes/devices.py`
+- Create: `services/control-api/src/loopguard_api/routes/audit.py`
+- Create: `services/control-api/src/loopguard_api/device_pairing.py`
+- Test: `services/control-api/tests/test_control_queries.py`
+- Modify: `services/control-api/src/loopguard_api/app.py`
+
+- [ ] **Step 1: Write failing tenant, policy, and aggregation tests**
+
+```python
+def test_preference_profile_preserves_managed_safety_rules(client, admin_token):
+    response = client.put(
+        "/v1/preferences",
+        headers=bearer(admin_token),
+        json={"rules": [{"id": "wcag-contrast", "severity": "inform"}]},
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "managed_rule_weakened"
+
+
+def test_cost_summary_separates_observed_categories(client, viewer_token, usage_records):
+    response = client.get("/v1/costs?window=30d", headers=bearer(viewer_token))
+    assert response.status_code == 200
+    assert response.json()["observed"] == {
+        "agent": "1.20",
+        "judge": "0.04",
+        "verification": "0.00",
+        "critic": "0.01",
+        "repair": "0.30",
+    }
+    assert response.json()["estimated_avoided_cost"] is None
+
+
+def test_audit_and_devices_are_tenant_scoped(
+    client, tenant_a_token, tenant_b_device, tenant_b_audit
+):
+    assert client.get("/v1/devices", headers=bearer(tenant_a_token)).json()["items"] == []
+    assert client.get("/v1/audit", headers=bearer(tenant_a_token)).json()["items"] == []
+
+
+def test_device_pairing_challenge_is_single_use(client, owner_token, device_key):
+    started = client.post("/v1/devices/pairing/start", headers=bearer(owner_token)).json()
+    payload = {
+        "pairing_id": started["pairing_id"],
+        "public_key_alg": device_key.algorithm,
+        "public_key": device_key.public_key,
+        "signature": device_key.sign(started["challenge"]),
+        "name": "Alice iPhone",
+    }
+    assert client.post(
+        "/v1/devices/pairing/complete", headers=bearer(owner_token), json=payload
+    ).status_code == 201
+    assert client.post(
+        "/v1/devices/pairing/complete", headers=bearer(owner_token), json=payload
+    ).status_code == 409
+```
+
+- [ ] **Step 2: Verify the client-required APIs are absent**
+
+Run: `cd services/control-api && python -m pytest -q tests/test_control_queries.py`
+Expected: FAIL with 404 responses for `/v1/preferences`, `/v1/costs`, `/v1/devices`,
+`/v1/devices/pairing/start`, `/v1/devices/pairing/complete`, and `/v1/audit`.
+
+- [ ] **Step 3: Implement versioned tenant-scoped query services**
+
+Migration `0002_control_queries.py` creates `preference_profiles` and `usage_records`.
+`preference_profiles` stores profile version, source manifest hash, rules JSON, and updater.
+`usage_records` uses unique `(tenant_id, usage_id)`, observed category, amount, currency, provider,
+session, and timestamp.
+
+Routes:
+
+```python
+router = APIRouter(prefix="/v1")
+
+
+@router.get("/preferences", response_model=PreferenceProfileResponse)
+async def read_preferences(ctx: TenantContext = Depends(require_viewer)): ...
+
+
+@router.put("/preferences", response_model=PreferenceProfileResponse)
+async def write_preferences(
+    request: PreferenceProfileUpdate,
+    ctx: TenantContext = Depends(require_policy_manager),
+): ...
+
+
+@router.get("/costs", response_model=CostSummary)
+async def read_costs(
+    window: Literal["24h", "7d", "30d", "90d"],
+    ctx: TenantContext = Depends(require_viewer),
+): ...
+
+
+@router.get("/devices", response_model=DevicePage)
+async def list_devices(ctx: TenantContext = Depends(require_viewer)): ...
+
+
+@router.post("/devices/pairing/start", response_model=DevicePairingChallenge)
+async def start_device_pairing(
+    ctx: TenantContext = Depends(require_device_manager),
+): ...
+
+
+@router.post(
+    "/devices/pairing/complete",
+    response_model=DeviceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def complete_device_pairing(
+    request: DevicePairingCompletion,
+    ctx: TenantContext = Depends(require_device_manager),
+): ...
+
+
+@router.delete("/devices/{device_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_device(
+    device_id: UUID,
+    ctx: TenantContext = Depends(require_device_manager),
+): ...
+
+
+@router.get("/audit", response_model=AuditPage)
+async def list_audit(
+    cursor: str | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    ctx: TenantContext = Depends(require_viewer),
+): ...
+```
+
+The costs endpoint labels every number as observed or estimated and never invents avoided cost.
+Device pairing challenges are random, hashed at rest, bound to the authenticated user/tenant,
+expire after five minutes, and are consumed atomically after proof-of-possession. The device record
+stores an explicit allowlisted algorithm: P-256 for Secure Enclave-backed Apple keys or Ed25519 for
+Keychain/software-backed clients. Reject unknown algorithms, malformed encodings, and algorithm
+confusion. Revoking a device invalidates future device-signed actions without deleting audit
+history. Audit pagination uses immutable `(created_at, id)` cursors. Register all routers in
+`app.py`.
+
+- [ ] **Step 4: Run query, authorization, migration, and full service tests**
+
+Run:
+
+```bash
+cd services/control-api
+alembic upgrade head
+python -m pytest -q tests/test_control_queries.py tests/test_auth.py
+python -m pytest -q
+```
+
+Expected: all commands exit 0.
+
+- [ ] **Step 5: Commit client-required control APIs**
+
+```bash
+git add services/control-api
+git commit -m "feat: expose preference cost device and audit APIs"
 ```
 
 ## Completion gate

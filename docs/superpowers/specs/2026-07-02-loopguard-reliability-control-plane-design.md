@@ -313,8 +313,8 @@ The implementation is split into independent plans:
 6. Preference engine.
 7. Browser and Playwright acceleration.
 8. Hosted cloud control plane.
-9. Native iOS and web control surfaces.
-10. Auto-healing pipelines.
+9. Auto-healing pipelines.
+10. Native iOS and web control surfaces.
 11. Production security, operations, and release hardening.
 
 Each subsystem must ship behind capability flags and produce independently testable value.

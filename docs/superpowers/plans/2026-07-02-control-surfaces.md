@@ -30,6 +30,8 @@ def test_openapi_contains_required_control_operations(app):
     assert "/v1/actions/{action_id}" in paths
     assert "/v1/repairs/{repair_id}" in paths
     assert "/v1/preferences" in paths
+    assert "/v1/devices/pairing/start" in paths
+    assert "/v1/devices/pairing/complete" in paths
     assert "/v1/audit" in paths
 ```
 
@@ -302,7 +304,100 @@ git add apps/ios
 git commit -m "feat: scaffold native loopguard ios app"
 ```
 
-### Task 6: Build the iOS safety inbox and run detail
+### Task 6: Implement OIDC sign-in and cryptographic device pairing
+
+**Files:**
+- Create: `apps/web/src/auth.ts`
+- Create: `apps/web/src/middleware.ts`
+- Create: `apps/web/src/app/auth/callback/route.ts`
+- Create: `apps/web/src/app/(public)/sign-in/page.tsx`
+- Test: `apps/web/src/auth.test.ts`
+- Create: `apps/ios/LoopGuard/Features/Authentication/SignInView.swift`
+- Create: `apps/ios/LoopGuard/Features/Authentication/AuthSession.swift`
+- Create: `apps/ios/LoopGuard/Features/Devices/DevicePairingView.swift`
+- Create: `apps/ios/LoopGuard/Security/DeviceKeyStore.swift`
+- Modify: `apps/ios/LoopGuard/App/AppModel.swift`
+- Test: `apps/ios/LoopGuardTests/AuthSessionTests.swift`
+- Test: `apps/ios/LoopGuardTests/DevicePairingTests.swift`
+
+- [ ] **Step 1: Write failing web and iOS trust-chain tests**
+
+Web:
+
+```ts
+test("callback rejects an OIDC state mismatch", async () => {
+  const result = await completeCallback(callback({ state: "substituted" }), session({ state: "expected" }));
+  expect(result).toMatchObject({ ok: false, code: "invalid_state" });
+});
+
+test("protected route redirects an unauthenticated request", async () => {
+  expect(await routeFor(request("/runs/active"))).toMatchObject({
+    status: 307,
+    location: "/sign-in",
+  });
+});
+```
+
+iOS tests must prove:
+
+- PKCE uses a fresh high-entropy verifier and S256 challenge for each authorization.
+- Callback state and ID-token nonce mismatches are rejected.
+- Access and refresh tokens are stored only in Keychain with device-only accessibility.
+- A device P-256 Secure Enclave key is generated when available, with a Keychain-backed Ed25519
+  fallback; only its algorithm and public key are registered, and a pairing challenge cannot be
+  completed twice.
+- Revocation removes local credentials and prevents another device-signed action.
+
+- [ ] **Step 2: Run focused tests and verify trust is absent**
+
+Run:
+
+```bash
+cd apps/web
+npm test -- auth.test.ts
+```
+
+Run `AuthSessionTests` and `DevicePairingTests` through XcodeBuildMCP.
+Expected: FAIL because browser login, mobile login, and device proof-of-possession are absent.
+
+- [ ] **Step 3: Implement OIDC Authorization Code + PKCE and pairing**
+
+The web app uses server-side OIDC Authorization Code + PKCE with strict issuer, audience, signature,
+expiry, state, and nonce validation. Keep refresh/access tokens in encrypted, Secure, HttpOnly,
+SameSite cookies; protect console routes in middleware; rotate the session after callback; and add
+CSRF protection to state-changing browser requests. Never expose an OIDC client secret to browser
+JavaScript.
+
+The iOS app uses `ASWebAuthenticationSession`, an ephemeral PKCE verifier, strict callback/nonce
+validation, and Keychain-backed credentials. Generate a P-256 Secure Enclave signing key when
+available; otherwise generate a Keychain-backed Ed25519 key. Call `/v1/devices/pairing/start`, sign
+the returned one-time challenge, then call `/v1/devices/pairing/complete` with only the allowlisted
+algorithm, public key, and signature. The private key never leaves the device. Logout and remote
+revocation clear tokens and local device-key material. No embedded client secret is permitted in
+the app.
+
+- [ ] **Step 4: Run authentication, pairing, and regression tests**
+
+Run:
+
+```bash
+cd apps/web
+npm test -- auth.test.ts
+npx tsc --noEmit
+```
+
+Run all iOS unit tests through XcodeBuildMCP, then rerun the control API authentication and device
+pairing tests from the cloud-control-plane plan.
+Expected: PASS, including replay, state mismatch, nonce mismatch, logout, and revocation cases.
+
+- [ ] **Step 5: Commit the client trust chain**
+
+```bash
+git add apps/web apps/ios
+git commit -m "feat: add client authentication and device pairing"
+```
+
+### Task 7: Build the iOS safety inbox and run detail
 
 **Files:**
 - Create: `apps/ios/LoopGuard/Features/Inbox/InboxView.swift`
@@ -356,7 +451,7 @@ git add apps/ios
 git commit -m "feat: add ios safety inbox and run timeline"
 ```
 
-### Task 7: Implement iOS actions, notifications, and Live Activities
+### Task 8: Implement iOS actions, notifications, and Live Activities
 
 **Files:**
 - Create: `apps/ios/LoopGuard/Features/Actions/ActionReviewView.swift`
@@ -410,7 +505,7 @@ git add apps/ios
 git commit -m "feat: add secure ios approvals and notifications"
 ```
 
-### Task 8: Add policies, costs, devices, and audit to web
+### Task 9: Add policies, costs, devices, and audit to web
 
 **Files:**
 - Create: `apps/web/src/app/(console)/policies/page.tsx`
@@ -464,7 +559,7 @@ git add apps/web
 git commit -m "feat: add policy cost device and audit console"
 ```
 
-### Task 9: Establish visual, accessibility, and migration gates
+### Task 10: Establish visual, accessibility, and migration gates
 
 **Files:**
 - Create: `apps/web/e2e/accessibility.spec.ts`
@@ -519,6 +614,100 @@ git add apps/web apps/ios cloud-app/README.md docs/product/control-surfaces.md
 git commit -m "test: enforce control surface quality"
 ```
 
+### Task 11: Package reproducible web and iOS client releases
+
+**Files:**
+- Create: `apps/web/Dockerfile`
+- Create: `apps/web/src/app/health/route.ts`
+- Create: `apps/ios/LoopGuard/Resources/PrivacyInfo.xcprivacy`
+- Create: `apps/ios/ExportOptions.plist`
+- Create: `.github/workflows/client-release.yml`
+- Create: `scripts/verify_client_release.sh`
+- Create: `docs/operations/client-release.md`
+- Test: `apps/web/src/app/health/route.test.ts`
+
+- [ ] **Step 1: Write failing release-artifact checks**
+
+```ts
+import { GET } from "./route";
+
+test("web health response identifies the immutable build", async () => {
+  process.env.BUILD_SHA = "abc123";
+  const response = await GET();
+  expect(await response.json()).toEqual({ status: "ok", build_sha: "abc123" });
+});
+```
+
+`scripts/verify_client_release.sh` must initially fail unless:
+
+- The web image reference contains an immutable digest.
+- The iOS archive has the expected bundle identifier and version.
+- `PrivacyInfo.xcprivacy` is present in the archive.
+- Export settings use App Store distribution and do not contain signing secrets.
+- Web and iOS artifact checksums are present.
+
+- [ ] **Step 2: Run release checks before packaging exists**
+
+Run:
+
+```bash
+cd apps/web
+npm test -- health/route.test.ts
+npm run build
+cd ../..
+scripts/verify_client_release.sh
+```
+
+Expected: FAIL because the health route, release container, iOS privacy manifest, archive, and
+checksums are absent.
+
+- [ ] **Step 3: Implement reproducible client packaging**
+
+The web Dockerfile uses a pinned Node base image, installs with `npm ci`, builds Next.js standalone
+output, copies only runtime artifacts into a non-root read-only image, and exposes the health
+route. The image embeds `BUILD_SHA` and is published by digest.
+
+The iOS privacy manifest declares accessed API categories and collected-data behavior matching the
+implemented app. `ExportOptions.plist` uses App Store Connect distribution without embedding
+credentials. `client-release.yml`:
+
+- Builds/tests web and iOS before packaging.
+- Produces checksums, SBOM/provenance for web, and an unsigned verification archive on ordinary PRs.
+- Uses environment-protected App Store Connect credentials only in an explicitly approved release
+  job.
+- Uploads to TestFlight but never submits for App Review automatically.
+- Publishes the web image by signed digest but does not deploy it.
+
+- [ ] **Step 4: Verify packaging without publishing**
+
+Run:
+
+```bash
+cd apps/web
+npm ci
+npm test
+npx tsc --noEmit
+npm run build
+docker build --build-arg BUILD_SHA=test-sha -t loopguard-web:test .
+cd ../ios
+xcodegen generate
+xcodebuild archive -scheme LoopGuard -archivePath build/LoopGuard.xcarchive \
+  -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO
+cd ../..
+scripts/verify_client_release.sh
+```
+
+Expected: all local build and verification commands exit 0. The workflow is syntax-validated but
+no image, TestFlight build, or App Store submission is published.
+
+- [ ] **Step 5: Commit client release packaging**
+
+```bash
+git add apps/web apps/ios .github/workflows/client-release.yml \
+  scripts/verify_client_release.sh docs/operations/client-release.md
+git commit -m "ops: package web and ios client releases"
+```
+
 ## Completion gate
 
 Web:
@@ -529,10 +718,13 @@ npm ci
 npm test
 npx tsc --noEmit
 npx playwright test
+npm run build
 ```
 
-iOS: build and run all unit/UI tests with XcodeBuildMCP on an iOS 26 simulator, then inspect
-light/dark and accessibility-size screenshots.
+iOS: build and run all unit/UI tests with XcodeBuildMCP on an iOS 26 simulator, inspect light/dark
+and accessibility-size screenshots, then produce the unsigned verification archive.
 
 Expected: all checks pass; actions are replay-safe; sensitive content is absent from push payloads;
-and content surfaces use native hierarchy rather than indiscriminate glass styling.
+OIDC callbacks reject substituted state/nonce; paired devices prove possession of non-exported
+private keys; content surfaces use native hierarchy rather than indiscriminate glass styling; and
+reproducible client packages pass local verification without publishing.

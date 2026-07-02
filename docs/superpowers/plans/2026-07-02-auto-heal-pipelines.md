@@ -419,7 +419,9 @@ git commit -m "feat: publish verified repairs as draft pull requests"
 **Files:**
 - Create: `services/control-api/src/loopguard_api/repair_workflow.py`
 - Create: `services/control-api/src/loopguard_api/routes/repairs.py`
+- Modify: `services/control-api/src/loopguard_api/app.py`
 - Test: `services/control-api/tests/test_repair_workflow.py`
+- Test: `services/control-api/tests/test_repairs_api.py`
 - Test: `loopguard/tests/integration/test_airflow_repair.py`
 
 - [ ] **Step 1: Write failing resume and approval tests**
@@ -440,6 +442,28 @@ def test_publication_waits_for_authorized_action(temporal_env, verified_repair):
     assert handle.query("state") == "awaiting_publication"
     handle.signal("publish", actor=publisher())
     assert handle.result().state == "completed"
+
+
+def test_repair_detail_is_tenant_scoped_and_redacted(
+    client, tenant_a_token, tenant_b_repair
+):
+    assert client.get(
+        f"/v1/repairs/{tenant_b_repair.id}", headers=bearer(tenant_a_token)
+    ).status_code == 404
+
+
+def test_repair_detail_exposes_client_evidence_not_secrets(
+    client, tenant_token, repair_with_candidates
+):
+    response = client.get(
+        f"/v1/repairs/{repair_with_candidates.id}", headers=bearer(tenant_token)
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["reproduction"]["status"] == "reproduced"
+    assert len(body["candidates"]) == 3
+    assert "raw_fixture" not in body
+    assert "provider_token" not in str(body)
 ```
 
 - [ ] **Step 2: Verify failure**
@@ -447,11 +471,11 @@ def test_publication_waits_for_authorized_action(temporal_env, verified_repair):
 Run:
 
 ```bash
-cd services/control-api && python -m pytest -q tests/test_repair_workflow.py
+cd services/control-api && python -m pytest -q tests/test_repair_workflow.py tests/test_repairs_api.py
 cd ../../loopguard && python -m pytest -q tests/integration/test_airflow_repair.py
 ```
 
-Expected: FAIL because orchestration is absent.
+Expected: FAIL because orchestration and the client-facing repair API are absent.
 
 - [ ] **Step 3: Implement durable activities and signals**
 
@@ -460,12 +484,38 @@ render report, and publish. Each activity is idempotent by repair/candidate ID a
 artifact before returning. Workflow enforces time, attempt, candidate, and cost budgets. Publication
 waits indefinitely for an authorized, unexpired action or configured cancellation timeout.
 
+Register a versioned tenant-scoped repair router in `app.py`:
+
+```python
+@router.get("/v1/repairs", response_model=RepairPage)
+async def list_repairs(
+    cursor: str | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    ctx: TenantContext = Depends(require_viewer),
+): ...
+
+
+@router.get("/v1/repairs/{repair_id}", response_model=RepairDetail)
+async def read_repair(
+    repair_id: UUID,
+    ctx: TenantContext = Depends(require_viewer),
+): ...
+```
+
+`RepairDetail` exposes state, sanitized fingerprint, reproduction proof, bounded candidate diffs,
+evaluation evidence, deterministic ranking reason, contract deltas, artifact references, rollback,
+and publication status. It never returns raw fixtures, credentials, full environment dumps, or
+unredacted stack traces. Use immutable `(created_at, id)` cursors and return 404 for cross-tenant
+identifiers. Publication, cancellation, and retry remain typed `/v1/actions` operations with
+authorization, expiry, expected-state hash, idempotency, and audit; do not create bypass mutation
+routes on the repair resource.
+
 - [ ] **Step 4: Run workflow and end-to-end fixture tests**
 
 Run:
 
 ```bash
-cd services/control-api && python -m pytest -q tests/test_repair_workflow.py
+cd services/control-api && python -m pytest -q tests/test_repair_workflow.py tests/test_repairs_api.py
 cd ../../loopguard && python -m pytest -q tests/heal tests/integration/test_airflow_repair.py
 ```
 

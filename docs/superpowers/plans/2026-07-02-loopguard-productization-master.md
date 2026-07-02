@@ -31,8 +31,8 @@ them in parallel with this program where file paths or architecture differ.
 6. [Preference engine](2026-07-02-preference-engine.md)
 7. [Browser and Playwright acceleration](2026-07-02-browser-acceleration.md)
 8. [Hosted cloud control plane](2026-07-02-cloud-control-plane.md)
-9. [Native iOS and web control surfaces](2026-07-02-control-surfaces.md)
-10. [Auto-healing pipelines](2026-07-02-auto-heal-pipelines.md)
+9. [Auto-healing pipelines](2026-07-02-auto-heal-pipelines.md)
+10. [Native iOS and web control surfaces](2026-07-02-control-surfaces.md)
 11. [Production security and operations](2026-07-02-production-hardening.md)
 
 ## Requirement coverage
@@ -59,7 +59,7 @@ them in parallel with this program where file paths or architecture differ.
 Foundation
    ├── Agent integrations ── Context ── Verification ── Managed routing
    │                                             └────── Auto-heal
-   └── Cloud control plane ── Control surfaces
+   └── Cloud control plane ── Auto-heal ── Control surfaces
 
 Verification ── Browser acceleration
 Verification ── Preference engine
@@ -73,6 +73,8 @@ After Foundation, two teams can work without sharing implementation files:
 - Hosted product lane: cloud API, iOS, and web.
 
 Auto-heal starts only after verification contracts and hosted durable workflows are stable.
+Control-surface contract generation starts after Auto-heal registers repair APIs, so its OpenAPI
+checks never depend on endpoints from a later plan.
 Production hardening begins during Foundation but remains the final release gate.
 
 ## Target repository shape
@@ -98,7 +100,7 @@ loopguard/
     verify/                    Proof contracts, baselines, impact, runners, evidence
 services/
   control-api/                 Multi-tenant hosted API and worker package
-  migrations/                  PostgreSQL/Alembic migrations
+    alembic/                    PostgreSQL/Alembic migrations
 ```
 
 ## Phase 0: Contract and migration guardrails
@@ -206,7 +208,8 @@ without sharing browser state between agents.
 - [ ] Complete deterministic preference layers and decision recording.
 - [ ] Complete browser lifecycle, isolated contexts, impacted selection, and trace policies.
 - [ ] Add UI proof evidence to verification records.
-- [ ] Dogfood on the LoopGuard web and iOS surfaces.
+- [ ] Dogfood on the existing `cloud-app` prototype and representative fixture applications; repeat
+  the same checks on production web/iOS surfaces in Phase 7.
 - [ ] Measure warm-start, impacted-suite, and full-suite latency separately.
 
 **Release gate:**
@@ -214,9 +217,9 @@ without sharing browser state between agents.
 ```bash
 cd loopguard
 python -m pytest -q tests/preferences tests/browser
-cd ../apps/web
+cd integrations/browser-broker
 npm test
-npx playwright test --project=chromium
+npx tsc --noEmit
 ```
 
 Expected: all tests pass and the broker isolation test proves storage does not cross sessions.
@@ -226,11 +229,10 @@ Expected: all tests pass and the broker isolation test proves storage does not c
 **Duration:** 8 weeks
 **Dependencies:** Phases 1–3
 **Exit criterion:** Authenticated users can pair a daemon, receive replayable session updates, and
-submit expiring approval actions from a hosted client without exposing the daemon.
+submit expiring approval actions through an API test client without exposing the daemon. Native
+and web product clients follow in Phase 7.
 
-- [ ] Complete hosted tenancy, ingest, relay, action, artifact, notification, and audit tasks.
-- [ ] Complete native iOS safety inbox and web operational console MVP.
-- [ ] Complete APNs and web notification delivery.
+- [ ] Complete hosted tenancy, ingest, relay, action, artifact, notification, audit, and control-query tasks.
 - [ ] Add offline, duplicate-action, stale-action, and reconnect testing.
 - [ ] Run an external security review before public beta.
 
@@ -239,13 +241,10 @@ submit expiring approval actions from a hosted client without exposing the daemo
 ```bash
 cd services/control-api
 python -m pytest -q
-cd ../../apps/web
-npm test
-npx playwright test
 ```
 
-Run the iOS unit and UI test schemes through XcodeBuildMCP. Expected: backend, web, and iOS tests
-pass; a duplicate or expired approval never executes twice.
+Expected: backend tests pass; preference, cost, device, and audit APIs are registered; and a
+duplicate or expired approval never executes twice.
 
 ## Phase 6: Auto-healing pipeline beta
 
@@ -270,7 +269,32 @@ python -m pytest -q tests/heal tests/integration/test_airflow_repair.py
 Expected: tests pass and the end-to-end fixture opens no real PR unless the fake GitHub publisher is
 explicitly replaced in a controlled staging environment.
 
-## Phase 7: Production hardening
+## Phase 7: Native iOS and web control surfaces
+
+**Duration:** 8 weeks
+**Dependencies:** Phases 4–6
+**Exit criterion:** Native iOS and web clients consume the complete OpenAPI contract, replay live
+sessions without gaps, and submit safe actions for loops, verification, and repairs.
+
+- [ ] Complete the native iOS and web control-surface plan.
+- [ ] Complete APNs and web notification delivery.
+- [ ] Verify repair, preference, cost, device, and audit screens against real service fixtures.
+- [ ] Add offline, duplicate-action, stale-action, and reconnect testing.
+- [ ] Run visual and accessibility gates before private beta.
+
+**Release gate:**
+
+```bash
+cd apps/web
+npm test
+npx tsc --noEmit
+npx playwright test
+```
+
+Run the iOS unit and UI test schemes through XcodeBuildMCP. Expected: web and iOS checks pass; a
+duplicate or expired approval never executes twice; and repair UI is backed by implemented APIs.
+
+## Phase 8: Production hardening
 
 **Duration:** 8 weeks, then ongoing
 **Dependencies:** All earlier phases
