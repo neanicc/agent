@@ -16,8 +16,11 @@
 - Create: `services/control-api/pyproject.toml`
 - Create: `services/control-api/src/loopguard_api/__init__.py`
 - Create: `services/control-api/src/loopguard_api/settings.py`
+- Create: `services/control-api/src/loopguard_api/errors.py`
 - Create: `services/control-api/src/loopguard_api/app.py`
 - Create: `services/control-api/tests/test_health.py`
+- Create: `services/control-api/tests/test_error_contract.py`
+- Create: `docs/reference/control-api-errors.md`
 
 - [ ] **Step 1: Write failing health/config tests**
 
@@ -49,9 +52,20 @@ Expected: FAIL because the service is not installed.
 
 - [ ] **Step 3: Implement app factory and validated settings**
 
-Use `pydantic-settings`. Production requires explicit database, OIDC issuer/audience, action
-signing key reference, object-storage bucket, and Temporal endpoint. The app factory installs
-request IDs, structured logging, exception mapping, and no permissive CORS.
+Use `pydantic-settings`. Production requires explicit database, OIDC issuer/audience, active and
+verification-only action-signing key references, hook-signing policy, object-storage bucket,
+artifact KMS key, and Temporal endpoint. Signing settings use key IDs/algorithms and external KMS
+or HSM references, never raw production private keys in ordinary environment variables. The app
+factory installs request IDs, structured logging/redaction, exception mapping, body/timeout limits,
+trusted proxy policy, CSRF-aware browser endpoints, and an exact origin allowlist with no
+credentialed wildcard CORS.
+
+Every non-2xx API response uses RFC 9457 with stable `type`, `code`, `title`, safe `detail`,
+optional `field`, `request_id`, `retryable`, `doc_url`, and current-state metadata where relevant.
+Do not expose internal exception text, SQL, paths, tokens, or cross-tenant existence. The same error
+code has the same HTTP status/meaning across routes; generated client types include the union.
+Document problem, likely cause, corrective action, retry/idempotency guidance, and support data for
+each public code.
 
 - [ ] **Step 4: Run health tests**
 
@@ -61,7 +75,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit the service skeleton**
 
 ```bash
-git add services/control-api
+git add services/control-api docs/reference/control-api-errors.md
 git commit -m "feat: scaffold hosted control api"
 ```
 
@@ -87,7 +101,8 @@ def test_repository_query_is_tenant_scoped(db_session, tenant_a, tenant_b):
 def test_duplicate_event_is_idempotent(db_session, session_a):
     first = ingest_event(db_session, session_a, event_id="evt_1")
     second = ingest_event(db_session, session_a, event_id="evt_1")
-    assert first.cursor == second.cursor
+    assert first.cloud_ingest_seq == second.cloud_ingest_seq
+    assert first.session_seq == second.session_seq
 ```
 
 - [ ] **Step 2: Verify failure**
@@ -111,13 +126,35 @@ events
 actions
 action_deliveries
 artifacts
+changes
+verifications
+verification_results
+repairs
+repair_candidates
+hook_credentials
+signing_keys
+stream_tickets
 audit_entries
 relay_outbox
 ```
 
 Every tenant-owned table has `tenant_id`, UUID primary key, creation timestamp, and appropriate
-uniqueness. Events use unique `(tenant_id, event_id)` and monotonic per-session cursor. Repository
-queries require an explicit `TenantContext`; repository methods without it are not exposed.
+uniqueness. Events use unique `(tenant_id, event_id)`, server-assigned `cloud_ingest_seq`, and
+monotonic `session_seq`; uploaded `local_log_seq`/`repo_seq` remain provenance fields and never
+drive client gap detection. Subscriptions use a separate `client_stream_seq`. Repository queries
+require an explicit `TenantContext`; repository methods without it are not exposed.
+
+Actions store the canonical target, expected state version/hash, device proof, cloud signing
+key/algorithm/signature, nonce, expiry, resolution, and audit link. Repair and verification tables
+own their state machines and artifact links; do not encode them only as generic events. Hook
+credentials store hashed/derived secret material, key ID, repository/host binding, scope,
+created/rotated/revoked/expiry times. Signing keys store only public metadata and external private
+key references.
+
+Enable PostgreSQL row-level security for every tenant-owned table and set tenant context
+transaction-locally; application filtering remains defense in depth. Test direct ORM/core queries,
+joins, aggregates, background jobs, outbox consumers, and migrations under two tenants. A missing
+tenant context fails closed.
 
 - [ ] **Step 4: Apply/revert migration and run isolation tests**
 
@@ -161,7 +198,7 @@ def test_viewer_cannot_create_action(client, viewer_token, session_id):
     response = client.post(
         "/v1/actions",
         headers={"Authorization": f"Bearer {viewer_token}"},
-        json={"session_id": session_id, "kind": "interrupt"},
+        json={"target": {"kind": "session", "target_id": session_id}, "kind": "interrupt"},
     )
     assert response.status_code == 403
 ```
@@ -204,8 +241,11 @@ git commit -m "feat: secure control api with oidc roles"
 **Files:**
 - Create: `services/control-api/src/loopguard_api/pairing.py`
 - Create: `services/control-api/src/loopguard_api/relay.py`
+- Create: `services/control-api/src/loopguard_api/hook_ingest.py`
 - Create: `services/control-api/src/loopguard_api/routes/hosts.py`
+- Create: `services/control-api/src/loopguard_api/routes/hooks.py`
 - Test: `services/control-api/tests/test_pairing_relay.py`
+- Test: `services/control-api/tests/test_hook_ingest.py`
 - Create: `loopguard/src/loopguard/control/cloud_relay.py`
 - Test: `loopguard/tests/control/test_cloud_relay.py`
 
@@ -219,10 +259,25 @@ def test_pairing_code_is_single_use(client, owner_token):
 
 
 def test_daemon_replays_after_last_ack(fake_cloud, local_store):
-    relay = CloudRelay(local_store, fake_cloud, repo_id="r")
-    fake_cloud.disconnect_after(cursor=4)
+    relay = CloudRelay(local_store, fake_cloud, repository_handle="repo_handle_1")
+    fake_cloud.disconnect_after(local_log_seq=4)
     run(relay.sync())
-    assert fake_cloud.received_cursors == [1, 2, 3, 4, 5, 6]
+    assert fake_cloud.received_local_log_seqs == [1, 2, 3, 4, 5, 6]
+
+
+def test_host_cannot_claim_unregistered_repository(client, paired_host):
+    response = send_relay_batch(
+        client, paired_host, repository_handle="other_tenant_repo", events=[event_fixture()]
+    )
+    assert response.status_code == 403
+
+
+def test_hook_signature_replay_and_repo_substitution_fail(client, hook_credential):
+    signed = sign_hook_event(hook_credential, repo_handle="repo_1", nonce="n1")
+    assert client.post("/v1/hook-events", **signed).status_code == 202
+    assert client.post("/v1/hook-events", **signed).status_code == 409
+    substituted = sign_hook_event(hook_credential, repo_handle="repo_2", nonce="n2")
+    assert client.post("/v1/hook-events", **substituted).status_code == 403
 ```
 
 - [ ] **Step 2: Verify failures**
@@ -244,26 +299,40 @@ Pairing codes are random, hashed at rest, expire after five minutes, and are con
 The host generates an Ed25519 keypair locally; only the public key is registered. Relay
 authentication uses a short-lived host token plus signed challenge.
 
+Server repository registration returns an opaque repository handle bound to tenant, host,
+canonical repository identity, and allowed relay/hook scopes. Relay frames use that handle; the
+server never trusts a client-supplied tenant or raw `repo_id`.
+
 Protocol:
 
 ```json
-{"type":"events","repo_id":"r","after_cursor":4,"events":[...]}
-{"type":"ack","through_cursor":10}
+{"type":"events","repository_handle":"rh_1","after_local_log_seq":4,"events":[...]}
+{"type":"ack","through_local_log_seq":10,"through_cloud_ingest_seq":827}
 ```
 
 Server persists all events and an outbox row in one transaction before ack. Client deletes
-nothing locally after ack; it advances a relay cursor.
+nothing locally after ack; it advances the host/repository relay checkpoint. Validate event
+host/repository/session binding and per-batch size/count before persistence.
+
+Implement `/v1/hook-events` for project Codex/Claude hooks. Credentials are repository-scoped,
+short-lived/rotatable, revocable, and supplied only through cloud secret configuration. Verify key
+ID, canonical method/path/timestamp/nonce/body hash signature, clock skew, nonce replay, body size,
+event schema, and repository binding before ingest. Store nonces until expiry. Issue/rotate/revoke
+credentials through authorized host/repository APIs and audit every lifecycle change; never return
+an existing secret again.
 
 - [ ] **Step 4: Run pairing, duplicate, reconnect, and backpressure tests**
 
 Run:
 
 ```bash
-cd services/control-api && python -m pytest -q tests/test_pairing_relay.py
+cd services/control-api && python -m pytest -q tests/test_pairing_relay.py tests/test_hook_ingest.py
 cd ../../loopguard && python -m pytest -q tests/control/test_cloud_relay.py
 ```
 
-Expected: PASS.
+Expected: PASS, including tenant/host/repository substitution, duplicate event/batch, nonce replay,
+expired/revoked hook credential, key-rotation overlap, disconnect after server commit before ack,
+backpressure, and reordered batch cases.
 
 - [ ] **Step 5: Commit secure outbound relay**
 
@@ -278,18 +347,20 @@ git commit -m "feat: pair hosts and relay durable events"
 **Files:**
 - Create: `services/control-api/src/loopguard_api/routes/sessions.py`
 - Create: `services/control-api/src/loopguard_api/subscriptions.py`
+- Create: `services/control-api/src/loopguard_api/stream_tickets.py`
 - Test: `services/control-api/tests/test_session_stream.py`
 
 - [ ] **Step 1: Write failing replay-before-live tests**
 
 ```python
 def test_websocket_replays_then_streams_without_gap(client, session, events):
+    ticket = create_stream_ticket(client, session_id=session.id, after_session_seq=2)
     with client.websocket_connect(
-        f"/v1/sessions/{session.id}/stream?after=2", headers=auth_headers()
+        f"/v1/sessions/{session.id}/stream?ticket={ticket}"
     ) as ws:
-        assert ws.receive_json()["cursor"] == 3
-        publish_event(session, cursor=4)
-        assert ws.receive_json()["cursor"] == 4
+        assert ws.receive_json()["session_seq"] == 3
+        publish_event(session, session_seq=4)
+        assert ws.receive_json()["session_seq"] == 4
 ```
 
 - [ ] **Step 2: Verify failure**
@@ -299,16 +370,24 @@ Expected: FAIL because session streaming is absent.
 
 - [ ] **Step 3: Implement replay and outbox notification**
 
-Authorize before upgrade. In one flow: subscribe to session notification channel, query rows after
-cursor, emit replay, then consume notifications and fill any cursor gaps from PostgreSQL. Send
-heartbeats and close slow clients with a resumable last-cursor reason. Never rely on notification
-delivery for durability.
+Native clients may authorize the WebSocket upgrade with a short-lived access token. Browsers first
+POST to `/v1/stream-tickets` through the same-origin BFF with CSRF protection. A stream ticket is
+random, hashed at rest, one-use, expires within 30 seconds, and is bound to user, tenant, session,
+origin, and requested `after_session_seq`; it grants no REST capability. Never put an access token
+in a WebSocket URL.
+
+Authorize before upgrade. In one flow: consume the ticket when applicable, subscribe to the
+session notification channel, query rows after `session_seq`, assign monotonic
+`client_stream_seq`, emit replay, then consume notifications and fill any `session_seq` gaps from
+PostgreSQL. Send heartbeats and close slow clients with resumable `last_session_seq` and
+`last_client_stream_seq` metadata. Never rely on notification delivery for durability.
 
 - [ ] **Step 4: Run stream tests**
 
 Run: `cd services/control-api && python -m pytest -q tests/test_session_stream.py`
-Expected: PASS for reconnect, duplicate notification, gap, slow client, unauthorized tenant, and
-session deletion.
+Expected: PASS for reconnect, duplicate notification, gap, interleaved other-session events, slow
+client, unauthorized tenant, reused/expired/wrong-origin ticket, CSRF failure, native bearer
+upgrade, and session deletion.
 
 - [ ] **Step 5: Commit replayable subscriptions**
 
@@ -321,6 +400,7 @@ git commit -m "feat: stream sessions with cursor replay"
 
 **Files:**
 - Create: `services/control-api/src/loopguard_api/actions.py`
+- Create: `services/control-api/src/loopguard_api/action_signing.py`
 - Create: `services/control-api/src/loopguard_api/routes/actions.py`
 - Test: `services/control-api/tests/test_actions.py`
 - Create: `loopguard/src/loopguard/control/actions.py`
@@ -342,8 +422,24 @@ def test_action_executes_at_most_once(action_service):
 
 
 def test_approval_for_old_pause_state_is_stale(action_service):
-    action = action_service.create(kind="approve", expected_state_version=4)
-    assert action_service.consume(action, current_state_version=5).code == "stale_state"
+    action = action_service.create(
+        kind="approve", expected_state_version=4, expected_state_hash="sha256:state4"
+    )
+    assert action_service.consume(
+        action, current_state_version=5, current_state_hash="sha256:state5"
+    ).code == "stale_state"
+
+
+def test_cloud_rejects_action_without_current_registered_device_proof(
+    client, operator_token, action_challenge
+):
+    response = client.post(
+        "/v1/actions",
+        headers=bearer(operator_token),
+        json=unsigned_action_request(action_challenge),
+    )
+    assert response.status_code == 401
+    assert response.json()["code"] == "device_proof_required"
 ```
 
 - [ ] **Step 2: Verify failures**
@@ -368,12 +464,34 @@ from loopguard.control.decisions import ActionRequest
 class SignedActionRequest(ActionRequest):
     tenant_id: str
     requested_by: str
-    signature: str
+    requested_by_device_id: str
+    issued_at: datetime
+    device_key_id: str
+    device_algorithm: str
+    device_signature: str
+    cloud_key_id: str
+    cloud_algorithm: str
+    cloud_signature: str
 ```
 
-The cloud signs the canonical payload. The daemon verifies signature, tenant/host/session binding,
-expiry, nonce, current state, and local policy. Resolution uses a unique action ID transaction and
-creates immutable audit events on both sides.
+Create an action challenge from current server state before review. The client signs one canonical
+binary encoding containing schema version, action ID, `ActionTarget(kind,id)`, kind,
+parameters hash, expected state version/hash, tenant, user, device ID, issued time, expiry, and
+nonce. iOS uses its registered app device key; web uses a registered WebAuthn assertion bound to
+the same challenge. The server verifies permission, tenant/user/device binding, current non-revoked
+key, challenge/nonce, expiry, canonical bytes, algorithm, and signature before countersigning that
+exact payload.
+
+Cloud signatures include key ID, algorithm, issued time, and canonicalization version. Publish an
+authenticated signing-key set with active/retiring windows; rotate through overlap, audit every
+change, and support emergency revocation. The daemon pins tenant/cloud key metadata after host
+pairing, accepts only allowlisted algorithms/current keys, refreshes through its authenticated
+relay, and fails closed on unknown/revoked keys.
+
+The daemon then verifies both signatures, tenant/host/target binding, expiry, nonce, expected state
+version/hash, capability, and local policy. Resolution uses a unique action ID transaction and
+creates immutable audit events on both sides. Device revocation immediately prevents creation and
+execution of future actions, including already issued but unconsumed actions.
 
 - [ ] **Step 4: Run cloud/local action tests**
 
@@ -427,8 +545,16 @@ Expected: FAIL because artifact storage is absent.
 
 Use presigned uploads only after authorization and declared size/content type. Store tenant-scoped
 object keys, SHA-256, byte count, media type, encryption metadata, retention class, and expiry.
-Complete upload only after server-side HEAD/hash validation. Downloads use short-lived signed URLs
-and write audit entries.
+Require the object-store's explicit SHA-256 checksum header in the signed upload request and verify
+the returned checksum plus size/content type before completion. Do not treat ETag as a content
+hash. If the selected S3-compatible provider cannot return a trustworthy checksum, stream the
+object through a bounded server/worker recomputation before marking it complete. Downloads use
+short-lived signed URLs and write audit entries.
+
+Bind completion to a signed evidence manifest from the verification/repair service. Test wrong
+checksum, multipart ETag, truncated/oversized object, content-type substitution, object appearing
+after an expired upload, cross-tenant key, KMS failure, delete failure/retry, and presigned URL
+revocation limits.
 
 - [ ] **Step 4: Run artifact tests**
 
@@ -485,6 +611,14 @@ secrets in workflow history. Audit records include actor, action, target, reques
 state hashes, result, IP/device metadata, and timestamp. Database privileges deny update/delete on
 audit rows to the application role.
 
+Define a retention/deletion matrix for events, source/log artifacts, verification proofs, repair
+artifacts, user/device metadata, billing records, and audit. Ordinary application roles cannot
+mutate audit. A separate privileged, human-authorized retention workflow may de-identify allowed
+personal fields or crypto-shred linked artifact keys while appending a deletion/tombstone audit
+entry; it never rewrites history silently. Legal/contractual holds override expiry and are
+themselves audited. Tests prove tenant deletion removes or de-identifies each data class according
+to policy without making retained audit falsely identify an active user/device.
+
 - [ ] **Step 4: Run service tests**
 
 Run: `cd services/control-api && python -m pytest -q`
@@ -505,8 +639,13 @@ git commit -m "feat: add durable workflows and immutable audit"
 - Create: `services/control-api/src/loopguard_api/routes/costs.py`
 - Create: `services/control-api/src/loopguard_api/routes/devices.py`
 - Create: `services/control-api/src/loopguard_api/routes/audit.py`
+- Create: `services/control-api/src/loopguard_api/routes/changes.py`
+- Create: `services/control-api/src/loopguard_api/routes/verifications.py`
+- Create: `services/control-api/src/loopguard_api/routes/repairs.py`
 - Create: `services/control-api/src/loopguard_api/device_pairing.py`
+- Create: `contracts/control-api-endpoints.md`
 - Test: `services/control-api/tests/test_control_queries.py`
+- Test: `services/control-api/tests/test_client_api_matrix.py`
 - Modify: `services/control-api/src/loopguard_api/app.py`
 
 - [ ] **Step 1: Write failing tenant, policy, and aggregation tests**
@@ -562,8 +701,9 @@ def test_device_pairing_challenge_is_single_use(client, owner_token, device_key)
 - [ ] **Step 2: Verify the client-required APIs are absent**
 
 Run: `cd services/control-api && python -m pytest -q tests/test_control_queries.py`
-Expected: FAIL with 404 responses for `/v1/preferences`, `/v1/costs`, `/v1/devices`,
-`/v1/devices/pairing/start`, `/v1/devices/pairing/complete`, and `/v1/audit`.
+Expected: FAIL with 404 responses for the client matrix: session list/detail, change
+list/detail, verification list/detail, action list/detail/create/challenge, repair list/detail,
+preferences, costs, devices/pairing/revocation, stream tickets, artifacts, and audit.
 
 - [ ] **Step 3: Implement versioned tenant-scoped query services**
 
@@ -626,7 +766,7 @@ async def revoke_device(
 
 @router.get("/audit", response_model=AuditPage)
 async def list_audit(
-    cursor: str | None = None,
+    page_cursor: str | None = None,
     limit: int = Query(50, ge=1, le=200),
     ctx: TenantContext = Depends(require_viewer),
 ): ...
@@ -637,9 +777,28 @@ Device pairing challenges are random, hashed at rest, bound to the authenticated
 expire after five minutes, and are consumed atomically after proof-of-possession. The device record
 stores an explicit allowlisted algorithm: P-256 for Secure Enclave-backed Apple keys or Ed25519 for
 Keychain/software-backed clients. Reject unknown algorithms, malformed encodings, and algorithm
-confusion. Revoking a device invalidates future device-signed actions without deleting audit
-history. Audit pagination uses immutable `(created_at, id)` cursors. Register all routers in
-`app.py`.
+confusion. Browser devices register a WebAuthn credential with verified origin/RP ID and user
+verification policy so web actions can provide equivalent proof without exposing a private key to
+JavaScript. Revoking a device invalidates future device-signed actions and unconsumed actions from
+that device without deleting audit history. Audit pagination uses immutable `(created_at, id)`
+cursors. Register all routers in `app.py`.
+
+Implement and freeze this endpoint/schema ownership matrix before client generation:
+
+| Resource | Operations | Owning service/table | Pagination/stream domain |
+|---|---|---|---|
+| Sessions | list, detail, replay/live stream | sessions/events | opaque page cursor; `session_seq` + `client_stream_seq` |
+| Changes | list, detail, linked artifacts/proof | changes/artifacts | opaque `(created_at,id)` |
+| Verifications | list, detail, results/evidence | verifications/results | opaque `(created_at,id)` |
+| Actions | challenge, create, list, detail | actions/deliveries | opaque `(created_at,id)` |
+| Repairs | list, detail, candidates/publication state | repairs/candidates | opaque `(created_at,id)` |
+| Artifacts | initiate, complete, metadata, download | artifacts | resource ID |
+| Preferences/costs/devices/audit | read/write as authorized | dedicated tables | documented per route |
+
+`contracts/control-api-endpoints.md` names every method/path, request/response schema, permission,
+idempotency key, state transition, cursor domain, error codes, and owning plan/task. A contract
+test compares this matrix to generated OpenAPI and fails on missing/dead operations. List responses
+are bounded and stable; detail routes return tenant-safe 404 for cross-tenant IDs.
 
 - [ ] **Step 4: Run query, authorization, migration, and full service tests**
 
@@ -648,7 +807,7 @@ Run:
 ```bash
 cd services/control-api
 alembic upgrade head
-python -m pytest -q tests/test_control_queries.py tests/test_auth.py
+python -m pytest -q tests/test_control_queries.py tests/test_client_api_matrix.py tests/test_auth.py
 python -m pytest -q
 ```
 
@@ -657,7 +816,7 @@ Expected: all commands exit 0.
 - [ ] **Step 5: Commit client-required control APIs**
 
 ```bash
-git add services/control-api
+git add services/control-api contracts/control-api-endpoints.md
 git commit -m "feat: expose preference cost device and audit APIs"
 ```
 
@@ -673,4 +832,9 @@ ruff check src tests
 ```
 
 Expected: all commands exit 0; duplicate events/actions are idempotent; cross-tenant access tests
-fail closed; and disconnect/reconnect resumes from the last persisted cursor.
+fail closed through both application filtering and PostgreSQL RLS; host/hook credentials cannot
+substitute repositories; disconnect/reconnect resumes from the last acknowledged
+`local_log_seq` without confusing cloud/session/client cursor domains; browser streaming uses
+one-use origin-bound tickets; actions require current device/WebAuthn proof plus rotating cloud
+signatures; artifact completion verifies real SHA-256; and every client operation in
+`contracts/control-api-endpoints.md` exists with a tenant-safe detail/list contract.

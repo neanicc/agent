@@ -8,6 +8,10 @@
 
 **Tech Stack:** Python 3.11+, Pydantic 2, TOML/YAML, SQLite, JSON Schema, Playwright artifacts, pytest
 
+All illustrative fixtures (`fixtures`, `profile`, `ui_diff`, `axe_artifact`, `request`,
+`violation`, and `ui_verification`) must be implemented in
+`loopguard/tests/preferences/conftest.py` or an explicitly listed integration-support module.
+
 ---
 
 ### Task 1: Define preference sources, rules, and verdicts
@@ -89,6 +93,8 @@ git commit -m "feat: define editable preference policy"
 **Files:**
 - Create: `loopguard/src/loopguard/preferences/compiler.py`
 - Create: `loopguard/src/loopguard/preferences/defaults.toml`
+- Modify: `loopguard/pyproject.toml`
+- Create: `loopguard/tests/preferences/conftest.py`
 - Test: `loopguard/tests/preferences/test_compiler.py`
 - Test fixtures: `loopguard/tests/fixtures/preferences/repo/`
 
@@ -125,7 +131,16 @@ Read:
 - Learned soft preferences from the preference store.
 
 Merge by stable rule ID. Safety rules cannot be deleted; organization policy can raise but not
-lower their severity. Emit a source manifest with hashes for audit.
+lower their severity. Emit a source manifest with hashes for audit. Repository-owned instructions
+are untrusted input: they can suggest repository-scoped rules but cannot weaken safety/organization
+policy, grant tool/network access, alter evaluator code, or become a blocking user rule without an
+authorized promotion. Parse only the documented bounded schema/section, treat its text as data,
+and reject duplicate IDs, include/path escapes, oversized files, aliases/anchors that expand
+unboundedly, and unsupported token formats.
+
+Add a `preferences` optional dependency group for bounded YAML/JSON Schema/image metadata parsing
+used by the implementation, and extend `all-dev` plus its metadata test. Prefer standard-library
+TOML and do not add a parser dependency that the chosen file formats do not need.
 
 - [ ] **Step 4: Run compiler and malformed-source tests**
 
@@ -136,7 +151,7 @@ Expected: PASS.
 
 ```bash
 git add loopguard/src/loopguard/preferences loopguard/tests/preferences \
-  loopguard/tests/fixtures/preferences
+  loopguard/tests/fixtures/preferences loopguard/pyproject.toml
 git commit -m "feat: compile repository and user preferences"
 ```
 
@@ -245,7 +260,9 @@ Expected: FAIL because the learner is missing.
 Store explicit operator choices with artifact hashes and context dimensions. Derive a candidate
 only after the configured minimum consistent examples and minimum confidence. Learned rules start
 as `inform`, are visible/editable in UI, and require explicit promotion to become `warn` or
-`block`. Deleting a learned rule also records a negative example.
+`block`. Bind examples and promotions to tenant/user/repository scope and an authenticated actor.
+Deleting a learned rule also records a negative example. Revoked/deleted preference data stops
+contributing immediately; retain only the minimum audited tombstone required by policy.
 
 - [ ] **Step 4: Run learning tests**
 
@@ -297,6 +314,13 @@ reserved critic budget. Send only the relevant screenshot crop, rule text, and a
 Require JSON matching `PreferenceVerdict`. Clamp severity to the source rule's configured severity
 and store model, prompt version, cost, and artifact hashes.
 
+Treat screenshot text, repository rule text, filenames, and metadata as hostile data that may
+contain instructions. Use a fixed structured prompt, delimit data, prohibit tool use, validate
+strict JSON, and ignore any data-supplied request to change policy, reveal prompts, fetch URLs, or
+increase severity. Redact image/text evidence before provider calls and respect local-only policy.
+Add prompt-injection fixtures in source code, terminal output, screenshot OCR text, rule text, and
+filenames; all must remain inert.
+
 - [ ] **Step 4: Run critic tests**
 
 Run: `cd loopguard && python -m pytest -q tests/preferences/test_visual_critic.py`
@@ -342,6 +366,12 @@ Verification stores preference verdict IDs and treats only `block` as a required
 Warnings appear in the proof record and agent context digest. A user override records actor,
 reason, and scope without changing the original verdict.
 
+Register the compiler, deterministic evaluators, preference store/learner, and optional visual
+critic in `DaemonServices`. Cache profiles by source-manifest hash and invalidate transactionally
+on file/user/org/learned-rule changes. Daemon restart must preserve the exact effective policy
+version referenced by an in-flight verification rather than silently reevaluating it under a new
+profile.
+
 - [ ] **Step 4: Run preference and integration tests**
 
 Run: `cd loopguard && python -m pytest -q tests/preferences tests/integration/test_ui_preferences.py`
@@ -365,4 +395,6 @@ python -m pytest -q tests/preferences tests/integration/test_ui_preferences.py
 ```
 
 Expected: all tests pass; deterministic rules work offline; learned preferences remain soft; and
-visual evaluation cannot exceed budget or silently escalate severity.
+visual evaluation cannot exceed budget, obey hostile repository/screenshot instructions, or
+silently escalate severity. In-flight proof records retain their original effective policy version
+across preference changes and daemon restart.

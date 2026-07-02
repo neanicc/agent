@@ -40,6 +40,9 @@ GIT SAFETY AND SETUP
 
 3. If there are uncommitted changes, conflicts, or untracked files you did not create, STOP and
    ask the user. Do not stash, reset, clean, delete, overwrite, or rebase existing work.
+   Exception: if the only untracked file is root `AGENTS.md` and the user confirms it was generated
+   by their gstack/Codex setup, read and preserve it, never stage it, and continue. Any other dirty
+   state still requires confirmation.
 
 4. Confirm the remote and main branch exist, then update safely:
    git fetch origin
@@ -72,6 +75,7 @@ REQUIRED READING
 Before changing code, read these completely:
 
 - README.md
+- Root `AGENTS.md` if present, whether tracked or user-owned
 - loopguard/AGENTS.md
 - docs/superpowers/specs/2026-07-02-loopguard-reliability-control-plane-design.md
 - docs/superpowers/plans/2026-07-02-loopguard-productization-master.md
@@ -85,6 +89,18 @@ Before changing code, read these completely:
 - loopguard/pyproject.toml
 - cloud-app/package.json
 - Existing tests under loopguard/tests and cloud-app/src/__tests__
+
+Treat the post-productization developer journey as a release contract:
+
+- `loopguard quickstart` reaches a real offline daemon/guard result with no key in under two
+  minutes from an installed package.
+- `loopguard setup --agent auto` plus explicit vendor trust reaches a protected existing session
+  in under five minutes.
+- Every CLI/API error gives a stable code, problem, cause, fix, and docs reference.
+- Setup, doctor, uninstall, config, update, migration, dry-run, JSON, and redacted diagnostic paths
+  are documented and tested.
+- Root/package READMEs describe the production product first; hackathon live-provider demos are
+  optional and clearly labelled.
 
 Before implementing provider integrations, re-check the current official interfaces:
 
@@ -105,12 +121,26 @@ Understand these boundaries before implementation:
 - Preserve the stable `LoopEvent -> LoopGuard -> LoopDecision` circuit breaker.
 - `ControlEvent`, `PolicyDecision`, context, verification, routing, repair, and remote actions are
   outer product-layer contracts.
+- Freeze canonical names before dependent work: `local_log_seq`, `repo_seq`, `session_seq`,
+  `cloud_ingest_seq`, and `client_stream_seq` are different domains; `ActionTarget` supports
+  session/repair/host/verification/repository; policy actions are allow, warn, pause, interrupt,
+  inject, and request approval.
+- Every ingested event must follow the real composition path: validate/redact -> durable store ->
+  dispatcher -> existing per-session guard and registered subsystem handlers -> normalized
+  decision acknowledgement. Persistence without dispatch is not a completed foundation.
 - The current FastAPI server and Expo application are prototypes. Do not expand them into the
   production architecture unless a plan explicitly requires migration compatibility.
 - Monitoring, routing features, change detection, test selection, and ordinary verification must
   not invoke a model.
+- Managed Claude uses user-supplied API/provider credentials. Do not offer or proxy `claude.ai`
+  login, subscription rate limits, or session credentials unless Anthropic has separately granted
+  explicit approval. Attached Claude hooks do not require managed-mode API credentials.
 - Do not read, store, request, summarize, or transfer hidden chain-of-thought.
 - Concurrent managed agents must not share one writable worktree.
+- Attached vendor sessions cannot be transparently moved; detect shared-primary-worktree risk and
+  apply the configured warning/block without claiming managed isolation.
+- “Verified” requires a proof contract and clean baseline recorded before the first mutating tool.
+  Late-attached or unbaselined passing checks are explicitly inconclusive.
 - Auto-Heal must never merge or deploy a generated repair in this implementation.
 - The reference hosted deployment is AWS (EKS, RDS PostgreSQL, S3, KMS, ECR, Route 53, and GitHub
   OIDC). Keep deployment regions/account IDs configurable and never apply infrastructure without
@@ -118,8 +148,7 @@ Understand these boundaries before implementation:
 
 BASELINE
 
-Before Task 1, install only repository-declared development dependencies and run the current
-baseline:
+Before Task 1, install only dependency groups that exist on main and run the current baseline:
 
 cd loopguard
 python -m pip install -e ".[dev,server,litellm]"
@@ -134,6 +163,17 @@ cd ..
 Record exact commands, exit codes, passing/failing counts, and environmental failures. A missing
 optional external credential is not a reason to run a live provider test. Use the fakes specified
 by the plans.
+
+The foundation plan adds an `all-dev` extra and later plans add/update product-specific extras.
+After every `pyproject.toml` optional-dependency change, reinstall the changed package before
+running that task's tests. Once `all-dev` exists, use:
+
+cd loopguard
+python -m pip install -e ".[all-dev]"
+
+For every Node package (`claude-bridge`, `browser-broker`, `playwright-loopguard`, and `apps/web`),
+the task must create and commit `package-lock.json`, then use `npm ci`. Never let `npm test` pass
+against an unrecorded local `node_modules` state.
 
 RESUMABLE PROGRESS
 
@@ -202,6 +242,19 @@ Do not reorder these plans and do not implement a later plan early merely becaus
 convenient. If a required API from a later plan is discovered, treat that as a dependency defect:
 explain it and fix the plan/order before continuing.
 
+This single branch/PR is an explicit user decision. Keep it reviewable:
+
+- One scoped commit per completed numbered task; no mixed-plan commits.
+- One milestone tag in the progress file per completed plan, including cumulative test evidence.
+- Update the draft PR body after each plan with a collapsible task/commit/test section.
+- Before starting the next plan, verify every earlier plan's cumulative gate, schema/API contract
+  compatibility, migration head, and clean working tree.
+- If recovery requires reverting a broken task, use a normal revert commit after user approval;
+  never rewrite or force-push branch history.
+- Essential security preconditions live in their owning early plans. The final hardening plan
+  audits and exercises them; it is not permission to defer local permissions, peer identity,
+  repository trust, RLS, action proof, encryption, or sandbox isolation until the end.
+
 TASK EXECUTION RULES
 
 Use `superpowers:executing-plans` if installed. For implementation and bug fixes, use the
@@ -213,6 +266,9 @@ For every task:
 1. Read the entire task before editing.
 2. Confirm its dependencies and referenced types already exist.
 3. Write the specified failing test.
+   Implement every illustrative helper/fixture referenced by the snippet in that test package's
+   `conftest.py` or explicit support module; never commit pseudocode-only names such as
+   `make_git_repo`, `fake_cloud`, `profile`, or `event_fixture`.
 4. Run the exact focused test and confirm it fails for the expected reason.
 5. If it passes before implementation, investigate whether behavior already exists or the test is
    invalid. Do not proceed with a false red step.
@@ -307,6 +363,9 @@ After all eleven plans:
 6. Confirm `git status --short` contains only intentional final changes.
 7. Push the final integration branch and update the draft PR.
 8. Do not merge or deploy.
+9. Prepare production-readiness evidence, but stop at every named human sign-off, production
+   apply/failover, billing-provider activation, App Store/TestFlight publication, and real
+   customer notification gate. Report the exact human role and evidence required; never self-sign.
 
 The final report must include:
 

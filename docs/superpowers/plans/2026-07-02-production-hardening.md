@@ -25,7 +25,10 @@ def test_cross_tenant_session_id_cannot_authorize_action(client, tenant_a_sessio
     response = client.post(
         "/v1/actions",
         headers=bearer(tenant_b_admin),
-        json={"session_id": str(tenant_a_session.id), "kind": "interrupt"},
+        json={
+            "target": {"kind": "session", "target_id": str(tenant_a_session.id)},
+            "kind": "interrupt",
+        },
     )
     assert response.status_code in {403, 404}
 
@@ -58,6 +61,11 @@ cloud operator. Every critical/high abuse path links to a test, owner, and mitig
 Expected: all security tests PASS; no critical/high item remains without an automated control or
 documented accepted risk approved by the owner.
 
+This task validates and extends controls already required in the foundation/owning subsystem
+plans; it is not the first time local permissions, transport identity, repository trust, action
+signatures, sandbox isolation, or tenant RLS are implemented. Any critical threat-model control
+missing from its earlier owner is moved into that earlier plan before implementation proceeds.
+
 - [ ] **Step 5: Commit the threat model**
 
 ```bash
@@ -72,8 +80,13 @@ git commit -m "security: enforce loopguard trust boundaries"
 - Create: `loopguard/src/loopguard/security/permissions.py`
 - Create: `loopguard/src/loopguard/security/keys.py`
 - Create: `loopguard/src/loopguard/security/update.py`
+- Create: `loopguard/src/loopguard/security/migrate.py`
 - Test: `loopguard/tests/security/test_permissions.py`
 - Test: `loopguard/tests/security/test_update.py`
+- Test: `loopguard/tests/security/test_migrate.py`
+- Create: `CHANGELOG.md`
+- Create: `docs/reference/versioning.md`
+- Create: `docs/migrations/demo-v1-to-control-v1.md`
 
 - [ ] **Step 1: Write failing permission and signature tests**
 
@@ -101,6 +114,18 @@ only with an explicit warning. Validate socket/state ownership and permissions a
 Update manifests include version, artifact digest, minimum database schema, release channel, and
 signature. Never execute an unsigned downloaded binary.
 
+Adopt semantic versioning for packages and explicit versioning for event/protocol/API/database
+contracts. Every breaking or behavior-changing release updates `CHANGELOG.md`, compatibility
+matrix, deprecation schedule, and a tested migration guide. Deprecation warnings include the old
+surface, replacement command/API, removal version/date, and docs URL.
+
+Expose `loopguard update check`, `loopguard migrate check`, and `loopguard migrate apply`.
+`check` is read-only and machine-readable. `apply` creates/verifies an encrypted backup, previews
+steps, validates free space/version compatibility, uses resumable forward migrations, and refuses
+downgrade/data reinterpretation without an explicit documented path. Failed migrations leave the
+old version usable or provide an exact restore command. Add fixture migrations from the existing
+demo/prototype state and each supported schema version.
+
 - [ ] **Step 4: Run local security tests**
 
 Run: `cd loopguard && python -m pytest -q tests/security`
@@ -109,7 +134,8 @@ Expected: PASS.
 - [ ] **Step 5: Commit local hardening**
 
 ```bash
-git add loopguard/src/loopguard/security loopguard/tests/security
+git add loopguard/src/loopguard/security loopguard/tests/security CHANGELOG.md \
+  docs/reference/versioning.md docs/migrations/demo-v1-to-control-v1.md
 git commit -m "security: harden local keys state and updates"
 ```
 
@@ -128,8 +154,9 @@ def test_tenant_deletion_removes_rows_objects_and_search_indexes(deletion_workfl
     seed_all_tenant_data(tenant)
     result = deletion_workflow.run(tenant.id)
     assert result.status == "completed"
-    assert count_tenant_rows(tenant.id) == 0
+    assert count_active_tenant_rows(tenant.id) == 0
     assert list_tenant_objects(tenant.id) == []
+    assert only_deidentified_legal_tombstones_remain(tenant.id)
 
 
 def test_audit_retains_tombstone_without_sensitive_payload(deletion_workflow, tenant):
@@ -280,9 +307,10 @@ git commit -m "test: prove control plane load and recovery"
 - [ ] **Step 1: Write failing restored-integrity tests**
 
 ```python
-def test_restore_preserves_event_cursor_and_artifact_hash(restored_environment, source_snapshot):
+def test_restore_preserves_stream_positions_and_artifact_hash(restored_environment, source_snapshot):
     restored = restored_environment.restore(source_snapshot)
-    assert restored.max_event_cursor == source_snapshot.max_event_cursor
+    assert restored.max_cloud_ingest_seq == source_snapshot.max_cloud_ingest_seq
+    assert restored.session_sequences == source_snapshot.session_sequences
     assert restored.artifact_hashes == source_snapshot.artifact_hashes
     assert restored.action_resolutions == source_snapshot.action_resolutions
 ```
@@ -334,7 +362,7 @@ attestation, or signature.
 
 - [ ] **Step 2: Run against an unsigned local build**
 
-Run: `scripts/verify_release.sh dist/`
+Run: `scripts/verify_release.sh artifacts/release/manifest.json`
 Expected: FAIL with a list of missing release evidence.
 
 - [ ] **Step 3: Implement reproducible CI release**
@@ -344,9 +372,24 @@ review, secret scanning, SAST, container scanning, SBOM generation, Sigstore sig
 attestation, and environment approval for promotion. Provider credentials are never available to
 jobs that execute untrusted repository code.
 
+All package-specific outputs (`loopguard/dist`, service/client images by digest, web provenance,
+and iOS verification archive/checksum) are copied or referenced through
+`artifacts/release/manifest.json`. The manifest names artifact type, canonical source path or
+digest, SHA-256, SBOM, provenance, signature, build commit, and platform. The verifier resolves
+paths relative to the manifest, rejects files outside the release root, and never assumes a
+top-level `dist/`.
+
+After license/ownership and environment approval, release jobs publish the Python package to its
+configured registry, `@loopguard/playwright` to the configured npm registry, and signed service/web
+images to ECR. Registry names/ownership are verified during setup and remain configurable until
+the owner reserves them. Ordinary PRs and implementation agents build/verify only; they never
+publish. Document `uvx loopguard quickstart`, `pipx install loopguard`, and pinned/versioned install
+commands only after registry smoke tests prove those exact names.
+
 - [ ] **Step 4: Build a release candidate and verify it**
 
-Expected: `scripts/verify_release.sh dist/` exits 0 and validates every published artifact.
+Expected: `scripts/verify_release.sh artifacts/release/manifest.json` exits 0 and validates every
+published artifact.
 
 - [ ] **Step 5: Commit release security**
 
@@ -360,8 +403,13 @@ git commit -m "ci: sign and attest loopguard releases"
 **Files:**
 - Create: `services/control-api/src/loopguard_api/metering.py`
 - Create: `services/control-api/src/loopguard_api/quotas.py`
+- Create: `services/control-api/src/loopguard_api/billing.py`
+- Create: `services/control-api/src/loopguard_api/routes/billing.py`
+- Create: `services/control-api/alembic/versions/0003_billing.py`
 - Create: `services/control-api/tests/test_metering.py`
+- Create: `services/control-api/tests/test_billing.py`
 - Create: `docs/operations/metering.md`
+- Create: `docs/operations/billing.md`
 
 - [ ] **Step 1: Write failing idempotency and reconciliation tests**
 
@@ -388,17 +436,29 @@ minutes where hosted, and repair workers. Keep provider cost and LoopGuard charg
 Preflight quota before expensive work and reserve/release units atomically. Never terminate local
 guarding because hosted quota is exhausted.
 
+Implement a versioned price catalog and tenant subscription/invoice state. The concrete hosted
+reference uses Stripe Checkout/Customer Portal and signature-verified, replay-safe webhooks, while
+the billing domain stays behind a provider interface. Store provider IDs, not payment details.
+Webhook event IDs are idempotent; subscription/entitlement changes use provider event ordering and
+reconciliation jobs. Customer-visible usage and invoice lines reconcile to the immutable usage
+ledger and catalog version. Credits/refunds/adjustments are append-only audited records.
+
+Billing failure never disables local guarding or deletes evidence. It can prevent new hosted
+expensive work after a grace policy, while remote read/export/deletion and security actions remain
+available. Test forged/replayed/out-of-order webhooks, duplicate usage, currency/rounding, price
+change mid-period, quota race, provider outage, failed payment/grace, refund, tenant deletion, and
+invoice reconciliation.
+
 - [ ] **Step 4: Run metering tests and reconciliation fixture**
 
-Run: `cd services/control-api && python -m pytest -q tests/test_metering.py`
+Run: `cd services/control-api && python -m pytest -q tests/test_metering.py tests/test_billing.py`
 Expected: PASS.
 
 - [ ] **Step 5: Commit metering controls**
 
 ```bash
-git add services/control-api/src/loopguard_api services/control-api/tests/test_metering.py \
-  docs/operations/metering.md
-git commit -m "feat: meter hosted usage with quota safety"
+git add services/control-api docs/operations/metering.md docs/operations/billing.md
+git commit -m "feat: meter and bill hosted usage safely"
 ```
 
 ### Task 9: Define reproducible hosted infrastructure and deployment
@@ -413,6 +473,8 @@ git commit -m "feat: meter hosted usage with quota safety"
 - Create: `infra/terraform/environments/staging/backend.hcl.example`
 - Create: `infra/terraform/environments/production/main.tf`
 - Create: `infra/terraform/environments/production/backend.hcl.example`
+- Create: `infra/terraform/environments/production-dr/main.tf`
+- Create: `infra/terraform/environments/production-dr/backend.hcl.example`
 - Create: `infra/helm/loopguard/Chart.yaml`
 - Create: `infra/helm/loopguard/values.yaml`
 - Create: `infra/helm/loopguard/values-staging.yaml`
@@ -423,6 +485,7 @@ git commit -m "feat: meter hosted usage with quota safety"
 - Create: `infra/helm/loopguard/templates/migration-job.yaml`
 - Create: `infra/helm/loopguard/templates/network-policy.yaml`
 - Create: `infra/tests/test_rendered_manifests.py`
+- Create: `services/control-api/scripts/rehearse_region_failover.sh`
 - Create: `.github/workflows/deploy.yml`
 - Create: `docs/operations/deployment.md`
 
@@ -485,7 +548,18 @@ needed before the first staging apply.
 The Helm chart creates control API, web, and Temporal worker deployments, a pre-upgrade migration
 job, service accounts, NetworkPolicies, PodDisruptionBudgets, autoscaling,
 readiness/liveness probes, resource requests/limits, topology spread, and non-root read-only
-containers.
+containers. Repair workers use a dedicated node pool/service account/namespace, deny-all
+NetworkPolicy, no cloud metadata/service-account token, no hostPath or container socket, and a
+gVisor RuntimeClass or isolated microVM worker backend.
+
+Provision a warm disaster-recovery region separately from the multi-AZ primary: cross-region RDS
+replica or continuously tested encrypted restore path, versioned S3 replication with checksum
+verification, ECR replication, regional KMS keys, independent ingress/capacity, and Route 53
+health/failover records. Stateful promotion is an explicit human-authorized workflow that fences
+the old writer, promotes/updates endpoints, validates migrations/Temporal/object consistency, and
+supports failback. Do not call a single-region multi-AZ deployment “regional failover.”
+`rehearse_region_failover.sh` runs against isolated staging/DR and records RPO/RTO, data loss,
+action/event idempotency, stream reconnect, and rollback.
 
 `deploy.yml` authenticates to AWS with GitHub OIDC and a narrowly scoped deploy role, accepts only a
 previously signed ECR image digest, requires environment approval for production, runs migration
@@ -502,6 +576,8 @@ terraform -chdir=infra/terraform/environments/staging init -backend=false
 terraform -chdir=infra/terraform/environments/staging validate
 terraform -chdir=infra/terraform/environments/production init -backend=false
 terraform -chdir=infra/terraform/environments/production validate
+terraform -chdir=infra/terraform/environments/production-dr init -backend=false
+terraform -chdir=infra/terraform/environments/production-dr validate
 helm lint infra/helm/loopguard
 helm template loopguard infra/helm/loopguard -f infra/helm/loopguard/values-staging.yaml
 helm template loopguard infra/helm/loopguard -f infra/helm/loopguard/values-production.yaml
@@ -514,15 +590,31 @@ Expected: all commands exit 0 without creating or changing cloud resources.
 
 ```bash
 git add services/control-api/Dockerfile infra .github/workflows/deploy.yml \
-  docs/operations/deployment.md
+  docs/operations/deployment.md services/control-api/scripts/rehearse_region_failover.sh
 git commit -m "ops: define production control plane deployment"
 ```
 
 ### Task 10: Complete production readiness and incident response
 
 **Files:**
+- Create: `services/control-api/src/loopguard_api/enterprise_identity.py`
+- Create: `services/control-api/src/loopguard_api/routes/scim.py`
+- Create: `services/control-api/src/loopguard_api/support.py`
+- Create: `services/control-api/tests/test_enterprise_identity.py`
+- Create: `services/control-api/tests/test_support_access.py`
+- Create: `CONTRIBUTING.md`
+- Create: `SECURITY.md`
+- Create: `CODE_OF_CONDUCT.md`
+- Create: `.github/ISSUE_TEMPLATE/bug.yml`
+- Create: `.github/ISSUE_TEMPLATE/feature.yml`
+- Create: `.github/pull_request_template.md`
+- Create: `apps/web/src/app/(docs)/docs/[[...slug]]/page.tsx`
+- Create: `apps/web/src/app/(docs)/docs/search/route.ts`
+- Create: `apps/web/e2e/docs.spec.ts`
+- Create: `docs/product/pricing-and-limits.md`
 - Create: `docs/operations/production-readiness.md`
 - Create: `docs/operations/incident-response.md`
+- Create: `docs/operations/support.md`
 - Create: `docs/operations/runbooks/relay-outage.md`
 - Create: `docs/operations/runbooks/action-security.md`
 - Create: `docs/operations/runbooks/repair-disable.md`
@@ -532,11 +624,40 @@ git commit -m "ops: define production control plane deployment"
 Every item names owner, evidence, test/runbook link, last exercise, and expiry. Empty evidence is a
 failure, not an implicit pass.
 
+Before GA, implement tenant-configured enterprise OIDC/SAML federation through the identity
+provider integration, domain verification, and SCIM 2.0 user/group provisioning with bearer-token
+hashing, rotation, replay/idempotency, tenant scoping, soft deprovision, and audit. Map groups to
+LoopGuard roles through explicit policy; no email-domain-only authorization.
+
+Implement support access without silent impersonation. Support sees tenant metadata/health only
+under least-privilege roles; any diagnostic bundle requires tenant consent, bounded time/scope,
+redaction preview, reason/ticket ID, and immutable audit. Source, prompts, secrets, artifacts, and
+action approval are excluded by default. Break-glass access requires dual authorization, alerts
+the tenant, expires automatically, and cannot execute remote actions.
+
+Document the contribution path, local `all-dev` setup, focused/cumulative test commands, security
+reporting, release cadence, support channels/response expectations, public roadmap boundaries, and
+transparent hosted pricing/quota dimensions. Issue forms collect version, platform, a redacted
+`doctor --json` bundle, reproduction, expected/actual result, and consent before logs.
+
+Publish the repository Markdown as a version-labelled public docs surface with Quickstart,
+Tutorials, How-to, Reference, Concepts, Security/Privacy, Operations, Migration, and Error Code
+navigation. Add full-text search, stable heading anchors, canonical/version links, copy buttons,
+and source/edit links. CI validates internal/external links, code snippets, CLI/API generated
+reference drift, and search indexing. The dashboard and structured errors deep-link to exact docs
+without exposing an authenticated page.
+
+The repository currently has no license file. Before public source/package distribution, the owner
+must supply approved open-source or proprietary/source-available terms. The implementation agent
+records this as `awaiting_owner_legal_choice` and must not invent a license or publish packages
+under ambiguous rights.
+
 - [ ] **Step 2: Run tabletop scenarios**
 
 Exercise stolen device, compromised host token, cross-tenant authorization attempt, relay outage,
 database restore, bad migration, malicious repair candidate, GitHub App compromise, and leaked
-artifact URL.
+artifact URL. Also exercise SCIM deprovision, enterprise IdP outage, billing-provider outage,
+support-access abuse, and full primary-region failover/failback.
 
 - [ ] **Step 3: Fix every critical/high gap**
 
@@ -548,10 +669,18 @@ review date.
 Required sign-offs: engineering, security, operations, privacy, product, and support. General
 availability remains blocked until all critical/high readiness checks pass.
 
+These are external human authority gates. An implementation agent may prepare evidence and mark a
+gate `awaiting_human_signoff`, but must stop and report the named approver/evidence needed. It must
+never sign on behalf of a role, fabricate an exercise date, perform a production apply/failover, or
+submit an App Store release.
+
 - [ ] **Step 5: Commit production readiness evidence**
 
 ```bash
-git add docs/operations docs/security docs/privacy
+git add services/control-api docs/operations docs/security docs/privacy docs/product \
+  apps/web/src/app/'(docs)' apps/web/e2e/docs.spec.ts \
+  CONTRIBUTING.md SECURITY.md CODE_OF_CONDUCT.md .github/ISSUE_TEMPLATE \
+  .github/pull_request_template.md
 git commit -m "docs: complete production readiness review"
 ```
 
@@ -561,5 +690,7 @@ Run all local, cloud, security, load, chaos, restore, migration, and release-ver
 Run Terraform formatting/validation, Helm lint/template, and rendered-manifest policy tests without
 deploying.
 Expected: published SLOs have alerts and owners; tenant isolation fails closed; backup/restore meets
-RPO/RTO; releases are signed and attested; deployable infrastructure validates; and all
-critical/high readiness items have evidence.
+RPO/RTO; regional failover is actually rehearsed; releases are signed and attested; billing
+reconciles; enterprise identity/deprovision and consent-bound support access pass; deployable
+infrastructure validates; and all critical/high readiness items have evidence plus real human
+sign-off.

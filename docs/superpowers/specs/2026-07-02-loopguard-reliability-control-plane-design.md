@@ -78,11 +78,23 @@ the immediate loop action.
 The product layer must not turn `LoopEvent` into a universal event object. It introduces:
 
 - `ControlEvent`: versioned envelope for session, tool, file, test, pipeline, and operator events.
-- `PolicyDecision`: allow, warn, pause, interrupt, inject, or request approval.
-- `ContextCheckpoint`: repository and session cursor used for incremental context.
+- `PolicyDecision`: allow, warn, pause, interrupt, inject, or request approval against a typed
+  `ActionTarget`.
+- `ContextCheckpoint`: explicit repository and session sequence positions used for incremental
+  context.
 - `VerificationRun`: baseline, impact set, commands, artifacts, and verdict.
 - `RepairRun`: failure evidence, candidate patches, evaluations, and publication status.
-- `ActionRequest`: explicit expiring capability that can be approved from another device.
+- `ActionRequest`: explicit expiring capability with target, expected state version/hash, nonce,
+  and device/cloud signing proof.
+
+Cursor domains are not interchangeable: `local_log_seq` is host-wide durable order, `repo_seq` is
+repository order, `session_seq` is session order, `cloud_ingest_seq` is server ingest order, and
+`client_stream_seq` is subscription delivery order. Every field/API uses its full domain name.
+
+Managed Claude authentication is bring-your-own API/provider credential through Anthropic's
+documented SDK paths. Attached Claude Code hooks remain a separate capability. LoopGuard does not
+proxy `claude.ai` login, subscription rate limits, or session credentials without explicit
+Anthropic approval.
 
 Adapters project relevant `ControlEvent` payloads into existing `LoopEvent` instances. This keeps
 the loop detector small and permits other subsystems to evolve independently.
@@ -119,6 +131,12 @@ switching on a surface that does not expose it.
 - Owns local worktree leases and the browser broker.
 - Maintains an outbound-only authenticated connection to hosted services.
 - Continues useful local operation when the cloud is unavailable.
+
+It uses owner-only state and socket/pipe permissions, peer user/SID verification, bounded
+versioned frames, encrypted event bodies with platform-protected keys, explicit migrations, and
+crash replay. Ingestion is not complete at persistence: a composition root dispatches eligible
+events into a per-session existing `LoopGuard`, then bounded context/verification/relay handlers,
+and returns the normalized policy decision.
 
 The existing FastAPI demo server remains available during migration but is not extended into the
 production control plane.
@@ -210,10 +228,12 @@ unless the user promotes the rule to blocking.
 
 ## Browser broker
 
-A local broker owns warm Playwright browser processes. Each run gets a new isolated
-`BrowserContext`; pages, storage, and credentials are never shared between sessions. The broker
-supports stored authentication fixtures, route-aware impacted test selection, first-retry tracing,
-and CI sharding. Iteration uses impacted smoke tests; merge gates remain comprehensive.
+A local broker owns warm Playwright browser processes. An explicit Playwright Test fixture
+connects projects to the broker; a standalone page RPC is not counted as test-runner acceleration.
+Each run gets a new isolated `BrowserContext`; pages, storage, and credentials are never shared
+between sessions. The broker supports stored authentication fixtures, route-aware impacted test
+selection, first-retry tracing, and CI sharding. Iteration uses impacted smoke tests; merge gates
+remain comprehensive. Speed claims compare against native Playwright worker reuse.
 
 ## Auto-healing pipelines
 
@@ -244,9 +264,11 @@ The hosted service contains:
 - APNs and web notification delivery.
 - Organization policy, retention, billing, and audit APIs.
 
-The phone does not connect directly to the daemon. It submits an expiring `ActionRequest` to the
-hosted API. The daemon validates the signature, session, nonce, expiry, capability, and current
-state before acting.
+The phone does not connect directly to the daemon. It signs an expiring canonical
+`ActionRequest` with its registered device key and submits it to the hosted API. Web uses a
+registered WebAuthn assertion. The hosted API verifies user/device/current state and countersigns
+the exact request with a rotating identified cloud key. The daemon validates both signatures,
+tenant/host/target, nonce, expiry, capability, and current state version/hash before acting.
 
 ## Control surfaces
 
@@ -255,13 +277,27 @@ state before acting.
 The production app is native SwiftUI. Its primary navigation is Inbox, Runs, Changes, Repairs, and
 Settings. It uses system typography, SF Symbols, Dynamic Type, VoiceOver, reduced-motion behavior,
 and Liquid Glass only for the navigation/control layer. Approval screens always show target,
-scope, effect, risk, and expiry.
+scope, effect, risk, expected resulting state, and expiry. All five tabs are implemented
+destinations: Changes contains provenance, diff, and linked verification; Repairs contains
+reproduction evidence, candidates, checks, rollback, and draft-PR state; Settings contains
+account, devices, notifications, privacy/local-only controls, and app version. Live Activities
+are supplied by a separate WidgetKit extension and expose only non-sensitive phase/progress.
 
 ### Web
 
 The web application is a dense operations surface for run timelines, diffs, verification,
 policies, repairs, cost analysis, device management, and audit. It shares API schemas with iOS but
-not presentation code.
+not presentation code. Desktop uses a labelled sidebar and evidence-adjacent list/detail views;
+tablet uses a compact rail and inspector; mobile uses a navigation sheet and single-column detail.
+Browser code uses a same-origin BFF with HttpOnly sessions and one-use, short-lived stream tickets;
+access tokens never enter browser JavaScript or WebSocket URLs.
+
+Both clients prioritize attention, proof, then safe action. They explicitly cover loading, empty,
+error, success, offline/stale, cursor-resync, expired, and revoked states. The web carries forward
+the Expo prototype's Space Grotesk/IBM Plex/mono and semantic token language. Native iOS keeps
+system typography and platform metrics while reusing the colour/status/content principles. This
+platform-specific split replaces the ambiguous instruction to apply the prototype's font and
+no-glass rules unchanged to native iOS.
 
 The Expo application remains a disposable prototype until native iOS and web reach feature parity.
 

@@ -4,9 +4,13 @@
 
 **Goal:** Reduce browser startup and impacted-test latency while preserving per-session isolation and comprehensive merge gates.
 
-**Architecture:** A version-pinned Node broker keeps browser processes warm and creates an isolated `BrowserContext` per agent session. A Python client integrates it with LoopGuard, while a deterministic selector maps changed routes/components to Playwright tests and records traces only under policy.
+**Architecture:** A version-pinned Node broker keeps browser server processes warm. An explicit
+`@loopguard/playwright` fixture connects Playwright Test to that broker and creates a fresh isolated
+`BrowserContext` per worker/session; a standalone `page.run` API is not counted as Playwright-test
+acceleration. A Python client integrates lifecycle and selection with LoopGuard.
 
-**Tech Stack:** Node.js 20+, TypeScript, Playwright, JSONL over Unix socket, Python asyncio client, pytest, Vitest
+**Tech Stack:** Node.js 20+, TypeScript, Playwright, versioned bounded frames over Unix sockets or
+Windows named pipes, Python asyncio client, pytest, Vitest
 
 ---
 
@@ -14,6 +18,7 @@
 
 **Files:**
 - Create: `loopguard/integrations/browser-broker/package.json`
+- Create: `loopguard/integrations/browser-broker/package-lock.json`
 - Create: `loopguard/integrations/browser-broker/tsconfig.json`
 - Create: `loopguard/integrations/browser-broker/src/protocol.ts`
 - Create: `loopguard/integrations/browser-broker/src/protocol.test.ts`
@@ -57,7 +62,10 @@ type BrokerCommand =
 ```
 
 Responses contain `{id, ok, result}` or `{id, ok:false, error:{code,message}}`. Never place
-cookies, storage-state contents, or page HTML in logs.
+cookies, storage-state contents, or page HTML in logs. Include protocol version and a random
+daemon-issued connection capability in the handshake. Use bounded length-prefixed frames, reject
+unknown fields/versions, cap pending requests and frame size, and make context capability IDs
+unguessable and session-bound.
 
 - [ ] **Step 4: Run protocol tests and typecheck**
 
@@ -83,7 +91,9 @@ git commit -m "feat: define isolated browser broker protocol"
 **Files:**
 - Create: `loopguard/integrations/browser-broker/src/broker.ts`
 - Create: `loopguard/integrations/browser-broker/src/server.ts`
+- Create: `loopguard/integrations/browser-broker/src/transport.ts`
 - Create: `loopguard/integrations/browser-broker/src/broker.test.ts`
+- Create: `loopguard/integrations/browser-broker/src/security.test.ts`
 
 - [ ] **Step 1: Write failing lifecycle and isolation tests**
 
@@ -117,6 +127,18 @@ Maintain at most one browser process per configured browser/channel and one cont
 Context creation must set a unique artifact directory, explicit locale/timezone, and disabled
 service-worker policy unless configured. Context IDs are random capabilities, not sequential IDs.
 Close contexts on session stop, idle TTL, broker shutdown, or client disconnect after grace period.
+
+Create the Unix socket in the owner-only LoopGuard state directory, refuse symlink/wrong-owner
+socket paths, set owner-only permissions, and require the daemon-issued connection capability
+before any method. On Windows use a current-user-ACL named pipe and verify the caller through the
+daemon-supervised capability. Bind every context/page/artifact request to the authenticated
+session; one session cannot name another session's context capability.
+
+Navigation defaults to the repository's configured origin allowlist. Deny `file:`, browser
+extension, localhost metadata/admin ports, link-local/cloud-metadata endpoints, and private network
+targets unless an explicit trusted browser policy allows them. Downloads and uploads remain inside
+the session artifact directory. Test DNS rebinding, redirects to denied origins, context-ID
+guessing, oversized frames, wrong capabilities, disconnect cleanup, and broker-process crash.
 
 - [ ] **Step 4: Run broker tests**
 
@@ -166,12 +188,15 @@ def test_page_command_has_hard_timeout(fake_broker_factory):
 Run: `cd loopguard && python -m pytest -q tests/browser/test_client.py`
 Expected: FAIL because the browser package is absent.
 
-- [ ] **Step 3: Implement supervised JSONL communication**
+- [ ] **Step 3: Implement supervised framed communication**
 
-Start the pinned broker with `node dist/server.js --socket <path>`. Correlate response IDs,
-validate every response, bound pending requests, and restart only after backoff. Daemon shutdown
-must close the broker cleanly. Health reports browser versions and active context counts, never
-session secrets.
+Start the pinned broker with an argument array and inherited one-time capability. Correlate
+response IDs, validate every response, bound frames/pending requests, and restart only after
+backoff. Persist no raw connection capability. Daemon shutdown must close the broker cleanly.
+Health reports browser versions and active context counts, never session secrets.
+
+Register `BrowserService` in `DaemonServices`; session lifecycle events create/close browser
+leases, and daemon restart marks lost contexts so callers reconnect rather than reusing stale IDs.
 
 - [ ] **Step 4: Run Python client tests**
 
@@ -216,6 +241,13 @@ Store state outside the repository under LoopGuard home. Encrypt with a locally 
 key. Index by tenant/user, repo, profile, environment, and origin allowlist. The broker receives a
 temporary decrypted file path with restrictive permissions and deletes it after context creation.
 Never infer that production and staging credentials are interchangeable.
+
+Create decrypted files in an owner-only dedicated directory with random names and open them using
+no-follow/exclusive semantics. Record only a non-secret lease marker. On normal close, broker
+crash, daemon restart, failed context creation, timeout, or cancellation, securely unlink every
+leased plaintext file before accepting new work. Tests scan the state/temp directories after each
+failure and prove no cookie/token bytes remain. Never copy storage state into traces, screenshots,
+logs, exception messages, or repair artifacts.
 
 - [ ] **Step 4: Run Python and Node storage tests**
 
@@ -297,6 +329,12 @@ git commit -m "feat: select impacted playwright tests"
 - Create: `loopguard/src/loopguard/browser/execution.py`
 - Test: `loopguard/tests/browser/test_execution.py`
 - Modify: `loopguard/src/loopguard/verify/plugins.py`
+- Create: `loopguard/integrations/playwright-loopguard/package.json`
+- Create: `loopguard/integrations/playwright-loopguard/package-lock.json`
+- Create: `loopguard/integrations/playwright-loopguard/tsconfig.json`
+- Create: `loopguard/integrations/playwright-loopguard/src/fixture.ts`
+- Create: `loopguard/integrations/playwright-loopguard/src/fixture.test.ts`
+- Create: `loopguard/integrations/playwright-loopguard/src/config.ts`
 
 - [ ] **Step 1: Write failing phase-policy tests**
 
@@ -329,16 +367,39 @@ Completion runs impacted tests across required configured projects. PR phase run
 full gate and permits CI sharding. Trace defaults to first retry or retain-on-failure; `trace=on`
 requires explicit diagnostic mode because of overhead.
 
+Implement and package the explicit `@loopguard/playwright` fixture/config adapter. It authenticates
+to the local broker, obtains a browser-server endpoint capability, connects through Playwright's
+supported client API, and creates a new context with the test project's options for each
+worker/session. It closes pages/context/connection in fixture teardown and on cancellation. The
+fixture is opt-in through the project's `playwright.config.ts`; LoopGuard doctor reports whether
+the project actually imports it. A `page.run` RPC is useful for LoopGuard-owned probes but does not
+count as accelerating ordinary `npx playwright test`.
+
+Add integration fixtures that run a real two-test Playwright project twice: native configuration
+and LoopGuard fixture. Assert browser/context isolation, correct Playwright fixtures/reporters/
+traces, process reuse across separate CLI invocations, cleanup after failing tests, and fallback to
+native Playwright when the broker is unavailable. Do not require application teams to rewrite test
+bodies.
+
 - [ ] **Step 4: Run browser and verification integration tests**
 
-Run: `cd loopguard && python -m pytest -q tests/browser tests/verify/test_impact.py`
+Run:
+
+```bash
+cd loopguard
+python -m pytest -q tests/browser tests/verify/test_impact.py
+cd integrations/playwright-loopguard
+npm ci
+npm test
+npx tsc --noEmit
+```
 Expected: PASS.
 
 - [ ] **Step 5: Commit browser execution policy**
 
 ```bash
 git add loopguard/src/loopguard/browser loopguard/src/loopguard/verify \
-  loopguard/tests/browser
+  loopguard/tests/browser loopguard/integrations/playwright-loopguard
 git commit -m "feat: accelerate browser verification by phase"
 ```
 
@@ -374,6 +435,17 @@ Record p50/p95 duration, selected/total test counts, cache hit, retry, trace byt
 full gate later found a failure missed by impacted selection. Report speed and selection escapes
 together; never report latency improvement without the escape metric.
 
+Benchmark against Playwright Test's native browser reuse within a worker, not against launching a
+fresh browser for every test. Measure cold first run, warm repeated invocation, impacted suite,
+full suite, and broker-unavailable fallback on the same pinned browser/version/machine fixture.
+Separate savings from test selection versus cross-invocation browser reuse. Record at least 30
+samples after warm-up and publish distribution/variance, not a single best run.
+
+Enable the broker fixture automatically only when it shows a configured material p50/p95
+improvement without isolation failures, reporter/trace regressions, or a higher full-gate escape
+rate. Otherwise ship it disabled and retain the measured result; never claim “faster Playwright”
+from the standalone probe API alone.
+
 - [ ] **Step 4: Run complete browser tests**
 
 Run: `cd loopguard && python -m pytest -q tests/browser`
@@ -396,9 +468,16 @@ cd loopguard/integrations/browser-broker
 npm ci
 npm test
 npx tsc --noEmit
+cd ../playwright-loopguard
+npm ci
+npm test
+npx tsc --noEmit
 cd ../..
 python -m pytest -q tests/browser
 ```
 
 Expected: all commands exit 0; browser processes are reused; contexts remain isolated; and final
-merge verification never relies only on impacted-test selection.
+merge verification never relies only on impacted-test selection. A real Playwright Test project
+uses the fixture, broker security/origin policy passes on Unix and Windows transports, crash
+cleanup leaves no decrypted auth state, and published speed claims are supported by the native
+Playwright baseline benchmark.

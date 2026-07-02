@@ -8,6 +8,10 @@
 
 **Tech Stack:** Python 3.11+, Pydantic 2, TOML, SQLite, pytest
 
+All illustrative helpers (`repo_snapshot`, `catalog`, `profile`, `result`, managed-run fixtures)
+must be implemented in `loopguard/tests/router/conftest.py` or an explicitly listed integration
+support module.
+
 ---
 
 ### Task 1: Define provider-neutral model catalog types
@@ -15,20 +19,25 @@
 **Files:**
 - Create: `loopguard/src/loopguard/router/__init__.py`
 - Create: `loopguard/src/loopguard/router/catalog.py`
+- Create: `loopguard/tests/router/conftest.py`
 - Test: `loopguard/tests/router/test_catalog.py`
 
 - [ ] **Step 1: Write failing availability tests**
 
 ```python
+from decimal import Decimal
+
 from loopguard.router.catalog import ModelCatalog, ModelSpec
 
 
 def test_catalog_filters_by_surface_capability_and_budget():
     catalog = ModelCatalog([
         ModelSpec(id="fast", provider="p", surfaces={"managed"}, efforts={"low", "medium"},
-                  input_cost_per_million=1, output_cost_per_million=2),
+                  input_cost_per_million=Decimal("1"),
+                  output_cost_per_million=Decimal("2"), source="signed-test-catalog"),
         ModelSpec(id="deep", provider="p", surfaces={"managed"}, efforts={"high"},
-                  input_cost_per_million=10, output_cost_per_million=20),
+                  input_cost_per_million=Decimal("10"),
+                  output_cost_per_million=Decimal("20"), source="signed-test-catalog"),
     ])
     result = catalog.eligible(surface="managed", effort="low", max_output_cost_per_million=5)
     assert [model.id for model in result] == ["fast"]
@@ -56,8 +65,11 @@ class ModelSpec(BaseModel, frozen=True):
 ```
 
 Do not embed a permanent "latest" model. Load catalog entries from signed product configuration,
-provider discovery, or admin policy. Unknown prices remain `None` and cannot be used for
-cost-optimized automatic selection.
+provider discovery, or admin policy. Record source, signature/key ID, observed/effective/expiry
+times, provider model revision, and capability evidence. Reject expired/invalid signed config and
+keep the last known valid catalog with a visible stale status. Unknown prices remain `None`, never
+zero, and cannot be used for cost-optimized automatic selection. Use `Decimal` from parse through
+accounting and serialization; do not round until display.
 
 - [ ] **Step 4: Run catalog tests**
 
@@ -203,9 +215,12 @@ git commit -m "feat: route managed phases with deterministic policy"
 
 **Files:**
 - Create: `loopguard/src/loopguard/router/budgets.py`
+- Create: `loopguard/src/loopguard/router/judge_cache.py`
 - Modify: `loopguard/src/loopguard/guard.py`
+- Modify: `loopguard/src/loopguard/judge.py`
 - Modify: `loopguard/src/loopguard/config.py`
 - Test: `loopguard/tests/router/test_budgets.py`
+- Test: `loopguard/tests/router/test_judge_cache.py`
 
 - [ ] **Step 1: Write failing budget-allocation tests**
 
@@ -239,9 +254,18 @@ Use `Decimal`, never float, for router accounting. Keep existing hard total-spen
 enforce character/token estimates independently. A failed reservation returns a normal typed
 decision and never calls the optional service.
 
+Replace run-local detector-key caching with a bounded incident cache keyed by
+`(policy_version, detector_kind, normalized_incident_fingerprint, judge_model, prompt_version)`.
+The fingerprint contains the normalized repeated behavior and relevant bounded context, not raw
+secrets or only the run ID. Cache only validated judge outcomes, encrypt persisted values, apply
+short TTL/LRU limits, and invalidate on policy/prompt/model changes. Concurrent identical incidents
+use single-flight deduplication. Tests prove identical incidents across runs reuse one result,
+different arguments/context do not collide, failures/timeouts are not cached, and budget is
+reserved exactly once.
+
 - [ ] **Step 4: Run router and existing budget tests**
 
-Run: `cd loopguard && python -m pytest -q tests/router/test_budgets.py tests/test_budget.py tests/test_guard.py`
+Run: `cd loopguard && python -m pytest -q tests/router/test_budgets.py tests/router/test_judge_cache.py tests/test_budget.py tests/test_guard.py`
 Expected: PASS.
 
 - [ ] **Step 5: Commit cost ceilings**
@@ -289,7 +313,9 @@ Expected: FAIL because the outcome recorder is missing.
 
 Store selected route, actual model, effort, token usage, provider-reported cost, estimated cost,
 verification verdict, regressions, interruptions, repairs, and wall time. Keep reported and
-estimated cost separate. Never write an "avoided cost" as observed fact.
+estimated cost separate. Missing token or price data remains `None`/`unknown`, not `0`. A total is
+unknown when a required component is unknown; also expose the sum of known components. Never write
+an "avoided cost" as observed fact.
 
 - [ ] **Step 4: Run accounting tests**
 
@@ -388,6 +414,10 @@ Expected: FAIL because phase coordination is missing.
 Allowed transitions are `plan -> implement -> verify`, with `verify -> implement` only after failed
 evidence and a bounded repair count. `repair` is entered only by a repair workflow. Persist every
 phase and route before invoking the adapter. Reject model switches during an active tool request.
+Register the catalog, feature extractor, budget service, outcome recorder, experiment assignment,
+and phase coordinator in `DaemonServices`. Recovery reloads the persisted phase/route and compares
+adapter state before another turn; mismatch becomes `orphaned`/human review, not an automatic
+duplicate phase.
 
 - [ ] **Step 4: Run integration and router tests**
 
@@ -413,4 +443,6 @@ ruff check src/loopguard/router tests/router
 ```
 
 Expected: all commands exit 0; routing invokes no model; unsupported surfaces remain unchanged; and
-reports distinguish observed cost from estimated counterfactual savings.
+reports distinguish observed cost from estimated counterfactual savings. Unknown prices/costs stay
+unknown, judge calls deduplicate only by validated incident fingerprint, concurrent budget
+reservations cannot overspend, and daemon restart cannot repeat a phase transition.

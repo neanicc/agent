@@ -45,6 +45,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import AsyncIterator, Protocol
 
+from loopguard.control.decisions import ActionRequest
 from loopguard.control.events import ControlEvent, SessionRef
 
 
@@ -82,8 +83,21 @@ class AdapterCapabilities:
 class AgentAdapter(Protocol):
     capabilities: AdapterCapabilities
 
+    async def attach(self, session: SessionRef) -> None: ...
+    async def start(self, request: ManagedRunRequest) -> SessionRef: ...
+    async def interrupt(self, session: SessionRef) -> CapabilityError | None: ...
+    async def inject(self, session: SessionRef, context: str) -> CapabilityError | None: ...
+    async def resolve_action(
+        self, session: SessionRef, action: ActionRequest
+    ) -> CapabilityError | None: ...
     async def events(self, session: SessionRef) -> AsyncIterator[ControlEvent]: ...
 ```
+
+Define `ManagedRunRequest` once in `base.py` with repository/worktree identity, prompt, model,
+effort, sandbox, permission policy, proof-contract ID, and token/cost ceilings. Every method must
+return a typed capability or lifecycle error for unsupported, unknown-session, stale-state,
+process-exited, timeout, and protocol-version cases. Add a contract test suite that runs against
+both managed adapters and a deliberately observation-only adapter; no adapter may silently no-op.
 
 - [ ] **Step 4: Run the focused test**
 
@@ -118,7 +132,7 @@ def test_codex_tool_hook_normalizes_event(fake_socket):
         vendor="codex",
         hook_name="PreToolUse",
         raw={"session_id": "s", "cwd": "/repo", "tool_name": "Bash",
-             "tool_input": {"cmd": "pytest"}},
+             "tool_input": {"command": "pytest"}},
         client=fake_socket,
     )
     assert result.exit_code == 0
@@ -160,10 +174,21 @@ def normalize_hook(vendor: str, hook_name: str, raw: dict) -> ControlEvent:
     # Resolve repo identity from the canonical Git root, not cwd text alone.
 ```
 
-`HookClient.send()` must connect to the configured local socket, write one JSON line, read one
-acknowledgement, and time out after 100 ms by default. `process_hook()` returns exit 0 on
+`HookClient.send()` must use the foundation's versioned bounded frame protocol, read the normalized
+policy decision from the acknowledgement, and time out after 100 ms by default. It resolves the
+socket/pipe from trusted local configuration, never hook input. `process_hook()` returns exit 0 on
 observation failure and a typed blocking response only when a configured fail-closed policy
-explicitly requires it.
+explicitly requires it. Map `allow`, `warn`, `pause`, `interrupt`, `inject`, and
+`request_approval` only to actions supported by the current vendor hook lifecycle; unsupported
+decisions become visible capability warnings, not invented controls.
+
+Derive `host_id`, canonical repository identity, and any session binding locally. Treat hook
+payload fields as untrusted observations. Redact before transport, cap input/output size, and test
+malformed UTF-8/JSON, symlinked working directories, repository deletion, timeout, daemon restart,
+unknown decision action, and a real repeated-tool event reaching the daemon's existing detector.
+Codex `PreToolUse` currently covers Bash, `apply_patch`, and MCP calls but is not a complete
+enforcement boundary; the capability report and protected-session UI must disclose that exact
+coverage rather than imply every possible tool path is intercepted.
 
 - [ ] **Step 4: Run hook tests and a latency test**
 
@@ -234,10 +259,14 @@ and `os.replace()` so a failed write cannot corrupt the user's file.
 Project scope installs a committed `.loopguard/hooks/codex-hook` wrapper and resolves it from the
 canonical Git root, matching Codex's documented project-hook trust behavior. The wrapper first
 tries the local socket. If the socket is absent, it may send a signed HTTPS event only when an
-explicit LoopGuard ingest URL and short-lived token are present in the environment; otherwise it
-exits 0. Treat Codex cloud execution of repo-local hooks as conditional until a compatibility
-smoke test against the installed/current Codex surface proves it. Never advertise live cloud
-observation merely because the files were committed.
+explicit LoopGuard ingest URL and repository-scoped hook credential are present in the
+environment; otherwise it exits 0. Sign the canonical method/path/timestamp/nonce/body hash,
+include credential key ID, enforce a small request/response/time budget, and never follow
+cross-origin redirects. The cloud plan owns credential issue/rotation/revocation, repository
+binding, replay protection, and `/v1/hook-events` verification. Treat Codex cloud execution of
+repo-local hooks as conditional until a compatibility smoke test against the installed/current
+Codex surface proves a signed event arrived under the correct tenant/repository. Never advertise
+live cloud observation merely because the files were committed.
 
 Codex requires users to review and trust non-managed hook definitions. Preserve that boundary:
 installation reports `trust_required` and tells the user to review the definition in `/hooks`;
@@ -311,7 +340,10 @@ Project hooks call a committed thin script:
 ```
 
 The script first tries the local socket. In cloud mode it sends a signed HTTPS event only when
-`LOOPGUARD_CLOUD_INGEST_URL` and `LOOPGUARD_CLOUD_TOKEN` are configured; otherwise it exits 0.
+`LOOPGUARD_CLOUD_INGEST_URL`, credential key ID, and repository-scoped hook secret are configured;
+otherwise it exits 0. Use the same canonical request signature, timestamp/nonce, no-redirect,
+timeout, rotation, revocation, repository-binding, and replay contract as Codex hooks. Never place
+credentials in committed settings or wrapper files.
 Use Claude's documented `CLAUDE_CODE_REMOTE=true` signal only to label cloud execution, not as an
 authentication mechanism. `FileChanged` covers explicitly watched literal files only; the
 Change Journal filesystem watcher remains the source of truth for arbitrary source-file changes.
@@ -374,6 +406,13 @@ Start `codex app-server --listen stdio://`, perform `initialize`/`initialized`, 
 Generate and pin protocol fixtures from the installed Codex CLI in a compatibility test; do not
 hand-maintain assumptions that generated schemas can verify.
 
+Start only inside a worktree lease created by the context plan and only after the verification
+plan records the proof contract plus pre-mutation baseline. Persist vendor thread/turn IDs and
+state transitions so daemon restart reports `recovering`, `reattached`, or `orphaned` instead of
+creating a duplicate turn. Bound stdout/stderr/event queues, reject responses with unknown request
+IDs, time out initialization/turn/control operations independently, terminate the child process
+tree on cancellation, and redact process diagnostics before persistence.
+
 - [ ] **Step 4: Run fake-server and malformed-frame tests**
 
 Run: `cd loopguard && python -m pytest -q tests/adapters/test_codex_managed.py`
@@ -395,6 +434,8 @@ git commit -m "feat: manage codex through app server"
 - Create: `loopguard/src/loopguard/adapters/claude_managed.py`
 - Test: `loopguard/tests/adapters/test_claude_managed.py`
 - Create: `loopguard/integrations/claude-bridge/package.json`
+- Create: `loopguard/integrations/claude-bridge/package-lock.json`
+- Create: `loopguard/integrations/claude-bridge/tsconfig.json`
 - Create: `loopguard/integrations/claude-bridge/src/index.ts`
 - Create: `loopguard/integrations/claude-bridge/src/index.test.ts`
 
@@ -431,7 +472,17 @@ type BridgeCommand =
 
 It uses the official `@anthropic-ai/claude-agent-sdk`, emits normalized JSONL events, and never
 exposes SDK objects directly to Python. Pin the SDK version in `package-lock.json`. The Python
-adapter owns process lifecycle, timeout, restart, and `ControlEvent` validation.
+adapter owns process lifecycle, per-method timeouts, bounded queues, restart/recovery state,
+process-tree cleanup, and `ControlEvent` validation. Like Codex, a managed Claude run requires a
+leased worktree and recorded pre-mutation proof baseline. The bridge binds every response/event to
+the started session and rejects unknown IDs, unsupported protocol versions, oversized frames, and
+events after terminal state.
+
+Authenticate managed Claude only with user-supplied API credentials or a documented supported
+provider such as Bedrock, Vertex AI, or Azure AI Foundry. Unless Anthropic grants explicit written
+approval, LoopGuard must not offer or proxy `claude.ai` login, subscription rate limits, or session
+credentials as product authentication. Attached Claude Code hooks remain available independently
+of managed-mode API credentials, and the capability matrix must make that distinction explicit.
 
 - [ ] **Step 4: Run Python and TypeScript tests**
 
@@ -459,8 +510,11 @@ git commit -m "feat: manage claude through sdk bridge"
 
 **Files:**
 - Create: `loopguard/src/loopguard/adapters/doctor.py`
+- Create: `loopguard/src/loopguard/adapters/setup.py`
 - Create: `loopguard/docs/integration-compatibility.md`
+- Create: `loopguard/docs/getting-started-protected-session.md`
 - Test: `loopguard/tests/adapters/test_doctor.py`
+- Test: `loopguard/tests/adapters/test_setup.py`
 - Modify: `loopguard/src/loopguard/cli.py`
 
 - [ ] **Step 1: Write a failing capability-report test**
@@ -476,10 +530,15 @@ def test_report_never_claims_cloud_model_control():
     assert cloud.capabilities["select_model"] == "unavailable"
 ```
 
+Setup tests must prove dry-run has no writes, existing config is preserved, repeated setup is a
+no-op, trust remains human-owned, partial failure produces an exact resume command, non-interactive
+mode is deterministic, safe doctor fixes stay inside LoopGuard-owned state, uninstall preserves
+unrelated hooks/data, and purge requires explicit confirmation.
+
 - [ ] **Step 2: Verify failure**
 
-Run: `cd loopguard && python -m pytest -q tests/adapters/test_doctor.py`
-Expected: FAIL because `build_report` is missing.
+Run: `cd loopguard && python -m pytest -q tests/adapters/test_doctor.py tests/adapters/test_setup.py`
+Expected: FAIL because diagnostics and guided setup are missing.
 
 - [ ] **Step 3: Implement executable/version/config checks**
 
@@ -488,6 +547,41 @@ bridge health, and every capability as `supported`, `conditional`, `experimental
 `unavailable`. A configured repo-local hook is not sufficient evidence that a hosted surface
 executes it: retain `codex-cloud.observe=conditional` until the compatibility smoke test records a
 real event. Render the same data in CLI JSON and `integration-compatibility.md`.
+
+Expose one guided golden path:
+
+```bash
+loopguard setup --agent auto --scope user
+loopguard setup --agent auto --scope project --dry-run
+loopguard doctor --fix-safe --json
+loopguard uninstall --dry-run
+```
+
+`setup` detects installed Codex/Claude versions, validates the daemon extra, previews every file,
+service, and hook change, installs the user service, merges selected integrations idempotently,
+starts the daemon, and runs a synthetic end-to-end event. It never approves vendor hook trust; it
+prints the exact trust-review step and remains `attention_required` until verified. Interactive
+mode defaults to detected local agents and local-only operation; non-interactive mode requires
+explicit scope/agents and returns stable exit/error codes.
+
+`doctor --fix-safe` may restart LoopGuard's own service, repair owner-only permissions, regenerate
+LoopGuard-owned wrappers, or refresh compatibility metadata. It may not change vendor trust,
+delete data, overwrite unrelated configuration, install cloud credentials, or bypass policy.
+`uninstall` previews and removes only LoopGuard-owned hooks/services; local data is retained by
+default and a separate explicit `loopguard data purge` command requires confirmation.
+
+The getting-started guide targets a protected existing session in under five minutes: run setup,
+complete explicit trust, start normal `codex`/`claude`, then see `loopguard sessions` report
+`protected_attached` plus the exact event/tool coverage for that vendor/version. Never collapse
+partial hook coverage into a generic “fully protected” claim. Include expected output and
+troubleshooting for every attention state.
+
+Record local, privacy-safe setup step timings and outcome codes (`install_detected`, service,
+hook merge, trust pending, synthetic event, protected session) without paths, repository names,
+prompts, or identifiers. `loopguard dx report --local` shows median/last time-to-quickstart and
+time-to-protected-session. Upload is off by default and requires explicit telemetry opt-in.
+`loopguard doctor --bundle <path>` creates a redaction-previewed diagnostic archive only after
+confirmation. `loopguard feedback` prints the version-prefilled issue/support route.
 
 - [ ] **Step 4: Run all adapter tests**
 
@@ -498,7 +592,8 @@ Expected: PASS without provider credentials or network access.
 
 ```bash
 git add loopguard/src/loopguard loopguard/tests/adapters \
-  loopguard/docs/integration-compatibility.md
+  loopguard/docs/integration-compatibility.md \
+  loopguard/docs/getting-started-protected-session.md
 git commit -m "feat: report agent integration capabilities"
 ```
 
@@ -508,7 +603,9 @@ git commit -m "feat: report agent integration capabilities"
 - Create: `loopguard/src/loopguard/adapters/service_install.py`
 - Create: `loopguard/src/loopguard/adapters/templates/com.loopguard.daemon.plist`
 - Create: `loopguard/src/loopguard/adapters/templates/loopguardd.service`
+- Create: `loopguard/src/loopguard/adapters/templates/loopguardd-windows.xml`
 - Test: `loopguard/tests/adapters/test_service_install.py`
+- Test: `loopguard/tests/adapters/test_service_install_windows.py`
 - Modify: `loopguard/src/loopguard/cli.py`
 
 - [ ] **Step 1: Write failing platform and idempotency tests**
@@ -546,7 +643,10 @@ On macOS, atomically write `~/Library/LaunchAgents/com.loopguard.daemon.plist`, 
 `plutil -lint`, then use `launchctl bootstrap gui/<uid>` and `kickstart`. On Linux, write
 `~/.config/systemd/user/loopguardd.service`, run `systemctl --user daemon-reload`, then
 `enable --now`. Render an absolute executable and state path; never depend on an interactive
-shell `PATH`.
+shell `PATH`. On Windows, install a current-user scheduled task (or user-scoped service where
+policy permits) that runs the daemon foreground entrypoint with the named-pipe transport and
+current-user ACL. Verify command quoting, SID binding, restart policy, status, upgrade, and
+uninstall on a real Windows CI runner.
 
 Expose:
 
@@ -556,9 +656,9 @@ loopguard daemon status --json
 loopguard daemon uninstall
 ```
 
-Uninstall stops and removes only the LoopGuard-owned service definition. Windows remains
-capability-reported as unavailable until a separately tested named-pipe/service implementation is
-added; the installer must not pretend success there.
+Uninstall stops and removes only the LoopGuard-owned service definition. Capability reporting
+marks Windows automatic startup supported only after the named-pipe and service integration matrix
+passes on Windows; before that it reports `experimental`, never false success.
 
 - [ ] **Step 4: Run renderer and mocked-command tests**
 
@@ -581,9 +681,16 @@ Run:
 ```bash
 cd loopguard
 python -m pytest -q tests/adapters tests/control
+cd integrations/claude-bridge
+npm ci
+npm test
+npx tsc --noEmit
+cd ../..
 loopguard integrations verify codex --json
 loopguard integrations verify claude --json
 ```
 
 Expected: unit tests pass, installers are idempotent, attached hooks remain fail-open when the
-daemon is unavailable, and managed adapters report precise capabilities.
+daemon is unavailable, signed cloud hook fixtures bind to the correct repository, managed adapters
+report precise capabilities, and the daemon startup/transport suite passes on macOS, Linux, and
+Windows CI.

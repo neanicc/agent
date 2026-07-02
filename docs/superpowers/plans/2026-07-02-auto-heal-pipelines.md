@@ -15,6 +15,7 @@
 **Files:**
 - Create: `loopguard/src/loopguard/heal/__init__.py`
 - Create: `loopguard/src/loopguard/heal/models.py`
+- Modify: `loopguard/pyproject.toml`
 - Test: `loopguard/tests/heal/test_models.py`
 
 - [ ] **Step 1: Write failing state and publication tests**
@@ -77,6 +78,12 @@ class FailureEvent(BaseModel):
 Add `RepairRun`, `CandidatePatch`, `CandidateEvaluation`, `DataContractDelta`, and
 `PublicationRecord`. State transitions are methods, not arbitrary field assignment.
 
+Add a `heal` optional dependency group containing only the concrete client libraries used by the
+repair implementation (Temporal client, container/runtime client, and GitHub API client), with
+versions/constraints compatible with the service. Keep Airflow/dbt/OpenLineage adapters
+duck-typed or in separate integration extras so the core heal install does not pull an orchestrator
+runtime. Extend `all-dev` and its metadata test.
+
 - [ ] **Step 4: Run repair model tests**
 
 Run: `cd loopguard && python -m pytest -q tests/heal/test_models.py`
@@ -85,7 +92,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit repair state contracts**
 
 ```bash
-git add loopguard/src/loopguard/heal loopguard/tests/heal
+git add loopguard/src/loopguard/heal loopguard/tests/heal loopguard/pyproject.toml
 git commit -m "feat: define gated pipeline repair workflow"
 ```
 
@@ -97,7 +104,10 @@ git commit -m "feat: define gated pipeline repair workflow"
 - Create: `loopguard/src/loopguard/heal/integrations/airflow.py`
 - Create: `loopguard/src/loopguard/heal/integrations/openlineage.py`
 - Create: `loopguard/src/loopguard/heal/integrations/github_actions.py`
+- Create: `loopguard/src/loopguard/heal/integrations/webhook.py`
+- Create: `services/control-api/src/loopguard_api/routes/repair_intake.py`
 - Test: `loopguard/tests/heal/test_intake.py`
+- Test: `services/control-api/tests/test_repair_intake.py`
 - Test fixtures: `loopguard/tests/fixtures/heal/events/`
 
 - [ ] **Step 1: Write failing cross-source fingerprint tests**
@@ -136,16 +146,40 @@ Airflow callback payloads include DAG/task/run metadata and log artifact referen
 accepts terminal `FAIL` run events. GitHub Actions intake uses workflow/job/check metadata.
 Deduplicate active repairs by tenant, repo, and fingerprint.
 
+All source payloads, exception messages, stack traces, logs, schema names, artifact text, and GitHub
+annotations are hostile data. Parse bounded allowlisted fields and store them as data; never place
+them into system/developer instructions or execute commands/URLs they contain.
+
+Expose signed HTTPS repair intake through the cloud API. Reuse the cloud hook-credential lifecycle
+and canonical request signature, but require a `repair:intake` repository scope. Verify key ID,
+method/path/timestamp/nonce/body hash, clock skew, replay, body/schema limits, tenant/host/repository
+binding, and credential rotation/revocation before normalization. Airflow/OpenLineage/GitHub
+adapters either run behind this signed wrapper or use verified provider-native signatures and a
+repository mapping. A source field in JSON is never authentication.
+
+Tests include forged source type, replay, repository substitution, expired/revoked credential,
+oversized gzip/body, decompression bomb, malformed stack frame, prompt-injection text, SSRF URL,
+and GitHub delivery signature/installation mismatch.
+
 - [ ] **Step 4: Run intake tests**
 
-Run: `cd loopguard && python -m pytest -q tests/heal/test_intake.py`
+Run:
+
+```bash
+cd loopguard
+python -m pytest -q tests/heal/test_intake.py
+cd ../services/control-api
+python -m pytest -q tests/test_repair_intake.py
+```
 Expected: PASS.
 
 - [ ] **Step 5: Commit failure intake adapters**
 
 ```bash
 git add loopguard/src/loopguard/heal loopguard/tests/heal \
-  loopguard/tests/fixtures/heal/events
+  loopguard/tests/fixtures/heal/events \
+  services/control-api/src/loopguard_api/routes/repair_intake.py \
+  services/control-api/tests/test_repair_intake.py
 git commit -m "feat: normalize pipeline failure intake"
 ```
 
@@ -168,7 +202,9 @@ def test_fixture_redacts_identity_but_preserves_types():
     ])
     assert fixture.rows[0]["email"] != "person@example.com"
     assert isinstance(fixture.rows[0]["email"], str)
-    assert fixture.rows[0]["lat"] == 43.65
+    assert fixture.rows[0]["lat"] != 43.65
+    assert -90 <= fixture.rows[0]["lat"] <= 90
+    assert -180 <= fixture.rows[0]["lon"] <= 180
 
 
 def test_schema_delta_detects_string_to_float():
@@ -188,6 +224,13 @@ Infer JSON/CSV primitive, nullability, range, enum, and nested shape. Redact con
 with deterministic type-preserving replacements. Limit row count and bytes. Record redaction
 manifest and reject fixtures containing unredacted known secrets. If no safe fixture exists,
 generate a synthetic fixture from schema and mark its provenance.
+
+Geographic coordinates are sensitive even when no name/email is present. Preserve numeric type,
+nullability, valid range, coarse distribution, and cross-field constraints, but perturb, bucket,
+or synthesize exact latitude/longitude so the fixture cannot reveal a real location. Apply the
+same treatment to timestamps, rare categories, free text, identifiers, and quasi-identifying
+field combinations. Tests prove fixture values differ from source sensitive values while the
+string-to-float failure still reproduces.
 
 - [ ] **Step 4: Run fixture tests**
 
@@ -238,6 +281,19 @@ capabilities, run as non-root, set CPU/memory/PID/time limits, disable network b
 no production credentials. Capture command, image digest, repository SHA, exit status, output
 artifact, and observed fingerprint.
 
+Hosted workers must use rootless restricted pods with seccomp/AppArmor and a strong workload
+isolation boundary such as gVisor or an ephemeral microVM. Never mount the host Docker/container
+socket, host filesystem, service-account token, cloud metadata endpoint, SSH agent, GitHub token,
+or signing credentials into an untrusted pipeline build. Pin base images by digest and verify
+provenance. Local Docker support is explicitly lower assurance and requires user opt-in plus the
+same no-credential/network/resource policy.
+
+Build steps are untrusted repository code. Enforce output/artifact path containment, symlink and
+device-file rejection, archive extraction limits, read-only root filesystem, bounded temporary
+storage, and full process/namespace teardown. Tests include fork bomb/resource exhaustion, network
+and metadata access, socket mount detection, symlink escape, oversized artifact/archive, malicious
+test output, and sandbox crash cleanup.
+
 - [ ] **Step 4: Run sandbox fixture tests**
 
 Run: `cd loopguard && python -m pytest -q tests/heal/test_reproduce.py`
@@ -255,6 +311,7 @@ git commit -m "feat: reproduce pipeline failures in isolation"
 
 **Files:**
 - Create: `loopguard/src/loopguard/heal/planner.py`
+- Create: `loopguard/src/loopguard/heal/generator.py`
 - Create: `loopguard/src/loopguard/heal/candidates.py`
 - Test: `loopguard/tests/heal/test_candidates.py`
 
@@ -293,6 +350,31 @@ Each candidate receives the same failure, fixture, contract, repository revision
 paths in a distinct worktree. Enforce maximum files, changed lines, tool calls, wall time, and cost.
 Reject binary, dependency-lock, CI, secret, infrastructure, or migration changes unless the repair
 policy explicitly permits them.
+
+Define:
+
+```python
+class CandidateGenerator(Protocol):
+    async def generate(
+        self,
+        brief: RepairStrategyBrief,
+        sandbox: CandidateSandbox,
+        budget: CandidateBudget,
+    ) -> CandidatePatch: ...
+```
+
+The production implementation uses the managed adapter contract and deterministic model/effort
+router from earlier plans. It starts inside the candidate's restricted sandbox/worktree, uses a
+repair-specific permission profile, receives only redacted bounded evidence, and can read/write
+only allowlisted repository paths. It has no network, credentials, cloud/GitHub APIs, host tools,
+other candidate diffs, hidden production context, or publication capability. Provider/model,
+effort, prompt version, tool calls, tokens, cost, stop reason, and patch hash are evidence.
+
+Wrap hostile failure/log/fixture text in a typed data envelope. The fixed system instructions
+explicitly treat it as non-authoritative. Validate the resulting patch independently and ignore
+any embedded request to exfiltrate secrets, relax policy, access a URL, change CI, or publish.
+Tests inject adversarial instructions through every evidence field and prove tools/paths/network/
+budget remain constrained.
 
 - [ ] **Step 4: Run candidate tests**
 
@@ -401,6 +483,20 @@ base SHA protection, and open a draft PR. Report root cause, sanitized failure f
 reproduction command/result, every candidate outcome, winning diff rationale, exact verification,
 contract delta, risk, artifacts, and rollback. Never call merge or deployment APIs.
 
+Make publication idempotent by `(tenant, repository, repair_id, winning_patch_hash)`. Before
+creating anything, query the stored publication record and GitHub branch/PR metadata. Branch names
+include a stable repair hash and collision suffix derived without user input. If the base branch
+advanced, never force-push or silently rebase: reapply the patch in a fresh isolated worktree,
+rerun the complete candidate verification against the new base, and request publication approval
+for the new expected-state hash. If the remote branch exists with unexpected commits, fail closed
+for human review.
+
+Use expected old-object IDs on ref updates, installation/repository binding checks, bounded API
+retries with idempotency reconciliation, and recovery for “push succeeded, response lost” and “PR
+created, DB commit lost.” Store branch SHA, PR node/number/URL, installation ID, base SHA, head SHA,
+and audit record. Tests cover branch collision, concurrent publication requests, token expiry,
+rate limit, base advance, repository rename/transfer, lost responses, partial push, and retry.
+
 - [ ] **Step 4: Run publisher tests**
 
 Run: `cd loopguard && python -m pytest -q tests/heal/test_github.py`
@@ -418,7 +514,7 @@ git commit -m "feat: publish verified repairs as draft pull requests"
 
 **Files:**
 - Create: `services/control-api/src/loopguard_api/repair_workflow.py`
-- Create: `services/control-api/src/loopguard_api/routes/repairs.py`
+- Modify: `services/control-api/src/loopguard_api/routes/repairs.py`
 - Modify: `services/control-api/src/loopguard_api/app.py`
 - Test: `services/control-api/tests/test_repair_workflow.py`
 - Test: `services/control-api/tests/test_repairs_api.py`
@@ -482,14 +578,23 @@ Expected: FAIL because orchestration and the client-facing repair API are absent
 Activities are intake, fixture, reproduce, plan, generate candidate, evaluate candidate, rank,
 render report, and publish. Each activity is idempotent by repair/candidate ID and persists an
 artifact before returning. Workflow enforces time, attempt, candidate, and cost budgets. Publication
-waits indefinitely for an authorized, unexpired action or configured cancellation timeout.
+waits until an authorized, unexpired action or a finite organization-configured cancellation
+deadline (default seven days, bounded maximum thirty days), then transitions to cancelled/expired
+and releases worktrees/sandboxes. No workflow waits indefinitely. Signals are idempotent and
+validated against current state/version/hash.
+
+Use the `repairs` and `repair_candidates` tables/migration created by the cloud plan; add a schema
+compatibility test rather than a second implicit persistence layer. Workflow search attributes
+contain only non-sensitive IDs/status. Restart/replay tests cover every activity boundary,
+especially artifact persisted before activity completion, worker loss during candidate generation,
+and cancellation during publication.
 
 Register a versioned tenant-scoped repair router in `app.py`:
 
 ```python
 @router.get("/v1/repairs", response_model=RepairPage)
 async def list_repairs(
-    cursor: str | None = None,
+    page_cursor: str | None = None,
     limit: int = Query(50, ge=1, le=200),
     ctx: TenantContext = Depends(require_viewer),
 ): ...
@@ -505,7 +610,7 @@ async def read_repair(
 `RepairDetail` exposes state, sanitized fingerprint, reproduction proof, bounded candidate diffs,
 evaluation evidence, deterministic ranking reason, contract deltas, artifact references, rollback,
 and publication status. It never returns raw fixtures, credentials, full environment dumps, or
-unredacted stack traces. Use immutable `(created_at, id)` cursors and return 404 for cross-tenant
+unredacted stack traces. Use immutable `(created_at, id)` page cursors and return 404 for cross-tenant
 identifiers. Publication, cancellation, and retry remain typed `/v1/actions` operations with
 authorization, expiry, expected-state hash, idempotency, and audit; do not create bypass mutation
 routes on the repair resource.
@@ -583,4 +688,7 @@ ruff check src/loopguard/heal tests/heal
 ```
 
 Expected: all commands exit 0; a non-reproduced failure cannot generate candidates; no
-inconclusive candidate can win; and publication creates only a draft PR after explicit authority.
+inconclusive candidate can win; hostile failure evidence cannot control tools/policy; hosted
+workers expose no host socket/credentials; sensitive coordinates are not preserved exactly;
+publication is idempotent and creates only a draft PR after explicit authority; and every
+awaiting-publication workflow terminates by its bounded deadline.
