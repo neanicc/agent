@@ -1,6 +1,8 @@
 # Shared Context and Multi-Agent Coordination Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For implementation agents:** Execute this plan task-by-task and track every checkbox. In Codex, use the native plan, debugging, review, and verification tools available in the host. In Claude Code, use `superpowers:subagent-driven-development` or `superpowers:executing-plans` when installed. A missing named workflow is never a blocker; perform the equivalent TDD and verification steps directly.
+
+> **Command convention:** Resolve one absolute, supported virtualenv interpreter as `$PY`. In every shell snippet, read bare `python` as `$PY`, `python -m pip` as `$PY -m pip`, and `ruff` as `$PY -m ruff`; never assume those executables are on `PATH`.
 
 **Goal:** Detect repository changes from every actor, maintain cursor-based shared state, provide compact handoffs, and warn concurrent agents before their work overlaps.
 

@@ -1,6 +1,8 @@
 # Control-Plane Foundation Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For implementation agents:** Execute this plan task-by-task and track every checkbox. In Codex, use the native plan, debugging, review, and verification tools available in the host. In Claude Code, use `superpowers:subagent-driven-development` or `superpowers:executing-plans` when installed. A missing named workflow is never a blocker; perform the equivalent TDD and verification steps directly.
+
+> **Command convention:** Resolve one absolute, supported virtualenv interpreter as `$PY`. In every shell snippet, read bare `python` as `$PY`, `python -m pip` as `$PY -m pip`, and `ruff` as `$PY -m ruff`; never assume those executables are on `PATH`.
 
 **Goal:** Add a versioned canonical event stream, durable local store, daemon protocol, and compatibility projection without changing existing loop-detector behavior.
 
@@ -611,11 +613,15 @@ git commit -m "feat: add durable local control daemon"
 - Create: `loopguard/src/loopguard/quickstart.py`
 - Create: `loopguard/src/loopguard/configuration.py`
 - Modify: `loopguard/src/loopguard/cli.py`
+- Modify: `loopguard/src/loopguard/server/app.py`
 - Modify: `loopguard/pyproject.toml`
 - Create: `.github/workflows/control-foundation.yml`
 - Test: `loopguard/tests/control/test_cli_daemon.py`
 - Test: `loopguard/tests/control/test_quickstart.py`
 - Test: `loopguard/tests/control/test_error_contract.py`
+- Modify: `loopguard/tests/test_agent.py`
+- Modify: `loopguard/tests/test_judge.py`
+- Modify: `loopguard/tests/test_server_app.py`
 - Modify: `README.md`
 - Modify: `loopguard/README.md`
 - Create: `docs/getting-started/quickstart.md`
@@ -729,15 +735,30 @@ Defaults work locally; every setting has an environment/config/CLI override wher
 Generate `docs/reference/cli.md` from Typer help in CI and fail on drift. Every command example in
 getting-started/reference docs runs as a doctest/snapshot against the built CLI.
 
+Close the verified 2026-07-14 baseline debt in this task: remove the unused `result` local and
+`JudgeVerdict` import, then fix the demo server broadcast lifecycle so it cannot create an
+unawaited `_broadcast` coroutine during tests or shutdown. Add a regression that exercises the
+start-run/broadcast path with runtime warnings promoted to errors. Keep the external Starlette/
+`httpx` deprecation recorded until its dependency migration, but do not suppress LoopGuard-owned
+runtime/resource warnings.
+
 - [ ] **Step 4: Run CLI and complete existing test suite**
 
-Run: `cd loopguard && python -m pytest -q`
-Expected: PASS.
+Run:
+
+```bash
+cd loopguard
+python -m pytest -q -W error::RuntimeWarning
+ruff check src tests
+```
+
+Expected: PASS; Ruff exits 0 and no LoopGuard-owned runtime/resource warning is emitted.
 
 - [ ] **Step 5: Commit the CLI and migration documentation**
 
 ```bash
-git add README.md loopguard/src/loopguard loopguard/tests/control loopguard/README.md \
+git add README.md loopguard/src/loopguard loopguard/tests/control loopguard/tests/test_agent.py \
+  loopguard/tests/test_judge.py loopguard/tests/test_server_app.py loopguard/README.md \
   loopguard/pyproject.toml .github/workflows/control-foundation.yml \
   docs/getting-started docs/reference
 git commit -m "feat: expose daemon lifecycle and diagnostics"

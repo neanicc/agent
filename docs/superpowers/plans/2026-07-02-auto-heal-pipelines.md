@@ -1,6 +1,8 @@
 # Auto-Healing Pipeline Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For implementation agents:** Execute this plan task-by-task and track every checkbox. In Codex, use the native plan, debugging, review, and verification tools available in the host. In Claude Code, use `superpowers:subagent-driven-development` or `superpowers:executing-plans` when installed. A missing named workflow is never a blocker; perform the equivalent TDD and verification steps directly.
+
+> **Command convention:** Resolve one absolute, supported virtualenv interpreter as `$PY`. In every shell snippet, read bare `python` as `$PY`, `python -m pip` as `$PY -m pip`, and `ruff` as `$PY -m ruff`; never assume those executables are on `PATH`.
 
 **Goal:** Reproduce supported staging/CI data-pipeline failures, evaluate isolated candidate fixes, and publish the smallest verified repair as an evidence-rich draft GitHub pull request.
 
@@ -516,8 +518,11 @@ git commit -m "feat: publish verified repairs as draft pull requests"
 - Create: `services/control-api/src/loopguard_api/repair_workflow.py`
 - Modify: `services/control-api/src/loopguard_api/routes/repairs.py`
 - Modify: `services/control-api/src/loopguard_api/app.py`
+- Modify: `contracts/control-api.openapi.json`
+- Modify: `contracts/fixtures/effective-capabilities.json`
 - Test: `services/control-api/tests/test_repair_workflow.py`
 - Test: `services/control-api/tests/test_repairs_api.py`
+- Test: `services/control-api/tests/test_openapi_contract.py`
 - Test: `loopguard/tests/integration/test_airflow_repair.py`
 
 - [ ] **Step 1: Write failing resume and approval tests**
@@ -571,7 +576,8 @@ cd services/control-api && python -m pytest -q tests/test_repair_workflow.py tes
 cd ../../loopguard && python -m pytest -q tests/integration/test_airflow_repair.py
 ```
 
-Expected: FAIL because orchestration and the client-facing repair API are absent.
+Expected: FAIL because orchestration is absent and the cloud-owned repair API still reports the
+`feature_flag_disabled` effective capability with no workflow-backed records.
 
 - [ ] **Step 3: Implement durable activities and signals**
 
@@ -589,7 +595,7 @@ contain only non-sensitive IDs/status. Restart/replay tests cover every activity
 especially artifact persisted before activity completion, worker loss during candidate generation,
 and cancellation during publication.
 
-Register a versioned tenant-scoped repair router in `app.py`:
+Complete the cloud-owned versioned tenant-scoped repair router registered in `app.py`:
 
 ```python
 @router.get("/v1/repairs", response_model=RepairPage)
@@ -606,6 +612,16 @@ async def read_repair(
     ctx: TenantContext = Depends(require_viewer),
 ): ...
 ```
+
+Modify the cloud plan's existing versioned router/schema in place. When the workflow worker and
+compatibility suite are registered, atomically change the effective repair capability from
+`feature_flag_disabled` to `ready`; never create a second route implementation or enable client
+navigation merely because empty repair tables exist.
+
+Regenerate the server-owned OpenAPI snapshot and effective-capability fixture in this task. The
+snapshot changes only for real workflow-backed fields; capability readiness changes atomically
+with worker/schema compatibility. Surface Task 12 consumes this checked-in contract and must not
+invent or hand-edit backend fields.
 
 `RepairDetail` exposes state, sanitized fingerprint, reproduction proof, bounded candidate diffs,
 evaluation evidence, deterministic ranking reason, contract deltas, artifact references, rollback,
@@ -629,7 +645,7 @@ Expected: PASS with fake providers, fake GitHub, and local Docker fixture.
 - [ ] **Step 5: Commit the repair workflow**
 
 ```bash
-git add services/control-api loopguard/src/loopguard/heal \
+git add services/control-api contracts loopguard/src/loopguard/heal \
   loopguard/tests/heal loopguard/tests/integration
 git commit -m "feat: orchestrate durable pipeline repairs"
 ```

@@ -1,6 +1,8 @@
 # Hosted Cloud Control Plane Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For implementation agents:** Execute this plan task-by-task and track every checkbox. In Codex, use the native plan, debugging, review, and verification tools available in the host. In Claude Code, use `superpowers:subagent-driven-development` or `superpowers:executing-plans` when installed. A missing named workflow is never a blocker; perform the equivalent TDD and verification steps directly.
+
+> **Command convention:** Resolve one absolute, supported virtualenv interpreter as `$PY`. In every shell snippet, read bare `python` as `$PY`, `python -m pip` as `$PY -m pip`, and `ruff` as `$PY -m ruff`; never assume those executables are on `PATH`.
 
 **Goal:** Provide a multi-tenant hosted service for authenticated event ingest, cursor replay, outbound daemon relay, expiring remote actions, artifacts, notifications, audit, and durable workflows.
 
@@ -440,6 +442,14 @@ def test_cloud_rejects_action_without_current_registered_device_proof(
     )
     assert response.status_code == 401
     assert response.json()["code"] == "device_proof_required"
+
+
+def test_api_acceptance_is_not_reported_as_execution(action_service):
+    action = action_service.create(kind="interrupt", expires_in=30)
+    assert action.state == "reviewed"
+    action_service.accept_signed(action)
+    assert action_service.read(action.id).state == "queued"
+    assert action_service.read(action.id).executed_at is None
 ```
 
 - [ ] **Step 2: Verify failures**
@@ -492,6 +502,21 @@ The daemon then verifies both signatures, tenant/host/target binding, expiry, no
 version/hash, capability, and local policy. Resolution uses a unique action ID transaction and
 creates immutable audit events on both sides. Device revocation immediately prevents creation and
 execution of future actions, including already issued but unconsumed actions.
+
+Persist the multi-hop lifecycle explicitly:
+
+```text
+reviewed -> signed -> queued -> delivered -> host_executing -> executed
+                                      \-> rejected
+reviewed|signed|queued|delivered -> expired|revoked
+network ambiguity -> reconciling -> one authoritative terminal state
+```
+
+HTTP acceptance returns `202 queued`, never a success receipt. Only a daemon resolution may create
+the immutable executed/rejected receipt. On timeout or lost acknowledgement, clients GET the same
+action and reconcile; they never silently re-sign or resubmit. Tests cover host offline, expiry or
+device revocation during review/delivery, cloud commit before relay disconnect, daemon execution
+before acknowledgement loss, duplicate delivery, and unknown outcome recovery.
 
 - [ ] **Step 4: Run cloud/local action tests**
 
@@ -631,7 +656,7 @@ git add services/control-api
 git commit -m "feat: add durable workflows and immutable audit"
 ```
 
-### Task 9: Expose preference, cost, device, and audit control APIs
+### Task 9: Expose capability-aware client and administration APIs
 
 **Files:**
 - Create: `services/control-api/alembic/versions/0002_control_queries.py`
@@ -642,6 +667,8 @@ git commit -m "feat: add durable workflows and immutable audit"
 - Create: `services/control-api/src/loopguard_api/routes/changes.py`
 - Create: `services/control-api/src/loopguard_api/routes/verifications.py`
 - Create: `services/control-api/src/loopguard_api/routes/repairs.py`
+- Create: `services/control-api/src/loopguard_api/routes/capabilities.py`
+- Modify: `services/control-api/src/loopguard_api/routes/hosts.py`
 - Create: `services/control-api/src/loopguard_api/device_pairing.py`
 - Create: `contracts/control-api-endpoints.md`
 - Test: `services/control-api/tests/test_control_queries.py`
@@ -696,12 +723,24 @@ def test_device_pairing_challenge_is_single_use(client, owner_token, device_key)
     assert client.post(
         "/v1/devices/pairing/complete", headers=bearer(owner_token), json=payload
     ).status_code == 409
+
+
+def test_effective_capabilities_fail_closed_for_stale_host(
+    client, viewer_token, stale_host
+):
+    body = client.get(
+        f"/v1/capabilities?host_id={stale_host.id}", headers=bearer(viewer_token)
+    ).json()
+    assert body["status"] == "degraded"
+    assert body["features"]["remote_actions"]["available"] is False
+    assert body["features"]["remote_actions"]["reason"] == "host_health_stale"
 ```
 
 - [ ] **Step 2: Verify the client-required APIs are absent**
 
 Run: `cd services/control-api && python -m pytest -q tests/test_control_queries.py`
-Expected: FAIL with 404 responses for the client matrix: session list/detail, change
+Expected: FAIL with 404 responses for the client matrix: effective capabilities, host/integration
+health, session list/detail, change
 list/detail, verification list/detail, action list/detail/create/challenge, repair list/detail,
 preferences, costs, devices/pairing/revocation, stream tickets, artifacts, and audit.
 
@@ -783,6 +822,21 @@ JavaScript. Revoking a device invalidates future device-signed actions and uncon
 that device without deleting audit history. Audit pagination uses immutable `(created_at, id)`
 cursors. Register all routers in `app.py`.
 
+`GET /v1/capabilities` computes effective capability server-side as the intersection of account
+entitlement, tenant policy, authenticated role, feature flag, verified host/adapter version,
+repository binding, and fresh health. It returns source, reason, observed timestamp, TTL, schema
+version, and `unknown|degraded|ready|unhealthy` health; unknown/stale input fails closed. Clients
+never turn a host-reported feature directly into an enabled action. `GET /v1/hosts` and host detail
+expose tenant-scoped integration health (daemon, repository registration, plugin/fallback source,
+hook trust/coverage, adapter version) without secrets or cross-tenant topology. Probe targets are
+server configured; callers cannot supply arbitrary URLs.
+
+The cloud plan owns empty repair persistence and the versioned list/detail schema so clients can
+compile before Auto-Heal, but `repair` remains `feature_flag_disabled` and navigation/action
+capabilities remain unavailable until Auto-Heal Task 8 registers the workflow implementation.
+Empty data is not evidence of availability. Auto-Heal owns repair state population, workflow
+transitions, and publication behavior; it modifies this router rather than creating a second API.
+
 Implement and freeze this endpoint/schema ownership matrix before client generation:
 
 | Resource | Operations | Owning service/table | Pagination/stream domain |
@@ -793,6 +847,7 @@ Implement and freeze this endpoint/schema ownership matrix before client generat
 | Actions | challenge, create, list, detail | actions/deliveries | opaque `(created_at,id)` |
 | Repairs | list, detail, candidates/publication state | repairs/candidates | opaque `(created_at,id)` |
 | Artifacts | initiate, complete, metadata, download | artifacts | resource ID |
+| Capabilities/hosts | effective feature matrix, host/integration health | hosts/policy/entitlement/adapter observations | observed-at + TTL |
 | Preferences/costs/devices/audit | read/write as authorized | dedicated tables | documented per route |
 
 `contracts/control-api-endpoints.md` names every method/path, request/response schema, permission,
@@ -817,7 +872,7 @@ Expected: all commands exit 0.
 
 ```bash
 git add services/control-api contracts/control-api-endpoints.md
-git commit -m "feat: expose preference cost device and audit APIs"
+git commit -m "feat: expose capability-aware control APIs"
 ```
 
 ## Completion gate

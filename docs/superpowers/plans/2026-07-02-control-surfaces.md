@@ -1,12 +1,21 @@
 # Native iOS and Web Control Surfaces Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For implementation agents:** Execute this plan task-by-task and track every checkbox. In Codex, use the native plan, debugging, review, and verification tools available in the host. In Claude Code, use `superpowers:subagent-driven-development` or `superpowers:executing-plans` when installed. A missing named workflow is never a blocker; perform the equivalent TDD and verification steps directly.
 
-**Goal:** Build a polished native iOS safety inbox and a dense web operations console for sessions, changes, verification, repairs, policies, costs, devices, and audit.
+> **Command convention:** Resolve one absolute, supported virtualenv interpreter as `$PY`. In every shell snippet, read bare `python` as `$PY`, `python -m pip` as `$PY -m pip`, and `ruff` as `$PY -m ruff`; never assume those executables are on `PATH`.
+
+**Goal:** Build a polished native iOS safety inbox and a dense web operations console for sessions,
+changes, verification, safe actions, hosts/integrations, repairs, policies, costs, devices, and audit.
 
 **Architecture:** FastAPI publishes a versioned OpenAPI contract. The web app and iOS app generate typed clients but own separate presentation layers. Both use cursor replay, optimistic state only for non-destructive UI, and server-confirmed state for approvals.
 
 **Tech Stack:** Swift 6, SwiftUI/iOS 26, Observation, URLSession, Keychain, APNs, ActivityKit, Next.js App Router, React, TypeScript, TanStack Query, Playwright, Vitest
+
+**Execution tranches:** Tasks 1–11 form an independently packageable core-client tranche after
+Cloud Task 9. Repairs remain capability-hidden while the cloud schema is present but Auto-Heal is
+disabled. After Auto-Heal Tasks 1–9, return for Task 12 to activate the repair contract and add
+repair web/iOS destinations. Every task has an immutable ID (`SURFACE-T01` … `SURFACE-T12`) so
+resumability does not depend on display numbering.
 
 ---
 
@@ -40,7 +49,7 @@ prototype source and is not silently redefined.
 ### Information architecture and priority
 
 ```text
-WEB (wide)                         IOS (phone)
+WEB (wide)                         IOS (phone, core -> final)
 Console shell                     TabView
 ├─ Inbox (attention queue)        ├─ Inbox (attention queue)
 ├─ Runs                           ├─ Runs
@@ -51,11 +60,19 @@ Console shell                     TabView
 ├─ Changes                        │  └─ Repair detail + publish action
 ├─ Verification                  └─ Settings
 ├─ Repairs                           ├─ Account/devices
+├─ Hosts & integrations              ├─ Hosts & integrations
 ├─ Costs                             ├─ Notifications
 ├─ Policies                          └─ Local/privacy controls
 ├─ Devices
 └─ Audit
 ```
+
+Navigation is derived from `GET /v1/capabilities`, not a hard-coded promise. The core tranche
+shows Inbox, Runs, Changes, Verification, Hosts & integrations, and authorized administration;
+iOS keeps Hosts & integrations under Settings. Repairs is absent—not disabled-looking—until
+Auto-Heal registers a fresh `ready` capability. The final product has the five-tab iOS hierarchy
+above. Every visible destination has a route-inventory test; a hidden/unavailable capability has
+no visible navigation item or enabled action.
 
 For every operational screen, the first three scan targets are: **what needs attention**, **what
 proof explains it**, and **what safe action is available**. Developer metadata and raw tool output
@@ -85,9 +102,10 @@ label and copy action.
 | Run list/detail | Header and timeline placeholders | First-run explanation plus copyable start command | Preserve last valid state, show retry and diagnostics disclosure | Current phase, proof verdict, and completion receipt | Cursor gap shows “Resyncing”; newer events wait until replay completes |
 | Changes | Diff metadata placeholders | Explain that changes appear after an observed write; link to integration status | Failed diff/artifact fetch is scoped to that row | Verification badge and actor/provenance visible | Missing artifact is explicit; never render an empty proof panel |
 | Verification | Command placeholders | Explain why no baseline exists and label verdict inconclusive | Show failed command, exit status, bounded output, and rerun eligibility | Signed proof summary with deterministic checks first | Skipped/pre-existing checks stay distinct from new failures |
-| Approval | Current-state fetch inside the action | Not applicable; absent action returns to Inbox | Submission remains unresolved; refetch state before retry | Server-confirmed receipt with actor, target, and resulting state | Expired/stale/revoked actions disable confirmation and explain why |
+| Approval | Current-state fetch inside the action | Not applicable; absent action returns to Inbox | Submission remains unresolved; refetch state before retry | Executed/rejected receipt only after daemon resolution | Queued/delivered/executing/reconciling are explicit; expired/stale/revoked disable confirmation |
 | Repairs | Candidate/evidence skeletons | Explain eligibility and how to send a supported failure | Preserve reproduction evidence; publication retry never reruns evaluation silently | Draft-PR link, selected candidate, checks, and rollback | Individual candidate/artifact failures remain visible and ranked out |
 | Policies/admin | Form/table skeletons | Role-aware explanation and primary setup action | Field-level issue plus request ID for server failure | Saved version and effective timestamp | Managed/inherited values remain visibly locked with source |
+| Hosts/integrations | Host rows and capability skeleton | Copyable local setup/doctor command; no remote hook install | Pairing/trust/version/repository issue with exact fix | Fresh daemon and exact hook coverage | Pending/expired pairing, offline/stale host, unregistered repo, partial hook, outdated adapter |
 
 All asynchronous controls have idle, pressed/focused, loading, disabled, error, and confirmed
 states. Success is silent only when the resulting state is immediately visible; otherwise announce
@@ -106,6 +124,11 @@ it through an `aria-live="polite"` region or native accessibility notification.
 The five-second experience answers “what needs me?” The five-minute experience lets the user
 verify and act without opening a terminal. The long-term experience builds trust through stable
 proof, predictable controls, and complete audit history.
+
+First run begins before a notification exists: the user sees whether a host is paired, daemon
+health is fresh, a repository is registered, and Codex/Claude plugin/fallback hooks are trusted and
+current. Web and iOS may copy `loopguard setup`/`doctor` commands, inspect coverage, or revoke a
+host; they never install global hooks on a computer remotely.
 
 ### Accessibility contract
 
@@ -129,6 +152,8 @@ proof, predictable controls, and complete audit history.
 - Create: `contracts/control-api.openapi.json`
 - Create: `contracts/fixtures/session-stream.jsonl`
 - Create: `contracts/fixtures/action-states.json`
+- Create: `contracts/fixtures/effective-capabilities.json`
+- Create: `contracts/fixtures/host-integration-health.json`
 - Create: `docs/reference/control-api.md`
 - Test: `services/control-api/tests/test_openapi_contract.py`
 
@@ -138,6 +163,9 @@ proof, predictable controls, and complete audit history.
 def test_openapi_contains_required_control_operations(app):
     paths = app.openapi()["paths"]
     assert "/v1/sessions" in paths
+    assert "/v1/capabilities" in paths
+    assert "/v1/hosts" in paths
+    assert "/v1/hosts/{host_id}" in paths
     assert "/v1/sessions/{session_id}" in paths
     assert "/v1/changes" in paths
     assert "/v1/changes/{change_id}" in paths
@@ -163,8 +191,10 @@ Expected: FAIL until all client-facing routes and schemas are registered.
 
 Export sorted JSON with build-time schema version. Add a compatibility test that rejects removal of
 an operation, required response field, or enum member without a major contract-version change.
-Fixtures cover stream replay, pending action, completed action, stale action, regression,
-verification success, repair candidates, and artifact references.
+Fixtures cover stream replay; reviewed, queued, delivered, executing, reconciling, executed,
+rejected, stale, expired, and revoked actions; effective/hidden capabilities; host/integration
+health; regression; verification success; disabled and ready repair capability; repair candidates;
+and artifact references.
 
 Generate a versioned human-readable API reference from the same OpenAPI source with authentication,
 permissions, idempotency, cursor domain, rate/size limits, request/response examples, error codes,
@@ -285,7 +315,8 @@ git commit -m "feat: scaffold typed web control console"
 - Create: `apps/web/src/app/(console)/changes/[id]/page.tsx`
 - Create: `apps/web/src/app/(console)/verification/page.tsx`
 - Create: `apps/web/src/app/(console)/verification/[id]/page.tsx`
-- Create: `apps/web/src/app/(console)/repairs/page.tsx`
+- Create: `apps/web/src/app/(console)/hosts/page.tsx`
+- Create: `apps/web/src/app/(console)/hosts/[id]/page.tsx`
 - Create: `apps/web/src/components/console-shell.tsx`
 - Create: `apps/web/src/components/async-state.tsx`
 - Create: `apps/web/src/components/session-timeline.tsx`
@@ -294,6 +325,7 @@ git commit -m "feat: scaffold typed web control console"
 - Test: `apps/web/src/components/session-timeline.test.tsx`
 - Test: `apps/web/e2e/session-reconnect.spec.ts`
 - Test: `apps/web/e2e/responsive-navigation.spec.ts`
+- Test: `apps/web/e2e/first-run-integrations.spec.ts`
 
 - [ ] **Step 1: Write failing timeline reducer tests**
 
@@ -324,13 +356,20 @@ Expected: FAIL because timeline state is absent.
 
 - [ ] **Step 3: Implement shell, routes, and replay-safe streaming**
 
-Implement the locked wide/tablet/mobile navigation and every route named in it. Navigation:
-Inbox, Runs, Changes, Verification, Repairs, Costs, Policies, Devices, Audit. The run detail groups
+Implement the core wide/tablet/mobile navigation and every route owned by this task: Inbox, Runs,
+Changes, Verification, and Hosts & integrations. Fetch effective capabilities before adding later
+administration or repair destinations; entries arrive atomically in their owning task. The run detail groups
 events into turns and phase boundaries, shows model/effort and cost separately, puts current
 state/action and verification proof before the timeline, and keeps raw tool output behind
 disclosure. Changes and Verification are real list/detail destinations, not dead navigation labels.
 Use the shared async-state contract for loading, empty, scoped error, stale, resyncing, and success
 states.
+
+Hosts & integrations is the first-run surface. It covers no host, pending/expired pairing, daemon
+offline/stale, repository unregistered, plugin/fallback source, vendor trust pending, partial hook
+coverage, and adapter outdated. It provides copyable local setup/doctor commands and revocation,
+but no remote global-hook installation. Route-inventory tests assert every visible item resolves and
+every capability-hidden destination is absent.
 
 Browser WebSockets cannot receive the upstream bearer token. The browser first requests a
 same-origin, CSRF-protected, one-use stream ticket from the BFF. The ticket is bound to user,
@@ -358,13 +397,11 @@ git add apps/web
 git commit -m "feat: add replay-safe web session console"
 ```
 
-### Task 4: Implement safe web approval and repair surfaces
+### Task 4: Implement safe web approval surfaces
 
 **Files:**
 - Create: `apps/web/src/components/action-sheet.tsx`
 - Create: `apps/web/src/components/verification-proof.tsx`
-- Create: `apps/web/src/components/repair-candidate-matrix.tsx`
-- Create: `apps/web/src/app/(console)/repairs/[id]/page.tsx`
 - Test: `apps/web/src/components/action-sheet.test.tsx`
 - Test: `apps/web/e2e/action-expiry.spec.ts`
 
@@ -392,10 +429,10 @@ Expected: FAIL because the approval UI is absent.
 
 - [ ] **Step 3: Implement server-confirmed actions**
 
-Never mark an action successful until the API returns resolution. Disable duplicate submission by
-action ID, but retain retry for network failure after fetching current action state. Repair detail
-shows reproduction evidence, candidate diffs, exact checks, ranking reason, data-contract impact,
-and rollback before enabling draft-PR publication.
+Never mark an action successful on HTTP acceptance. Render reviewed -> signed -> queued ->
+delivered -> host executing -> executed/rejected, plus expired/revoked and unknown outcome ->
+reconciling. Disable duplicate submission by action ID. On network ambiguity, fetch current action
+state; never silently re-sign or resubmit. Show an immutable receipt only after daemon resolution.
 
 Before enabling confirmation, fetch the current action challenge and show the exact target, effect,
 risk, parameters hash, expected state, and expiry. Web confirmation obtains a registered WebAuthn
@@ -412,13 +449,14 @@ npm test -- action-sheet.test.tsx
 npx playwright test e2e/action-expiry.spec.ts
 ```
 
-Expected: PASS.
+Expected: PASS, including host-offline, expiry or revocation during review, duplicate delivery,
+and lost acknowledgement after host execution.
 
 - [ ] **Step 5: Commit safe web actions**
 
 ```bash
 git add apps/web
-git commit -m "feat: add explicit web approval and repair flows"
+git commit -m "feat: add explicit web approval flows"
 ```
 
 ### Task 5: Scaffold the native iOS application
@@ -478,7 +516,8 @@ view invents its own material, colour, radius, or animation.
 
 - [ ] **Step 4: Run iOS unit tests**
 
-Run through XcodeBuildMCP with the generated project, `LoopGuard` scheme, and an iOS 26 simulator.
+Run through XcodeBuildMCP when available, otherwise equivalent `xcodebuild`/`simctl` commands, with
+the generated project, `LoopGuard` scheme, and an iOS 26 simulator.
 Expected: all unit tests PASS.
 
 - [ ] **Step 5: Commit native iOS foundation**
@@ -555,7 +594,8 @@ cd apps/web
 npm test -- auth.test.ts
 ```
 
-Run `AuthSessionTests` and `DevicePairingTests` through XcodeBuildMCP.
+Run `AuthSessionTests` and `DevicePairingTests` through XcodeBuildMCP when available, otherwise
+equivalent `xcodebuild` commands.
 Expected: FAIL because browser login, mobile login, and device proof-of-possession are absent.
 
 - [ ] **Step 3: Implement OIDC Authorization Code + PKCE and pairing**
@@ -588,7 +628,7 @@ npm test -- auth.test.ts
 npx tsc --noEmit
 ```
 
-Run all iOS unit tests through XcodeBuildMCP, then rerun the control API authentication and device
+Run all iOS unit tests through XcodeBuildMCP when available (otherwise `xcodebuild`), then rerun the control API authentication and device
 pairing tests from the cloud-control-plane plan.
 Expected: PASS, including replay, state mismatch, nonce mismatch, logout, and revocation cases.
 
@@ -599,7 +639,7 @@ git add apps/web apps/ios
 git commit -m "feat: add client authentication and device pairing"
 ```
 
-### Task 7: Build the complete iOS monitoring and navigation surface
+### Task 7: Build the capability-aware iOS core monitoring surface
 
 **Files:**
 - Create: `apps/ios/LoopGuard/Features/Inbox/InboxView.swift`
@@ -609,10 +649,9 @@ git commit -m "feat: add client authentication and device pairing"
 - Create: `apps/ios/LoopGuard/Features/Runs/TimelineReducer.swift`
 - Create: `apps/ios/LoopGuard/Features/Changes/ChangeListView.swift`
 - Create: `apps/ios/LoopGuard/Features/Changes/ChangeDetailView.swift`
-- Create: `apps/ios/LoopGuard/Features/Repairs/RepairListView.swift`
-- Create: `apps/ios/LoopGuard/Features/Repairs/RepairDetailView.swift`
 - Create: `apps/ios/LoopGuard/Features/Settings/SettingsView.swift`
 - Create: `apps/ios/LoopGuard/Features/Settings/DeviceListView.swift`
+- Create: `apps/ios/LoopGuard/Features/Settings/HostIntegrationListView.swift`
 - Create: `apps/ios/LoopGuardTests/TimelineReducerTests.swift`
 - Create: `apps/ios/LoopGuardTests/InboxOrderingTests.swift`
 - Create: `apps/ios/LoopGuardUITests/InboxUITests.swift`
@@ -638,17 +677,20 @@ git commit -m "feat: add client authentication and device pairing"
 
 - [ ] **Step 2: Run focused tests and verify failure**
 
-Run through XcodeBuildMCP, filtering to `TimelineReducerTests` and `InboxUITests`.
+Run through XcodeBuildMCP when available (otherwise `xcodebuild`), filtering to
+`TimelineReducerTests` and `InboxUITests`.
 Expected: FAIL because features are absent.
 
 - [ ] **Step 3: Implement native hierarchy**
 
-Use a `TabView` with implemented destinations for Inbox, Runs, Changes, Repairs, and Settings. The
+Use a capability-derived `TabView` with implemented core destinations for Inbox, Runs, Changes,
+and Settings; Task 12 adds Repairs only after the effective capability becomes ready. The
 Inbox shows only items that need attention plus quiet completion summaries. Run detail shows
 current state/action, verification proof, phase, agent, model/effort, cost, and then a compact
-timeline. Change detail shows actor/provenance, diff, and linked proof. Repair detail shows
-reproduction evidence, candidates, deterministic ranking, checks, rollback, and draft-PR state.
-Settings owns account, paired devices, notifications, privacy/local-only controls, and app version.
+timeline. Change detail shows actor/provenance, diff, and linked proof. Settings owns account,
+paired devices, Hosts & integrations, notifications, privacy/local-only controls, and app version.
+Hosts & integrations implements the same no-host/pairing/offline/trust/partial/outdated states as
+web and offers only local-command copy, coverage inspection, and host revocation.
 
 Apply Liquid Glass only to tab/navigation/transient control surfaces; use standard grouped content
 surfaces rather than generic cards. Implement every loading, empty, scoped-error, success, stale,
@@ -658,11 +700,12 @@ states, and hardware-keyboard navigation.
 
 - [ ] **Step 4: Run unit/UI tests and inspect simulator screenshots**
 
-Run all iOS tests through XcodeBuildMCP, launch in the simulator, and capture Inbox, Run Detail,
-Change Detail, Repair Detail, and Settings in light/dark mode, largest Dynamic Type, and iPad split
-view. Exercise offline/stale, empty, loading, and error fixtures in UI tests.
-Expected: tests PASS with no dead tabs, clipped controls, colour-only state, missing accessibility
-labels, or unreadable contrast.
+Run all iOS tests through XcodeBuildMCP when available (otherwise the equivalent repository-native
+`xcodebuild`/`simctl` commands), launch in the simulator, and capture Inbox, Run Detail, Change
+Detail, and Settings in light/dark mode, largest Dynamic Type, and iPad split view. Exercise
+offline/stale, empty, loading, and error fixtures in UI tests. Expected: tests PASS with no dead
+tabs, no visible Repairs tab while its capability is unavailable, clipped controls, colour-only
+state, missing accessibility labels, or unreadable contrast.
 
 - [ ] **Step 5: Commit iOS monitoring surfaces**
 
@@ -709,7 +752,7 @@ git commit -m "feat: add ios safety inbox and run timeline"
 
 - [ ] **Step 2: Verify failure**
 
-Run focused iOS tests through XcodeBuildMCP.
+Run focused iOS tests through XcodeBuildMCP when available, otherwise `xcodebuild`.
 Expected: FAIL because action flow is absent.
 
 - [ ] **Step 3: Implement explicit confirmation and notification routing**
@@ -720,6 +763,12 @@ request, including action ID, target, expected state/version, nonce, and expiry,
 countersigns it; stale or changed content requires a new review. APNs payloads carry only action or
 session identifiers and generic text; fetch sensitive detail after authentication.
 
+After signing, render queued, delivered, host executing, reconciling, and the authoritative
+executed/rejected/expired/revoked terminal states. A `202` is not success. If the request times out,
+fetch current state and never silently re-sign/resubmit; announce a receipt only after daemon
+resolution. Tests cover host offline, device revocation during review, expiry while queued,
+duplicate delivery, and execution followed by acknowledgement loss.
+
 Create a real WidgetKit extension target with shared `ActivityAttributes`, App Group/keychain
 sharing only where required, extension-specific entitlements, preview fixtures, and deep-link
 tests. The Live Activity shows only non-sensitive phase/progress, never source, prompt, path,
@@ -728,7 +777,7 @@ finishes, is revoked, or exceeds its bounded lifetime.
 
 - [ ] **Step 4: Run unit/UI tests and push-notification fixture tests**
 
-Run all iOS tests through XcodeBuildMCP, deliver local notification fixtures in Simulator, and
+Run all iOS tests through XcodeBuildMCP when available (otherwise `xcodebuild`/`simctl`), deliver local notification fixtures in Simulator, and
 build/preview the WidgetKit extension.
 Expected: PASS; expired/deep-linked actions fetch current state before enabling controls,
 device signatures cover the exact reviewed payload, and extension previews contain no sensitive
@@ -805,7 +854,6 @@ git commit -m "feat: add policy cost device and audit console"
 - Create: `apps/ios/LoopGuardUITests/AccessibilityUITests.swift`
 - Create: `apps/ios/LoopGuardUITests/VisualStateUITests.swift`
 - Create: `docs/product/control-surfaces.md`
-- Modify: `cloud-app/README.md`
 
 - [ ] **Step 1: Add failing accessibility assertions**
 
@@ -830,17 +878,16 @@ Expected: FAIL until violations and labels are corrected.
 
 - [ ] **Step 3: Fix all violations and document migration**
 
-Capture stable visual references for Inbox, Run Detail, Action Review, Changes, Verification,
-Repair, Policies, and Settings in light/dark modes. Cover 320/768/1280/1536 CSS-pixel web widths,
+Capture stable core visual references for Inbox, Run Detail, Action Review, Changes, Verification,
+Hosts & integrations, Policies, and Settings in light/dark modes. Cover 320/768/1280/1536 CSS-pixel web widths,
 375-point iPhone, iPad split view, largest Dynamic Type, high contrast, loading, empty, error,
 offline/stale, and success fixtures.
 
 Add a deterministic source/design check that rejects raw colours outside token files, placeholder-
 only labels, emoji controls, decorative gradients/blobs, generic three-column feature grids,
 content glass, indiscriminate card wrappers, and action/status conveyed only by colour. Document
-intentional exceptions. Document how features move from `cloud-app`, mark the Expo app deprecated
-only after route/action/state parity, and retain it for one release as a fallback. Do not delete it
-in this plan.
+intentional exceptions. Document how features move from `cloud-app`, but do not mark the Expo app
+deprecated before Task 12 proves final route/action/state parity.
 
 - [ ] **Step 4: Run complete surface verification**
 
@@ -853,13 +900,14 @@ npx tsc --noEmit
 npx playwright test
 ```
 
-Run all iOS unit/UI tests and capture simulator screenshots through XcodeBuildMCP.
+Run all iOS unit/UI tests and capture simulator screenshots through XcodeBuildMCP when available,
+otherwise equivalent `xcodebuild`/`simctl` commands.
 Expected: all checks PASS.
 
 - [ ] **Step 5: Commit the release-quality gates**
 
 ```bash
-git add apps/web apps/ios cloud-app/README.md docs/product/control-surfaces.md
+git add apps/web apps/ios docs/product/control-surfaces.md
 git commit -m "test: enforce control surface quality"
 ```
 
@@ -957,6 +1005,67 @@ git add apps/web apps/ios .github/workflows/client-release.yml \
 git commit -m "ops: package web and ios client releases"
 ```
 
+### Task 12: Activate repair contracts and complete repair surfaces
+
+**Dependency:** Auto-Heal Tasks 1–9 and their completion gate. Do not execute this task during the
+core-client tranche.
+
+**Files:**
+- Create: `contracts/fixtures/repair-states.json`
+- Create: `apps/web/src/app/(console)/repairs/page.tsx`
+- Create: `apps/web/src/app/(console)/repairs/[id]/page.tsx`
+- Create: `apps/web/src/components/repair-candidate-matrix.tsx`
+- Create: `apps/web/e2e/repair-capability.spec.ts`
+- Create: `apps/ios/LoopGuard/Features/Repairs/RepairListView.swift`
+- Create: `apps/ios/LoopGuard/Features/Repairs/RepairDetailView.swift`
+- Create: `apps/ios/LoopGuardTests/RepairCapabilityTests.swift`
+- Create: `apps/ios/LoopGuardUITests/RepairFlowUITests.swift`
+- Modify: `docs/product/control-surfaces.md`
+- Modify: `cloud-app/README.md`
+
+- [ ] **Step 1: Write failing capability, route, and repair-state tests**
+
+Tests prove that unavailable repair capability produces no visible nav item; fresh `ready`
+capability adds the web route and final iOS Repairs tab; every link resolves; cross-tenant detail
+is absent; and queued/reproducing/candidate/evaluating/awaiting-publication/completed/failed states
+render with evidence rather than placeholders.
+
+- [ ] **Step 2: Verify the repair tranche is absent**
+
+Run the web/iOS route-inventory and capability tests against disabled and fresh-ready fixtures.
+Expected: disabled-capability assertions pass, while the ready-capability cases FAIL because the
+repair destinations are not present yet.
+
+- [ ] **Step 3: Implement capability activation and complete repair UX**
+
+Regenerate client bindings from the checked-in workflow-backed repair schema; do not hand-edit the
+server-owned OpenAPI snapshot. Activate navigation only when the server returns fresh
+`repair.ready`. Repair detail shows sanitized reproduction proof, bounded
+candidate diffs, exact checks, deterministic ranking reason, data-contract impact, rollback, and
+draft-PR publication state. Publication uses the existing signed-action lifecycle and never
+claims success before daemon/workflow resolution. A lost response reconciles the existing action;
+it never reruns candidate evaluation or republishes silently.
+
+Capture repair loading, eligibility-empty, scoped error, offline/stale, capability-revoked,
+partial candidate failure, awaiting approval, publication failure, and completed states. Add final
+light/dark, responsive, Dynamic Type, VoiceOver/keyboard, and reduced-motion references for Repair
+list/detail/action review without weakening the core visual baselines.
+After final route/action/state parity passes, mark the Expo prototype deprecated in
+`cloud-app/README.md` and retain it for one release as a fallback; do not delete it here.
+
+- [ ] **Step 4: Run final client and Auto-Heal parity gates**
+
+Run the complete web/iOS suites plus Auto-Heal API/workflow tests. Expected: PASS; every visible
+repair destination is workflow-backed, capability revocation removes/locks actions safely, and no
+repair flow can merge or deploy.
+
+- [ ] **Step 5: Commit repair client activation**
+
+```bash
+git add contracts apps/web apps/ios cloud-app/README.md docs/product/control-surfaces.md
+git commit -m "feat: activate evidence-backed repair surfaces"
+```
+
 ## Completion gate
 
 Web:
@@ -970,10 +1079,12 @@ npx playwright test
 npm run build
 ```
 
-iOS: build and run all unit/UI tests with XcodeBuildMCP on an iOS 26 simulator, inspect light/dark
+iOS: build and run all unit/UI tests with XcodeBuildMCP when available, otherwise
+`xcodebuild`/`simctl`, on an iOS 26 simulator; inspect light/dark
 and accessibility-size screenshots, then produce the unsigned verification archive.
 
-Expected: all checks pass; actions are replay-safe; sensitive content is absent from push payloads;
+Expected: all checks pass; core clients package independently before Task 12; final repair routes
+are capability-backed after Auto-Heal; actions are replay-safe; sensitive content is absent from push payloads;
 OIDC callbacks reject substituted state/nonce; paired devices prove possession of non-exported
 private keys; content surfaces use native hierarchy rather than indiscriminate glass styling; and
 reproducible client packages pass local verification without publishing.

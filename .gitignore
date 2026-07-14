@@ -3,3 +3,4 @@
 .gstack/
 .venv/
 AGENTS.md
+.DS_Store

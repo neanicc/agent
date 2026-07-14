@@ -1,8 +1,12 @@
-<!-- /autoplan restore point: /Users/ultimateslayer/.gstack/projects/agent-loopguard/main-autoplan-restore-20260702-121500 -->
+<!-- /autoplan restore point: /private/tmp/loopguard-autoplan-restore-20260714-092612 -->
 
 # LoopGuard Productization Master Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For implementation agents:** Execute this plan task-by-task and track every checkbox. In Codex, use the native plan, debugging, review, and verification tools available in the host. In Claude Code, use `superpowers:subagent-driven-development` or `superpowers:executing-plans` when installed. A missing named workflow is never a blocker; perform the equivalent TDD and verification steps directly.
+
+> **Command convention:** Resolve one absolute, supported virtualenv interpreter as `$PY`. In every
+> shell snippet, read bare `python` as `$PY`, `python -m pip` as `$PY -m pip`, and `ruff` as
+> `$PY -m ruff`; never assume those executables are on `PATH`.
 
 **Goal:** Deliver LoopGuard as a production local-first reliability control plane for Codex and Claude with verified completion, coordinated context, cost-aware managed execution, remote approvals, accelerated browser testing, and safe pipeline repair.
 
@@ -11,6 +15,28 @@
 **Tech Stack:** Python 3.11+, Pydantic 2, asyncio, SQLite, FastAPI, PostgreSQL, Temporal, Docker, OpenTelemetry, SwiftUI/iOS 26, Next.js/TypeScript, Playwright
 
 ---
+
+## Current repository snapshot (verified 2026-07-14)
+
+- `main` and `origin/main` both pointed to `e898e987c63a1262052b920c2d3f1ec848237659`
+  during this review. The implementation prompt requires a fresh remote/branch check before work.
+- `loopguard/` is still the hackathon-era Python product: the reusable deterministic
+  `LoopEvent -> LoopGuard -> LoopDecision` circuit breaker, a small FastAPI/demo surface, fake/live
+  provider examples, and 71 passing tests. The current run also reports a third-party
+  Starlette/`httpx` deprecation and a LoopGuard-owned unawaited `_broadcast` coroutine warning;
+  Foundation Task 6 closes the owned warning. None of the July 2 control-plane subsystems is
+  implemented yet.
+- `cloud-app/` is still the Expo prototype: 6 tests pass and TypeScript checks cleanly. It is not
+  the planned Next.js web console or native SwiftUI client.
+- The current Python baseline must use `loopguard/.venv/bin/python`; bare `python` and `ruff` are
+  not installed on `PATH` in this checkout. Tests pass, while Ruff has two pre-existing findings:
+  unused local `result` in `tests/test_agent.py:37` and unused import `JudgeVerdict` in
+  `tests/test_judge.py:1`. Record these before implementation and do not attribute them to a task.
+- Planned `apps/web`, `apps/ios`, `services/control-api`, browser broker, managed adapters,
+  verification/context/routing/preference/repair packages, and production infrastructure do not
+  exist. This roadmap is an implementation program, not a description of already shipped code.
+- `.DS_Store` is repository-ignored. Preserve existing user metadata and never let it stop or
+  contaminate implementation commits.
 
 ## Relationship to earlier plans
 
@@ -62,9 +88,10 @@ subsystem plans below. The master is not a twelfth implementation lane.
 
 ```text
 Foundation
-   ├── Agent integrations ── Context ── Verification ── Managed routing
-   │                                             └────── Auto-heal
-   └── Cloud control plane ── Auto-heal ── Control surfaces
+   ├── Attached integrations ── Verification Proof Core ── Context
+   │                                      └─────────────── Managed adapters/routing
+   └── Cloud control plane ── Core control surfaces (Tasks 1-11)
+                                      └── Auto-heal ── Repair surfaces (Task 12)
 
 Verification ── Browser acceleration
 Verification ── Preference engine
@@ -72,14 +99,16 @@ Verification ── Preference engine
 All lanes ── Production hardening
 ```
 
-After Foundation, two teams can work without sharing implementation files:
+After Foundation, two lanes can work without sharing implementation files, subject to the explicit
+milestone dependencies above:
 
-- Runtime lane: integrations, context, verification, routing, browser, preferences.
-- Hosted product lane: cloud API, iOS, and web.
+- Runtime lane: attached integrations, proof, context, managed adapters, routing, browser, preferences.
+- Hosted product lane: cloud API, core iOS/web, repair workflow, repair client activation.
 
 Auto-heal starts only after verification contracts and hosted durable workflows are stable.
-Control-surface contract generation starts after Auto-heal registers repair APIs, so its OpenAPI
-checks never depend on endpoints from a later plan.
+The cloud plan publishes a disabled repair schema and effective capability; core clients package
+without a dead repair route. Auto-Heal activates the workflow-backed capability, then Surface Task
+12 adds the repair destinations and reruns final parity gates.
 Security controls required by Foundation are implemented in their owning early tasks; the
 production-hardening plan remains the final audit and release gate.
 
@@ -115,7 +144,8 @@ services/
 **Exit criterion:** Existing demos and tests pass while the new versioned event contract is usable
 from a local process.
 
-- [ ] Run the control-plane foundation plan through its event, store, and daemon health tasks.
+- [ ] Complete all six control-plane foundation tasks, including Task 6 baseline warning/lint debt,
+  daemon health, and zero-key quickstart.
 - [ ] Add compatibility projection from `ControlEvent` to the existing `LoopEvent`.
 - [ ] Freeze the current FastAPI/Expo protocol as `demo-v1`; do not extend it with production data.
 - [ ] Record baseline test, typecheck, and package-build commands in the repository root.
@@ -132,54 +162,52 @@ python -m build
 
 Expected: all tests pass, Ruff exits 0, and both wheel and source distribution are created.
 
-## Phase 1: Local attach and context
+## Phase 1: Local attach and Verification Proof Core
 
-**Duration:** 6 weeks
+**Duration:** 4–6 weeks
 **Dependencies:** Phase 0
 **Exit criterion:** A developer installs LoopGuard once, starts Codex or Claude normally, and sees
-local sessions, changes, loop decisions, handoffs, and collision warnings without cloud service.
+local sessions and loop decisions, then receives an honest baseline-aware verified/inconclusive
+result without cloud service or the full context index.
 
-- [ ] Complete attached-mode tasks in the agent integrations plan.
-- [ ] Complete the Change Journal, digest, handoff, and advisory lease tasks.
-- [ ] Add the local MCP server and hook installer.
-- [ ] Exercise concurrent Codex and Claude sessions in separate Git worktrees.
+- [ ] Complete Agent Integration Tasks 1–4 (attached plugin/fallback tranche).
+- [ ] Complete all seven Regression Verification tasks, including the conservative no-index fallback.
+- [ ] Prove plugin and fallback modes are mutually exclusive and vendor trust remains human-owned.
+- [ ] Run prompt -> pre-mutation baseline -> change -> deterministic verdict -> signed evidence E2E.
 - [ ] Run a five-repository dogfood cohort with local-only mode enabled.
 
 **Release gate:**
 
 ```bash
 cd loopguard
-python -m pytest -q tests/control tests/adapters tests/context
-loopguard doctor --json
-loopguard integrations verify --agent codex
-loopguard integrations verify --agent claude
+python -m pytest -q tests/control tests/adapters/test_hook_entry.py tests/verify \
+  tests/integration/test_verified_completion.py
 ```
 
-Expected: tests pass, doctor reports a healthy daemon and writable store, and both integrations
-report installed hooks with no unsupported mandatory capabilities.
+Expected: tests pass; missing/stale impact indexes fall back safely; a late attach is inconclusive;
+and a trusted baseline plus unchanged required checks produces immutable proof.
 
-## Phase 2: Proof of Change
+## Phase 2: Context coordination
 
-**Duration:** 6 weeks
+**Duration:** 4–6 weeks
 **Dependencies:** Phase 1
-**Exit criterion:** LoopGuard distinguishes pre-existing failures from new regressions and refuses
-to mark a managed task verified without required evidence.
+**Exit criterion:** Changes from agents, editors, scripts, and Git are journaled; concurrent work is
+isolated/coordinated; and context-aware impact improves iteration without changing Proof Core truth.
 
-- [ ] Complete proof-contract, baseline, impact, command-runner, and verdict tasks.
-- [ ] Add language adapters for Python and TypeScript test discovery.
-- [ ] Add route/schema/UI impact plugins behind capability flags.
-- [ ] Integrate verifier results with Stop hooks and managed turn completion.
-- [ ] Collect false-positive and missed-regression cases from dogfood repositories.
+- [ ] Complete all seven Context Coordination tasks.
+- [ ] Exercise concurrent Codex and Claude sessions in separate Git worktrees.
+- [ ] Prove journal-backed impact narrows iteration checks but final gates remain conservative.
+- [ ] Collect collision, false-positive, and missed-regression cases from dogfood repositories.
 
 **Release gate:**
 
 ```bash
 cd loopguard
-python -m pytest -q tests/verify tests/integration/test_verified_completion.py
+python -m pytest -q tests/context tests/verify tests/control tests/adapters/test_hook_entry.py
 ```
 
-Expected: tests pass, including fixtures for pre-existing failures, introduced failures, skipped
-checks, timeouts, and successful verification.
+Expected: tests pass, concurrent managed leases never share a writable worktree, and context E2E
+does not weaken proof verdicts.
 
 ## Phase 3: Managed execution and cost routing
 
@@ -188,7 +216,8 @@ checks, timeouts, and successful verification.
 **Exit criterion:** LoopGuard can start, steer, interrupt, and verify managed Codex and Claude runs,
 while selecting model and effort at phase boundaries within a configured budget.
 
-- [ ] Complete Codex app-server and Claude SDK managed adapters.
+- [ ] Complete Agent Integration Tasks 5–8 for managed adapters, compatibility/setup/doctor, and
+  user-service installation.
 - [ ] Complete deterministic feature extraction, catalog, policy, and outcome recording.
 - [ ] Add plan/implement/verify/repair phase transitions.
 - [ ] Add explicit capability errors for unsupported native cloud model controls.
@@ -215,7 +244,7 @@ without sharing browser state between agents.
 - [ ] Complete browser lifecycle, isolated contexts, impacted selection, and trace policies.
 - [ ] Add UI proof evidence to verification records.
 - [ ] Dogfood on the existing `cloud-app` prototype and representative fixture applications; repeat
-  the same checks on production web/iOS surfaces in Phase 7.
+  the same checks on production core web/iOS surfaces in Phase 6 and repairs in Phase 7.
 - [ ] Measure warm-start, impacted-suite, and full-suite latency separately.
 
 **Release gate:**
@@ -242,7 +271,7 @@ real Playwright project demonstrates any warm-invocation benefit against native 
 **Dependencies:** Phases 1–3
 **Exit criterion:** Authenticated users can pair a daemon, receive replayable session updates, and
 submit expiring approval actions through an API test client without exposing the daemon. Native
-and web product clients follow in Phase 7.
+and web core product clients follow in Phase 6.
 
 - [ ] Complete hosted tenancy, ingest, relay, action, artifact, notification, audit, and control-query tasks.
 - [ ] Add offline, duplicate-action, stale-action, and reconnect testing.
@@ -258,41 +287,19 @@ python -m pytest -q
 Expected: backend tests pass; preference, cost, device, and audit APIs are registered; and a
 duplicate or expired approval never executes twice.
 
-## Phase 6: Auto-healing pipeline beta
+## Phase 6: Native iOS and web core control surfaces
 
-**Duration:** 8 weeks
-**Dependencies:** Phases 2, 3, and 5
-**Exit criterion:** A supported Airflow/OpenLineage failure is reproduced, two or three candidates
-are evaluated in isolation, and the winning verified patch is published as a draft GitHub PR.
+**Duration:** 6–8 weeks
+**Dependencies:** Phases 4 and 5
+**Exit criterion:** Native iOS and web clients package independently, replay sessions without gaps,
+show host/integration coverage, and submit safe loop/verification actions. Repair navigation is
+absent while its effective capability is disabled.
 
-- [ ] Complete failure intake and fingerprinting.
-- [ ] Complete redacted fixture capture and reproducibility gate.
-- [ ] Complete sandbox, candidate, evaluator, and deterministic ranking tasks.
-- [ ] Complete GitHub App publication and PR evidence rendering.
-- [ ] Run in observe-only mode on real staging incidents before enabling repair generation.
-
-**Release gate:**
-
-```bash
-cd loopguard
-python -m pytest -q tests/heal tests/integration/test_airflow_repair.py
-```
-
-Expected: tests pass and the end-to-end fixture opens no real PR unless the fake GitHub publisher is
-explicitly replaced in a controlled staging environment.
-
-## Phase 7: Native iOS and web control surfaces
-
-**Duration:** 8 weeks
-**Dependencies:** Phases 4–6
-**Exit criterion:** Native iOS and web clients consume the complete OpenAPI contract, replay live
-sessions without gaps, and submit safe actions for loops, verification, and repairs.
-
-- [ ] Complete the native iOS and web control-surface plan.
+- [ ] Complete Control Surface Tasks 1–11 only.
 - [ ] Complete APNs and web notification delivery.
-- [ ] Verify repair, preference, cost, device, and audit screens against real service fixtures.
-- [ ] Add offline, duplicate-action, stale-action, and reconnect testing.
-- [ ] Run visual and accessibility gates before private beta.
+- [ ] Verify host/integration, preference, cost, device, and audit screens against service fixtures.
+- [ ] Add capability-hidden navigation, offline, duplicate-action, stale-action, and reconciliation tests.
+- [ ] Run visual, accessibility, and reproducible core-package gates before private beta dogfood.
 
 **Release gate:**
 
@@ -301,10 +308,39 @@ cd apps/web
 npm test
 npx tsc --noEmit
 npx playwright test
+npm run build
 ```
 
-Run the iOS unit and UI test schemes through XcodeBuildMCP. Expected: web and iOS checks pass; a
-duplicate or expired approval never executes twice; and repair UI is backed by implemented APIs.
+Run iOS unit/UI tests through XcodeBuildMCP when available, otherwise equivalent
+`xcodebuild`/`simctl` commands. Expected: core clients pass with no dead repair destination; API
+acceptance is not displayed as execution success; and unsigned/package verification succeeds.
+
+## Phase 7: Auto-healing beta and repair-surface activation
+
+**Duration:** 8 weeks
+**Dependencies:** Phases 2, 3, 5, and 6
+**Exit criterion:** A supported Airflow/OpenLineage failure is reproduced, bounded candidates are
+evaluated in isolation, a verified winner can be published as a draft PR, and the workflow-backed
+repair capability activates complete web/iOS destinations.
+
+- [ ] Complete all nine Auto-Heal tasks.
+- [ ] Run in observe-only mode on authorized staging incidents before enabling repair generation.
+- [ ] Complete Control Surface Task 12 and rerun final client parity/visual/accessibility gates.
+- [ ] Prove capability revocation hides/locks repair actions without losing audit/evidence.
+
+**Release gate:**
+
+```bash
+cd loopguard
+python -m pytest -q tests/heal tests/integration/test_airflow_repair.py
+cd ../apps/web
+npm test
+npx tsc --noEmit
+npx playwright test
+```
+
+Expected: fake providers/GitHub are used by default; no repair can merge/deploy; and every visible
+repair route is backed by a fresh ready capability and durable workflow API.
 
 ## Phase 8: Production hardening
 
@@ -321,15 +357,45 @@ provenance, disaster recovery, and incident response have passed production read
 
 ## Rollout strategy
 
-1. Maintainers only: local attach, no cloud relay.
-2. Design partners: local attach plus verification.
-3. Private beta: managed runs and hosted approvals.
-4. Repair beta: selected Airflow/dbt repositories, draft PR only.
-5. Public beta: individual accounts and small teams.
+1. Maintainers only: attached plugins/fallbacks plus Proof Core, no cloud relay.
+2. Design partners: context-aware proof and managed runs.
+3. Private beta: hosted approvals and independently packaged core clients.
+4. Repair beta: selected Airflow/dbt repositories, draft PR only, then repair client activation.
+5. Public beta: individual accounts and small teams after product go/no-go thresholds pass.
 6. General availability: tenant governance, SSO, billing, retention, and operational SLOs.
 
 Every phase uses capability flags. A customer sees only capabilities that have completed their
 release gate; the UI must not display disabled actions as if they are available.
+
+### Product go/no-go evidence
+
+Engineering completion does not authorize broader rollout. Before each beta expansion, record the
+measurement query/script, environment, cohort, sample size, numerator/denominator, threshold, and
+owner decision in the milestone evidence:
+
+| Signal | Private-beta threshold | Failure action |
+|---|---:|---|
+| Fresh install -> protected session | median <=5 min, p90 <=10 min, >=20 clean installs, >=80% complete without maintainer intervention | Fix onboarding; do not add new platform scope |
+| Weekly protected-session retention | >=40% of activated design partners in each of four weeks, cohort >=20 | Interview churned users and pivot workflow before public beta |
+| Eligible tasks ending with accepted proof | >=70% over >=100 tasks | Diagnose trust, command, and inconclusive reasons; block expansion |
+| Inconclusive proof rate | <=15% of eligible tasks; every reason classified | Fix baseline/integration coverage before claiming verified completion |
+| False pause/block rate | <=2% of protected tasks and zero confirmed destructive false blocks | Return enforcement to observe-only and correct policy |
+| Confirmed prevented waste | >=5 confirmed loops/regressions/collisions per 100 eligible tasks, with user acknowledgement | Revisit wedge if benefit is not observed |
+| Proof engagement | >=50% of active users open/share a proof or act from its receipt weekly | Simplify proof presentation; do not assume evidence is valued |
+| LoopGuard overhead | p95 hook path <=100 ms and observed model/token overhead below observed prevented paid work in the holdout window | Disable costly optional features or keep them in shadow |
+
+Continue to public beta only when activation, retention, proof acceptance, false-enforcement, and
+overhead gates all pass. If activation passes but retention/proof engagement misses, pivot the
+workflow and rerun one cohort. If two consecutive cohorts remain below 20% retention or 20% proof
+engagement, confirmed prevented waste stays below two per 100 tasks, or false enforcement exceeds
+5%, stop platform expansion and run a founder/product decision gate. Estimated savings never
+satisfy an observed-value threshold.
+
+Before locking public registry names, domains, Apple bundle/team identifiers, marketplace entries,
+or App Store metadata, the product owner must confirm whether LoopGuard is the final name, approve
+one sentence of positioning centered on baseline-aware verified completion, and supply legal and
+account ownership. Implementation may use clearly provisional local identifiers; it may not invent
+or publish final identity on the owner's behalf.
 
 ## Program-level acceptance criteria
 
@@ -392,7 +458,7 @@ backup/restore, and the production readiness checklist must also pass before rel
 **Review date:** 2026-07-02
 **Review mode:** SELECTIVE EXPANSION
 **Review corpus:** This master roadmap, all eleven executable subsystem plans, the approved
-reliability-control-plane design, the Claude Code implementation prompt, current repository
+reliability-control-plane design, the Codex / Claude Code implementation prompt, current repository
 instructions, and the existing LoopGuard engine/server/prototype code.
 **UI scope:** Yes.
 **Developer-facing scope:** Yes.
@@ -713,7 +779,11 @@ lack a trustworthy event composition path, complete client API, and coherent sec
 
 ### Implementation tasks from Phase 1
 
-- [ ] **CEO-T1 (P1)** — Resolve `loopguard/AGENTS.md` rules that block the approved roadmap.
+These are review findings mapped into the 88 numbered subsystem tasks. Do not execute or commit
+them as additional tasks; their checkboxes close only when their owning numbered work is verified.
+
+- [x] **CEO-T1 (resolved 2026-07-14)** — Current `loopguard/AGENTS.md` explicitly authorizes the
+  production roadmap while preserving the stable core; there is no instruction conflict.
 - [ ] **CEO-T2 (P1)** — Freeze canonical event, cursor, decision, action-target, and adapter contracts.
 - [ ] **CEO-T3 (P1)** — Add daemon dispatch and hook-to-loop end-to-end behavior.
 - [ ] **CEO-T4 (P1)** — Move local state/socket/trust controls into foundation.
@@ -776,7 +846,7 @@ lack a trustworthy event composition path, complete client API, and coherent sec
 
 ```text
 Mode: SELECTIVE EXPANSION
-System audit: current demo core reusable; repository instructions conflict with roadmap
+System audit: current demo core reusable; repository instructions explicitly authorize the roadmap
 Objective discrepancies: 19 from Codex, with additional daemon-composition and dependency gaps confirmed
 Critical failure-mode gaps: 10
 Claude independent voice: unavailable due missing current authentication
@@ -966,6 +1036,9 @@ Cross-model consensus: not claimed
 - Automatic action confirmation or destructive swipe shortcuts.
 
 ### Design implementation tasks
+
+These are review findings mapped into the 88 numbered subsystem tasks. Do not execute or commit
+them as additional tasks; their checkboxes close only when their owning numbered work is verified.
 
 - [ ] **DESIGN-T1 (P1, human: ~3h / CC: ~25min)** — Design system — Write the
   production cross-platform design contract with semantic light/dark tokens and explicit web/iOS
@@ -1283,6 +1356,9 @@ concurrently.
 - A custom model-learning router before deterministic shadow/holdout evidence.
 
 ### Engineering implementation tasks
+
+These are review findings mapped into the 88 numbered subsystem tasks. Do not execute or commit
+them as additional tasks; their checkboxes close only when their owning numbered work is verified.
 
 - [ ] **ENG-T1 (P1, human: ~2d / CC: ~3h)** — Foundation — Freeze canonical contracts and build
   secure persist/dispatch/ack with restart replay.
@@ -1613,6 +1689,9 @@ repository/prompts/path telemetry. A post-implementation `/devex-review` must me
 
 ### DX implementation tasks
 
+These are review findings mapped into the 88 numbered subsystem tasks. Do not execute or commit
+them as additional tasks; their checkboxes close only when their owning numbered work is verified.
+
 - [ ] **DX-T1 (P1, human: ~1d / CC: ~2h)** — Quickstart — Build the real zero-key temporary
   daemon/guard walkthrough and production-first README.
   - Files: `loopguard/src/loopguard/quickstart.py`, `README.md`, `loopguard/README.md`,
@@ -1706,11 +1785,15 @@ Current vendor constraints checked during reconciliation:
 
 - Codex hooks are a documented integration surface, but current `PreToolUse` interception is not a
   complete enforcement boundary. App Server remains the deep managed-control surface.
-  See [Codex hooks](https://developers.openai.com/codex/hooks) and
-  [App Server](https://developers.openai.com/codex/app-server).
+  See [Codex hooks](https://learn.chatgpt.com/docs/hooks) and
+  [App Server](https://learn.chatgpt.com/docs/app-server). Plugin hooks are primary; direct hook
+  file merge is a mutually exclusive compatibility fallback.
+- Codex App Server requires stable `clientInfo`; `turn/steer` requires the active
+  `expectedTurnId`, while `thread/inject_items` is the between-turn history surface. Enterprise
+  Compliance Logs support also requires LoopGuard to become a known client before launch claims.
 - Codex already offers native phone remote control, so LoopGuard's phone/web value is
   provider-neutral proof, policy, and safe actions rather than another generic terminal remote.
-  See [Codex remote connections](https://developers.openai.com/codex/remote-connections).
+  See [Codex remote connections](https://learn.chatgpt.com/docs/remote-connections).
 - Claude project hooks run in local and cloud sessions, while managed Agent SDK products use
   documented API/provider credentials. LoopGuard must not proxy `claude.ai` login or rate limits
   without Anthropic approval. See [Claude web sessions](https://code.claude.com/docs/en/claude-code-on-the-web)
@@ -1718,7 +1801,7 @@ Current vendor constraints checked during reconciliation:
 
 ### Aggregated implementation index
 
-This index deduplicates the review work; it does not add to or replace the 87 numbered tasks in the
+This index deduplicates the review work; it does not add to or replace the 88 numbered tasks in the
 eleven executable plans.
 
 | Order | Aggregate outcome | Owning executable work | Gate |
@@ -1727,31 +1810,32 @@ eleven executable plans.
 | 2 | Build encrypted durable local composition path and secure daemon protocol | Foundation Tasks 3–6 | Persist -> dispatch -> guard -> ack survives restart |
 | 3 | Deliver zero-key quickstart, lifecycle CLI, diagnostics, and structured local errors | Foundation Task 6 | p95 quickstart <2 min, no key/network/permanent state |
 | 4 | Attach Codex/Claude without overwriting config or bypassing trust | Integrations Tasks 1–4 | Idempotent install/verify/uninstall; exact coverage shown |
-| 5 | Add managed Codex/Claude lifecycle with honest credentials and recovery | Integrations Tasks 5–8 | Start/stream/inject/interrupt/recover contract suite passes |
-| 6 | Journal every repository actor and coordinate isolated concurrent work | Context Tasks 1–7 | Cursor/provenance/collision/worktree recovery tests pass |
-| 7 | Require proof intake and clean pre-mutation baseline | Verification Tasks 1–3 | Late attach cannot produce `verified` |
-| 8 | Run impacted checks safely and persist signed immutable evidence | Verification Tasks 4–7 | Full prompt-to-completion evidence E2E passes |
+| 5 | Require proof intake and clean pre-mutation baseline | Verification Tasks 1–3 | Late attach cannot produce `verified` |
+| 6 | Run trusted checks safely and persist signed immutable evidence | Verification Tasks 4–7 | No-index fallback and prompt-to-proof E2E pass |
+| 7 | Journal every repository actor and coordinate isolated concurrent work | Context Tasks 1–7 | Cursor/provenance/collision/worktree recovery tests pass |
+| 8 | Add managed Codex/Claude lifecycle with honest credentials and recovery | Integrations Tasks 5–8 | Start/stream/inject/interrupt/recover contract suite passes |
 | 9 | Route model/effort deterministically within observed budgets | Routing Tasks 1–7 | Shadow/holdout report separates observed and estimated cost |
 | 10 | Compile editable preference layers and isolate optional visual criticism | Preference Tasks 1–6 | Hard/soft scope and hostile-input tests pass |
 | 11 | Integrate real Playwright fixtures, isolation, and native-baseline benchmarks | Browser Tasks 1–7 | No cross-session auth leak; complete PR gate remains |
 | 12 | Build tenant-safe hosted ingest, relay, replay, action, artifact, and audit APIs | Cloud Tasks 1–9 | RLS, signature, replay, reconnect, and retention tests pass |
-| 13 | Reproduce hostile pipeline failures and rank bounded candidates | Auto-Heal Tasks 1–6 | No candidate proceeds without reproduction/evidence |
-| 14 | Publish only authorized, verified draft repair PRs with durable recovery | Auto-Heal Tasks 7–9 | No merge/deploy; lost-response/base-advance cases reconcile |
-| 15 | Ship complete responsive web and native iOS control surfaces | Surfaces Tasks 1–11 | API, replay, action-proof, visual, a11y, and release gates pass |
-| 16 | Prove production security, recovery, observability, DR, billing, and provenance | Hardening Tasks 1–10 | Human production-readiness sign-offs receive complete evidence |
-| 17 | Ship production-first docs, migration/changelog, support, and legal gates | Foundation/Integrations/Hardening DX additions | Examples execute; public release remains owner-authorized |
-| 18 | Maintain one branch and one draft PR without losing reviewability | Implementation prompt progress/task/milestone rules | 87 task commits, cumulative gates, clean milestone checkpoints |
+| 13 | Ship independently packageable core web/iOS clients with capability-aware navigation | Surfaces Tasks 1–11 | No dead repair UI; core API, replay, action, visual, a11y, package gates pass |
+| 14 | Reproduce hostile pipeline failures and rank bounded candidates | Auto-Heal Tasks 1–6 | No candidate proceeds without reproduction/evidence |
+| 15 | Publish only authorized, verified draft repair PRs with durable recovery | Auto-Heal Tasks 7–9 | No merge/deploy; lost-response/base-advance cases reconcile |
+| 16 | Activate complete repair destinations only after workflow capability is ready | Surfaces Task 12 | Web/iOS repair parity and final visual/a11y gates pass |
+| 17 | Prove production security, recovery, observability, DR, billing, and provenance | Hardening Tasks 1–10 | Human production-readiness sign-offs receive complete evidence |
+| 18 | Ship production-first docs, migration/changelog, support, and legal gates | Foundation/Integrations/Hardening DX additions | Examples execute; public release remains owner-authorized |
+| 19 | Maintain one branch and one draft PR without losing reviewability | Implementation prompt progress/task/milestone rules | 88 task commits, cumulative gates, clean milestone checkpoints |
 
 ## GSTACK REVIEW REPORT
 
 | Review | Runs | Status | Findings and resolution |
 |---|---:|---|---|
-| CEO / scope | 1 | CLEAR | 19 objective discrepancies, 8 taste concerns, and 10 critical failure-mode gaps were reviewed; full scope retained after the user premise gate |
-| Independent Codex/Claude voices | 1 completed, 3 unavailable | DEGRADED | CEO Codex voice completed; Claude currently lacks authentication and managed policy blocked later private-plan exports to external Codex; cross-model consensus is not claimed |
-| Product design | 1 | CLEAR | Plan score moved 5/10 -> 10/10; IA, states, journeys, responsive behavior, accessibility, real destinations, action proof, and anti-slop gates were folded into the surface plan |
-| Engineering | 1 | CLEAR | 12 architecture, 8 code-quality, and 6 performance issues were folded into owning plans; every identified critical boundary has a named test |
-| Developer experience | 1 | CLEAR | Plan score moved 3/10 -> 9/10; zero-key quickstart, protected-session setup, errors, docs, upgrades, environment, community, and measurement are specified |
-| Final reconciliation | 1 | CLEAR | 11 executable plans, 87 sequential tasks, links, code fences, cursor domains, branch/PR policy, vendor constraints, and implementation prompt were reconciled |
+| CEO / scope | 2 | CLEAR | 2026-07-14 refresh moved proof before context, core clients before Auto-Heal, added go/no-go thresholds, and preserved full scope |
+| Independent voices | 5 completed, external cross-model unavailable | DEGRADED | Same-host CEO/design/engineering/DX voices completed; external Claude authentication remains unavailable, so cross-model consensus is not claimed |
+| Product design | 2 | CLEAR | Capability-aware IA, host/integration first run, multi-hop action states, core packaging, and repair activation were folded into the surface/cloud plans |
+| Engineering | 2 | CLEAR | Plugin-first adapters, current app-server/Agent SDK semantics, proof fallback, capability trust, ownership, and bootstrap boundaries have named tests |
+| Developer experience | 2 | CLEAR | Host-neutral workflows, absolute virtualenv commands, resumability, harmless metadata handling, Xcode fallback, and product evidence gates are specified |
+| Final reconciliation | 2 | CLEAR | 11 executable plans, 88 sequential tasks, links, code fences, cursor domains, branch/PR policy, vendor constraints, and implementation prompt were reconciled |
 
 External evidence limitations:
 

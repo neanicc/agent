@@ -1,12 +1,19 @@
 # Codex and Claude Integrations Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For implementation agents:** Execute this plan task-by-task and track every checkbox. In Codex, use the native plan, debugging, review, and verification tools available in the host. In Claude Code, use `superpowers:subagent-driven-development` or `superpowers:executing-plans` when installed. A missing named workflow is never a blocker; perform the equivalent TDD and verification steps directly.
+
+> **Command convention:** Resolve one absolute, supported virtualenv interpreter as `$PY`. In every shell snippet, read bare `python` as `$PY`, `python -m pip` as `$PY -m pip`, and `ruff` as `$PY -m ruff`; never assume those executables are on `PATH`.
 
 **Goal:** Automatically attach LoopGuard to native Codex and Claude sessions and provide managed adapters for surfaces that expose full session control.
 
 **Architecture:** Every integration normalizes provider events into `ControlEvent` and declares capabilities. Attached adapters communicate with `loopguardd` through a fast hook client; managed adapters implement start, event stream, injection, interruption, permissions, model, and effort through official programmatic interfaces.
 
 **Tech Stack:** Python 3.11+, asyncio subprocesses, JSONL/JSON-RPC, Codex hooks/app-server, Claude hooks/Agent SDK, pytest
+
+**Execution tranches:** Tasks 1–4 are the attached-integration tranche and run immediately after
+the foundation. The proof plan and context/worktree plan then establish their prerequisites before
+Tasks 5–8 add managed execution, final compatibility reporting, and service installation. Do not
+start a managed adapter without a recorded proof contract/baseline and a leased worktree.
 
 ---
 
@@ -190,6 +197,13 @@ Codex `PreToolUse` currently covers Bash, `apply_patch`, and MCP calls but is no
 enforcement boundary; the capability report and protected-session UI must disclose that exact
 coverage rather than imply every possible tool path is intercepted.
 
+Normalize `PermissionRequest` as a typed `ActionRequest`, not as a generic tool call. A renderer
+may allow or deny only when the vendor event explicitly supports that decision. Codex
+`PreToolUse` does not currently support an `ask` response, so `request_approval` must never be
+rendered there; Codex approval policy belongs to `PermissionRequest`, while managed adapters use
+their native approval callback/server-request surface. Tests cover stale, duplicate, and
+daemon-timeout approval requests without turning a missing decision into implicit approval.
+
 - [ ] **Step 4: Run hook tests and a latency test**
 
 Run: `cd loopguard && python -m pytest -q tests/adapters/test_hook_entry.py`
@@ -202,12 +216,15 @@ git add loopguard/src/loopguard/adapters loopguard/tests/adapters
 git commit -m "feat: normalize native agent hooks"
 ```
 
-### Task 3: Install Codex hooks without overwriting user configuration
+### Task 3: Package Codex plugin hooks with a safe compatibility fallback
 
 **Files:**
 - Create: `loopguard/src/loopguard/adapters/codex_hooks.py`
-- Create: `loopguard/src/loopguard/adapters/templates/codex-hooks.json`
-- Create: `loopguard/src/loopguard/adapters/templates/codex-hook`
+- Create: `loopguard/integrations/codex-plugin/.codex-plugin/plugin.json`
+- Create: `loopguard/integrations/codex-plugin/hooks/hooks.json`
+- Create: `loopguard/integrations/codex-plugin/bin/loopguard-hook`
+- Create: `loopguard/src/loopguard/adapters/templates/codex-hooks-fallback.json`
+- Create: `loopguard/src/loopguard/adapters/templates/codex-hook-fallback`
 - Modify: `loopguard/src/loopguard/cli.py`
 - Test: `loopguard/tests/adapters/test_codex_install.py`
 
@@ -228,14 +245,16 @@ def test_codex_install_preserves_existing_hooks(tmp_path):
     body = json.loads(path.read_text())
     commands = str(body)
     assert "existing" in commands
-    assert commands.count("hook-entry codex") == 6
+    assert commands.count("hook-entry codex") == 7
     assert first.changed is True
     assert second.changed is False
 
 
 def test_codex_project_install_uses_committed_git_root_wrapper(tmp_path):
     repo = make_git_repo(tmp_path)
-    result = install_codex_hooks(repo / ".codex" / "hooks.json", scope="project")
+    result = install_codex_hooks(
+        repo / ".codex" / "hooks.json", scope="project", plugin_available=False
+    )
     assert result.changed is True
     assert (repo / ".loopguard" / "hooks" / "codex-hook").exists()
     assert "git rev-parse --show-toplevel" in (repo / ".codex" / "hooks.json").read_text()
@@ -248,15 +267,21 @@ Expected: FAIL because the installer does not exist.
 
 - [ ] **Step 3: Implement LoopGuard entries with stable command signatures**
 
-Support user scope at `~/.codex/hooks.json` and project scope at `.codex/hooks.json`. Create entries
-only for the currently documented Codex events `SessionStart`, `UserPromptSubmit`, `PreToolUse`,
-`PostToolUse`, `PreCompact`, and `Stop`; do not invent `FileChanged` or
-`PostToolUseFailure` events for Codex. Identify LoopGuard-owned handlers by an exact versioned
-command prefix and wrapper path supported by the documented schema; do not add private fields to
-Codex hook objects. Replace only those exact handlers on upgrade. Write through a temporary sibling
-and `os.replace()` so a failed write cannot corrupt the user's file.
+Package the primary integration as a versioned Codex plugin with `.codex-plugin/plugin.json`,
+`hooks/hooks.json`, and a plugin-relative executable. Select the supported V1 subset
+`SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `PreCompact`,
+and `Stop`; do not invent `FileChanged` or `PostToolUseFailure` events for Codex. Plugin install is
+explicit, previewed, version/checksum pinned, and remains subject to Codex's hook trust review.
 
-Project scope installs a committed `.loopguard/hooks/codex-hook` wrapper and resolves it from the
+Use direct user scope (`~/.codex/hooks.json`) or project scope (`.codex/hooks.json`) only as a
+version-gated fallback when the installed Codex version cannot activate the plugin. Plugin and
+fallback modes are mutually exclusive: re-read effective hook sources after activation and never
+install both. Identify fallback handlers by an exact versioned command prefix and wrapper path;
+do not add private fields to Codex hook objects. Acquire a file lock, parse and validate before
+merging, preserve unrelated/unknown fields and handler order, write through a temporary sibling
+plus `os.replace()`, re-read/validate, and retain a timestamped backup if validation fails.
+
+Fallback project scope installs a committed `.loopguard/hooks/codex-hook` wrapper and resolves it from the
 canonical Git root, matching Codex's documented project-hook trust behavior. The wrapper first
 tries the local socket. If the socket is absent, it may send a signed HTTPS event only when an
 explicit LoopGuard ingest URL and repository-scoped hook credential are present in the
@@ -268,7 +293,8 @@ repo-local hooks as conditional until a compatibility smoke test against the ins
 Codex surface proves a signed event arrived under the correct tenant/repository. Never advertise
 live cloud observation merely because the files were committed.
 
-Codex requires users to review and trust non-managed hook definitions. Preserve that boundary:
+Codex requires users to review and trust non-managed hook definitions, including plugin hooks.
+Preserve that boundary:
 installation reports `trust_required` and tells the user to review the definition in `/hooks`;
 verification remains non-healthy until Codex reports the exact hook hash trusted. Never invoke
 `--dangerously-bypass-hook-trust` or edit Codex trust state behind the user's back.
@@ -281,8 +307,10 @@ loopguard integrations verify codex --json
 loopguard integrations uninstall codex
 ```
 
-Uninstall must remove only handlers with the exact LoopGuard command signature and leave their
-containing matcher group intact when it still contains unrelated handlers.
+Uninstall removes only the exact LoopGuard plugin version or fallback handlers. It leaves
+unrelated plugins/settings and any matcher group containing unrelated handlers intact. Upgrade
+migrates fallback-to-plugin only after the effective plugin hook hash is visible and never runs
+both sources during the transition.
 
 - [ ] **Step 4: Run installer and CLI tests**
 
@@ -292,15 +320,18 @@ Expected: PASS.
 - [ ] **Step 5: Commit Codex attached mode**
 
 ```bash
-git add loopguard/src/loopguard loopguard/tests/adapters
+git add loopguard/src/loopguard loopguard/tests/adapters loopguard/integrations/codex-plugin
 git commit -m "feat: install codex lifecycle hooks"
 ```
 
-### Task 4: Install Claude hooks for local and cloud sessions
+### Task 4: Package Claude plugin hooks for local and cloud sessions
 
 **Files:**
 - Create: `loopguard/src/loopguard/adapters/claude_hooks.py`
-- Create: `loopguard/src/loopguard/adapters/templates/claude-settings-fragment.json`
+- Create: `loopguard/integrations/claude-plugin/.claude-plugin/plugin.json`
+- Create: `loopguard/integrations/claude-plugin/hooks/hooks.json`
+- Create: `loopguard/integrations/claude-plugin/bin/loopguard-hook`
+- Create: `loopguard/src/loopguard/adapters/templates/claude-settings-fallback.json`
 - Test: `loopguard/tests/adapters/test_claude_install.py`
 - Modify: `loopguard/README.md`
 
@@ -312,12 +343,13 @@ from loopguard.adapters.claude_hooks import install_claude_hooks
 
 def test_claude_project_install_uses_project_relative_entry(tmp_path):
     settings = tmp_path / ".claude" / "settings.json"
-    result = install_claude_hooks(settings, scope="project")
+    result = install_claude_hooks(settings, scope="project", plugin_available=False)
     text = settings.read_text()
     assert result.changed is True
     assert "${CLAUDE_PROJECT_DIR}" in text
     assert "FileChanged" in text
     assert "PostToolUseFailure" in text
+    assert "PermissionRequest" in text
 ```
 
 - [ ] **Step 2: Verify failure**
@@ -327,13 +359,15 @@ Expected: FAIL because `install_claude_hooks` is missing.
 
 - [ ] **Step 3: Implement user and project installers**
 
-Local user scope writes to `~/.claude/settings.json`. Project scope writes to
-`.claude/settings.json` so hooks are available in Claude cloud sessions. Include
-`SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`,
-`PostToolUseFailure`, `FileChanged`, `PreCompact`, and `Stop`. Preserve unrelated settings and
-LoopGuard-independent hook groups.
+Package a versioned Claude plugin using `.claude-plugin/plugin.json`, `hooks/hooks.json`, and
+`${CLAUDE_PLUGIN_ROOT}`/exec-form paths. This is the primary reusable local integration. For
+repository-scoped cloud execution, or when the installed Claude version cannot activate the
+plugin, use a version-gated `.claude/settings.json` fallback. Never activate plugin and fallback
+handlers together. Include `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`,
+`PostToolUse`, `PostToolUseFailure`, `FileChanged`, `PreCompact`, and `Stop`. Preserve unrelated
+settings and hook groups with the same lock/atomic-write/re-read/backup contract as Codex.
 
-Project hooks call a committed thin script:
+Fallback project hooks call a committed thin script:
 
 ```bash
 "${CLAUDE_PROJECT_DIR}/.loopguard/hooks/claude-hook"
@@ -347,6 +381,8 @@ credentials in committed settings or wrapper files.
 Use Claude's documented `CLAUDE_CODE_REMOTE=true` signal only to label cloud execution, not as an
 authentication mechanism. `FileChanged` covers explicitly watched literal files only; the
 Change Journal filesystem watcher remains the source of truth for arbitrary source-file changes.
+Managed policy that disallows user/project/plugin hooks reports `unavailable` with the policy
+source; setup never bypasses the administrator boundary.
 
 - [ ] **Step 4: Run local/cloud fixture tests**
 
@@ -356,7 +392,8 @@ Expected: PASS.
 - [ ] **Step 5: Commit Claude attached mode**
 
 ```bash
-git add loopguard/src/loopguard loopguard/tests/adapters loopguard/README.md
+git add loopguard/src/loopguard loopguard/tests/adapters loopguard/README.md \
+  loopguard/integrations/claude-plugin
 git commit -m "feat: install claude local and cloud hooks"
 ```
 
@@ -378,13 +415,21 @@ from loopguard.adapters.codex_managed import CodexManagedAdapter
 def test_managed_codex_declares_and_uses_turn_controls(fake_codex_process):
     adapter = CodexManagedAdapter(process=fake_codex_process)
     session = run(adapter.start(model="gpt-test", effort="medium", cwd="/repo"))
-    run(adapter.inject(session, "Run impacted tests first."))
+    run(adapter.steer_active_turn(session, "Run impacted tests first."))
     run(adapter.interrupt(session))
     assert adapter.capabilities.supports(Capability.SELECT_MODEL)
     assert fake_codex_process.methods == [
-        "initialize", "initialized", "thread/start", "turn/start",
+        "initialize", "initialized", "model/list", "thread/start", "turn/start",
         "turn/steer", "turn/interrupt",
     ]
+
+
+def test_managed_codex_injects_between_turns(fake_codex_process):
+    adapter = CodexManagedAdapter(process=fake_codex_process)
+    session = run(adapter.start(model="gpt-test", effort="medium", cwd="/repo"))
+    fake_codex_process.complete_active_turn()
+    run(adapter.inject_between_turns(session, "Previously verified context."))
+    assert fake_codex_process.methods[-1] == "thread/inject_items"
 ```
 
 - [ ] **Step 2: Verify the missing adapter**
@@ -394,17 +439,31 @@ Expected: FAIL because `CodexManagedAdapter` does not exist.
 
 - [ ] **Step 3: Implement JSON-RPC lifecycle**
 
-Start `codex app-server --listen stdio://`, perform `initialize`/`initialized`, then map:
+Start `codex app-server --listen stdio://`, perform `initialize` with stable LoopGuard
+`clientInfo` followed by `initialized`, then map:
 
 - `thread/start` to session creation.
-- `turn/start` to model, effort, `cwd`, sandbox, and initial input.
-- `turn/steer` to bounded context injection.
+- `model/list` and `modelProvider/capabilities/read` to validated model/effort availability.
+- `turn/start` to model, effort, `cwd`, approval policy, sandbox policy, and initial input.
+- `turn/steer` only to the authoritative active turn, with its exact `expectedTurnId`.
+- `thread/inject_items` only to bounded, validated model-visible context between turns.
 - `turn/interrupt` to interruption.
 - `item/*` and `turn/*` notifications to `ControlEvent`.
 - approval server requests to typed `ActionRequest` records.
 
 Generate and pin protocol fixtures from the installed Codex CLI in a compatibility test; do not
 hand-maintain assumptions that generated schemas can verify.
+
+Maintain a per-thread locked lifecycle from server notifications. Never fall back from a failed
+`turn/steer` to `thread/inject_items`, or vice versa: they have different ordering semantics.
+Validate thread ownership, item role/schema/size, correlation IDs, and terminal state before every
+control. Stable API fields are the production baseline; experimental methods require an explicit
+capability flag, isolated tests, and an `experimental` capability label.
+
+The initialization `clientInfo.name`, title, and version are versioned product constants and are
+included in compatibility evidence. Public enterprise support is an external launch gate: contact
+OpenAI to register LoopGuard as a known client before claiming enterprise Compliance Logs support.
+Development and local tests may proceed without that registration but must not advertise it.
 
 Start only inside a worktree lease created by the context plan and only after the verification
 plan records the proof contract plus pre-mutation baseline. Persist vendor thread/turn IDs and
@@ -478,6 +537,13 @@ leased worktree and recorded pre-mutation proof baseline. The bridge binds every
 the started session and rejects unknown IDs, unsupported protocol versions, oversized frames, and
 events after terminal state.
 
+Use streaming-input mode for multi-turn sessions. Bind `effort` to the SDK's supported named
+levels, query and record supported models during initialization, use `Query.interrupt()` for
+cancellation, and keep between-turn input distinct from an in-flight permission decision.
+`canUseTool` and SDK permission modes are the managed approval surface; do not simulate a remote
+approval by mutating an already-issued tool request. Record SDK-reported usage and label
+client-computed cost as an estimate rather than authoritative billing.
+
 Authenticate managed Claude only with user-supplied API credentials or a documented supported
 provider such as Bedrock, Vertex AI, or Azure AI Foundry. Unless Anthropic grants explicit written
 approval, LoopGuard must not offer or proxy `claude.ai` login, subscription rate limits, or session
@@ -542,7 +608,8 @@ Expected: FAIL because diagnostics and guided setup are missing.
 
 - [ ] **Step 3: Implement executable/version/config checks**
 
-Report installed versions, hook locations, trust status where observable, daemon reachability,
+Report installed versions, active plugin/fallback source, plugin version/checksum, hook locations,
+trust status where observable, daemon reachability,
 bridge health, and every capability as `supported`, `conditional`, `experimental`, or
 `unavailable`. A configured repo-local hook is not sufficient evidence that a hosted surface
 executes it: retain `codex-cloud.observe=conditional` until the compatibility smoke test records a
@@ -558,8 +625,9 @@ loopguard uninstall --dry-run
 ```
 
 `setup` detects installed Codex/Claude versions, validates the daemon extra, previews every file,
-service, and hook change, installs the user service, merges selected integrations idempotently,
-starts the daemon, and runs a synthetic end-to-end event. It never approves vendor hook trust; it
+service, plugin, and fallback-hook change, installs the user service, activates a compatible
+plugin when possible (or exactly one fallback), starts the daemon, and runs a synthetic end-to-end
+event. It never approves vendor hook trust; it
 prints the exact trust-review step and remains `attention_required` until verified. Interactive
 mode defaults to detected local agents and local-only operation; non-interactive mode requires
 explicit scope/agents and returns stable exit/error codes.

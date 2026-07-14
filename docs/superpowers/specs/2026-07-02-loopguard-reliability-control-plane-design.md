@@ -1,7 +1,7 @@
 # LoopGuard Reliability Control Plane Design
 
 **Date:** 2026-07-02
-**Status:** Approved direction
+**Status:** Approved direction; production-readiness refresh 2026-07-14
 **Audience:** Product, engineering, security, and design
 
 ## Product definition
@@ -32,6 +32,8 @@ primary value is preventing wasted work and unverified changes across coding age
     draft pull requests.
 13. Operate safely in single-user local mode and multi-tenant hosted mode.
 14. Provide auditable decisions, exact action provenance, retention controls, and deletion.
+15. Compute effective capabilities from policy, entitlement, role, host/adapter version, trust, and
+    fresh health so clients never expose unsupported navigation or actions.
 
 ## Non-goals
 
@@ -103,16 +105,24 @@ the loop detector small and permits other subsystems to evolve independently.
 
 ### Attached mode
 
-Hooks and the local daemon observe sessions launched normally by the developer. Monitoring and
-change journaling are deterministic. The integration only blocks or injects context where the
-native lifecycle API supports it. If the daemon is unavailable, observation is fail-open; explicit
-organization policies may separately be configured fail-closed.
+Versioned vendor plugins are the primary reusable hook distribution; direct user/project settings
+merges are a mutually exclusive, version-gated compatibility fallback. Hooks and the local daemon
+observe sessions launched normally by the developer. Monitoring and change journaling are
+deterministic. The integration only blocks or injects context where the native lifecycle API
+supports it. If the daemon is unavailable, observation is fail-open; explicit organization
+policies may separately be configured fail-closed.
 
 ### Managed mode
 
 LoopGuard launches Codex through app-server or SDK surfaces and launches Claude through its Agent
 SDK or managed-agent surface. LoopGuard owns the turn boundary, model and effort, sandbox,
 permission flow, context injection, interruption, and event stream.
+
+For Codex App Server, active-turn steering uses `turn/steer` with `expectedTurnId`; between-turn
+model-visible context uses `thread/inject_items`. Model/effort availability comes from the server
+catalog/capabilities rather than hard-coded names. For Claude Agent SDK, streaming input,
+`canUseTool`, supported models/effort, and `Query.interrupt()` provide the corresponding managed
+boundaries. Neither adapter silently substitutes one lifecycle operation for another.
 
 ### Cloud-attached mode
 
@@ -192,6 +202,11 @@ inconclusive checks.
 Model-based verification is optional and only evaluates evidence after deterministic commands,
 screenshots, or artifacts exist.
 
+Proof Core ships before the full Change Journal/context index. Its trusted command discovery,
+pre-mutation baseline, conservative full-suite fallback, deterministic verdict, and immutable
+evidence are independently useful. Context later narrows iteration checks with explicit impact
+edges; a missing or stale index can never weaken the final gate or prevent an honest proof result.
+
 ## Model and effort routing
 
 The initial router is deterministic. It evaluates task type, risk, code impact, repository
@@ -263,6 +278,8 @@ The hosted service contains:
 - Durable workflows for repair and long-running verification.
 - APNs and web notification delivery.
 - Organization policy, retention, billing, and audit APIs.
+- Effective capability and host/integration-health APIs with source, reason, observation time,
+  TTL, and fail-closed unknown/degraded states.
 
 The phone does not connect directly to the daemon. It signs an expiring canonical
 `ActionRequest` with its registered device key and submits it to the hosted API. Web uses a
@@ -270,15 +287,22 @@ registered WebAuthn assertion. The hosted API verifies user/device/current state
 the exact request with a rotating identified cloud key. The daemon validates both signatures,
 tenant/host/target, nonce, expiry, capability, and current state version/hash before acting.
 
+Action acceptance is multi-hop: reviewed -> signed -> queued -> delivered -> host executing ->
+executed/rejected, with expired/revoked and unknown outcome -> reconciling branches. API `202`
+acceptance is never displayed as execution success; only daemon resolution creates a receipt.
+
 ## Control surfaces
 
 ### iOS
 
-The production app is native SwiftUI. Its primary navigation is Inbox, Runs, Changes, Repairs, and
-Settings. It uses system typography, SF Symbols, Dynamic Type, VoiceOver, reduced-motion behavior,
-and Liquid Glass only for the navigation/control layer. Approval screens always show target,
-scope, effect, risk, expected resulting state, and expiry. All five tabs are implemented
-destinations: Changes contains provenance, diff, and linked verification; Repairs contains
+The production app is native SwiftUI. Its final primary navigation is Inbox, Runs, Changes,
+Repairs, and Settings. Before Auto-Heal is ready, effective capabilities omit Repairs entirely;
+Hosts & integrations lives under Settings and explains pairing, daemon, repository, plugin/hook
+trust, coverage, and adapter health. It uses system typography, SF Symbols, Dynamic Type,
+VoiceOver, reduced-motion behavior, and Liquid Glass only for the navigation/control layer.
+Approval screens always show target, scope, effect, risk, expected resulting state, and expiry.
+All five tabs are implemented destinations: Changes contains provenance, diff, and linked
+verification; Repairs contains
 reproduction evidence, candidates, checks, rollback, and draft-PR state; Settings contains
 account, devices, notifications, privacy/local-only controls, and app version. Live Activities
 are supplied by a separate WidgetKit extension and expose only non-sensitive phase/progress.
@@ -298,6 +322,11 @@ the Expo prototype's Space Grotesk/IBM Plex/mono and semantic token language. Na
 system typography and platform metrics while reusing the colour/status/content principles. This
 platform-specific split replaces the ambiguous instruction to apply the prototype's font and
 no-glass rules unchanged to native iOS.
+
+Navigation is generated from effective capabilities. Core clients package and dogfood before
+Auto-Heal; repair routes and the final iOS Repairs tab activate only after workflow-backed repair
+capability is fresh and ready. Unavailable, not entitled, insufficient role, host offline, adapter
+partial, and feature-disabled states never look actionable.
 
 The Expo application remains a disposable prototype until native iOS and web reach feature parity.
 
@@ -349,8 +378,13 @@ The implementation is split into independent plans:
 6. Preference engine.
 7. Browser and Playwright acceleration.
 8. Hosted cloud control plane.
-9. Auto-healing pipelines.
-10. Native iOS and web control surfaces.
+9. Native iOS and web core control surfaces.
+10. Auto-healing pipelines and the repair-surface activation tranche.
 11. Production security, operations, and release hardening.
 
 Each subsystem must ship behind capability flags and produce independently testable value.
+
+The dependency-safe execution order intentionally splits two plans into tranches: Foundation;
+Integrations 1–4; Verification Proof Core; Context; Integrations 5–8; Routing; Preferences;
+Browser; Cloud; Surfaces 1–11; Auto-Heal; Surface 12; Hardening. This ships trustworthy proof
+before optional context narrowing and packageable core clients before repair UI activation.

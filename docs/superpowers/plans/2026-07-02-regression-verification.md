@@ -1,10 +1,16 @@
 # Regression Verification Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For implementation agents:** Execute this plan task-by-task and track every checkbox. In Codex, use the native plan, debugging, review, and verification tools available in the host. In Claude Code, use `superpowers:subagent-driven-development` or `superpowers:executing-plans` when installed. A missing named workflow is never a blocker; perform the equivalent TDD and verification steps directly.
+
+> **Command convention:** Resolve one absolute, supported virtualenv interpreter as `$PY`. In every shell snippet, read bare `python` as `$PY`, `python -m pip` as `$PY -m pip`, and `ruff` as `$PY -m ruff`; never assume those executables are on `PATH`.
 
 **Goal:** Prove whether an agent change satisfies its task without introducing regressions, while separating new failures from pre-existing failures.
 
-**Architecture:** A proof contract defines required evidence. The verifier captures a baseline, computes an impact set, runs bounded commands, stores immutable evidence, and derives a deterministic verdict that native Stop hooks and managed sessions can enforce.
+**Architecture:** A proof contract defines required evidence. The verifier captures a baseline,
+runs a trusted conservative completion suite, stores immutable evidence, and derives a deterministic
+verdict that native Stop hooks and managed sessions can enforce. When the later context plan is
+available, an optional impact index safely narrows iteration checks; missing index data always
+falls back to the trusted suite and never blocks proof-core delivery.
 
 **Tech Stack:** Python 3.11+, Pydantic 2, asyncio subprocesses, pytest/JUnit parsing, TypeScript/Jest JSON parsing, Git, pytest
 
@@ -14,6 +20,11 @@ before the first mutating tool. Managed mode guarantees this ordering. Attached 
 `UserPromptSubmit` plus pre-tool hooks; if LoopGuard attached late or the native surface cannot
 prove ordering, the final status is `inconclusive` or “checks passed without a trusted baseline,”
 never `verified`.
+
+**Proof-first dependency rule:** execute all seven tasks after Foundation and the attached
+integration tranche, before Context Coordination. Task 4 must therefore pass its no-index fallback
+contract. The later context plan adds richer impact edges; it is an optimization and coordination
+layer, not a prerequisite for honest baseline/verdict/evidence semantics.
 
 ---
 
@@ -195,6 +206,8 @@ Expected: FAIL because baseline services are missing.
 `CommandRunner.run(CheckSpec)` must:
 
 - Use `asyncio.create_subprocess_exec`, never `shell=True`.
+- Resolve a logical Python command through the configured absolute virtual-environment interpreter;
+  never rely on ambient `python`, `pip`, shell activation, aliases, or `PATH` mutation.
 - Resolve real `cwd` beneath the bound worktree and reject symlink/path escape.
 - Start with an empty environment plus an explicit allowlist; no agent, cloud, signing, SSH,
   package-registry, or user credential variables.
@@ -260,9 +273,13 @@ Expected: FAIL because `ImpactAnalyzer` is missing.
 
 - [ ] **Step 3: Implement bounded graph traversal and plugins**
 
-Use the context symbol/import index, test-name/path conventions, stored historical test failures,
-and optional coverage edges. Stop traversal at configured depth and maximum nodes. Every selected
-test must include an explanation edge.
+Use the context symbol/import index when available, plus repository-relative path/test conventions,
+checked-in CI/project metadata, stored historical test failures, and optional coverage edges. Stop
+traversal at configured depth and maximum nodes. Every selected test must include an explanation
+edge. If the context index is missing, stale, or does not prove coverage, return a conservative
+trusted full-suite `CheckSpec`; never guess a smaller suite. If no checked-in, user-approved,
+local-safe suite exists, return a typed `no_verified_suite`/inconclusive result rather than running
+arbitrary repository code.
 
 Define plugin protocol:
 
@@ -278,7 +295,8 @@ and UI plugins land only after fixture coverage exists.
 - [ ] **Step 4: Run impact tests**
 
 Run: `cd loopguard && python -m pytest -q tests/verify/test_impact.py`
-Expected: PASS, including cycles, maximum-depth, deleted-file, and no-index fallback cases.
+Expected: PASS, including cycles, maximum-depth, deleted-file, stale-index, trusted full-suite
+fallback, and no-verified-suite cases.
 
 - [ ] **Step 5: Commit impact analysis**
 
@@ -478,8 +496,11 @@ Completion policy distinguishes:
 
 Register proof intake, runner, artifact store, verdict service, and completion enforcement in
 `DaemonServices`. The end-to-end test must start from a user-prompt event, capture baseline before
-a mutating pre-tool event, journal the change, run verification, persist signed evidence, and
-return the correct Stop/managed completion decision. Add late-attach and daemon-restart variants.
+a mutating pre-tool event, derive a canonical repository diff/change set even when the later Change
+Journal is not installed, run verification, persist signed evidence, and return the correct
+Stop/managed completion decision. When the context subsystem is present, a contract test proves
+that journal-backed impact data refines iteration checks without changing final verdict semantics.
+Add late-attach and daemon-restart variants.
 
 - [ ] **Step 4: Run integration and complete suite**
 
