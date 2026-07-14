@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import stat
 import struct
@@ -9,6 +10,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from types import TracebackType
 from typing import TypeVar
@@ -28,6 +30,7 @@ from .crypto import (
     generate_data_key,
     key_id_for,
 )
+from .decisions import PolicyDecision
 from .events import ControlEvent
 from .migrations import MigrationError, migrate
 from .redaction import redact
@@ -65,6 +68,10 @@ class EventIdConflictError(EventStoreError):
     """An event ID was reused for different immutable event semantics."""
 
 
+class DispatchMarkerConflictError(EventStoreError):
+    """A durable dispatch marker disagrees with the original core decision."""
+
+
 class WrongKeyError(EventStoreError):
     """Supplied key material does not match the existing event store."""
 
@@ -92,6 +99,15 @@ class StoredEvent:
     @property
     def session_seq(self) -> int:
         return self.position.session_seq
+
+
+@dataclass(frozen=True, slots=True)
+class HandlerDispatchState:
+    handler_name: str
+    local_log_seq: int
+    status: str
+    attempts: int
+    error_code: str | None
 
 
 _Result = TypeVar("_Result")
@@ -294,6 +310,302 @@ class EventStore:
             limit,
         )
 
+    def count(self) -> int:
+        with self._lock:
+            row = self._with_busy_retry(
+                lambda: self._require_connection().execute(
+                    "SELECT COUNT(*) FROM events"
+                ).fetchone()
+            )
+            return _require_integer(row[0], "events count")
+
+    def get_event(self, local_log_seq: int) -> StoredEvent | None:
+        if local_log_seq <= 0:
+            return None
+        with self._lock:
+            row = self._with_busy_retry(
+                lambda: self._require_connection().execute(
+                    """
+                    SELECT local_log_seq, event_id, repo_id, session_id, repo_seq, session_seq,
+                           schema_version, key_id, nonce, ciphertext, created_at
+                    FROM events
+                    WHERE local_log_seq = ?
+                    """,
+                    (local_log_seq,),
+                ).fetchone()
+            )
+            return None if row is None else self._stored_event(row)
+
+    def get_core_decision(self, local_log_seq: int) -> PolicyDecision | None:
+        with self._lock:
+            row = self._with_busy_retry(
+                lambda: self._require_connection().execute(
+                    "SELECT decision_json FROM core_dispatch WHERE local_log_seq = ?",
+                    (local_log_seq,),
+                ).fetchone()
+            )
+            if row is None:
+                return None
+            try:
+                return PolicyDecision.model_validate_json(
+                    _require_text(row[0], "core_dispatch.decision_json")
+                )
+            except (ValidationError, ValueError) as exc:
+                raise IntegrityError("core dispatch marker is malformed") from exc
+
+    def record_core_dispatch(
+        self,
+        local_log_seq: int,
+        decision: PolicyDecision,
+        handler_names: tuple[str, ...] = (),
+    ) -> PolicyDecision:
+        decision = PolicyDecision.model_validate(decision)
+        decision_json = decision.model_dump_json()
+        names = tuple(dict.fromkeys(handler_names))
+        for name in names:
+            _validate_handler_name(name)
+
+        def operation() -> PolicyDecision:
+            connection = self._require_connection()
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                row = connection.execute(
+                    "SELECT decision_json FROM core_dispatch WHERE local_log_seq = ?",
+                    (local_log_seq,),
+                ).fetchone()
+                if row is not None:
+                    existing = PolicyDecision.model_validate_json(
+                        _require_text(row[0], "core_dispatch.decision_json")
+                    )
+                    if existing != decision:
+                        raise DispatchMarkerConflictError(
+                            "core dispatch marker conflicts with the original decision"
+                        )
+                    connection.execute("COMMIT")
+                    return existing
+                connection.execute(
+                    """
+                    INSERT INTO core_dispatch(local_log_seq, decision_json, dispatched_at)
+                    VALUES (?, ?, ?)
+                    """,
+                    (local_log_seq, decision_json, _utc_now()),
+                )
+                now = _utc_now()
+                for name in names:
+                    connection.execute(
+                        """
+                        INSERT OR IGNORE INTO handler_dispatch(
+                            handler_name, local_log_seq, status, attempts,
+                            last_error_code, updated_at
+                        ) VALUES (?, ?, 'queued', 0, NULL, ?)
+                        """,
+                        (name, local_log_seq, now),
+                    )
+                connection.execute("COMMIT")
+                return decision
+            except Exception:
+                if connection.in_transaction:
+                    connection.execute("ROLLBACK")
+                raise
+
+        with self._lock:
+            self._require_open()
+            return self._with_busy_retry(operation)
+
+    def ensure_handler_deliveries(
+        self,
+        local_log_seq: int,
+        handler_names: list[str] | tuple[str, ...],
+    ) -> dict[str, str]:
+        names = tuple(dict.fromkeys(handler_names))
+        for name in names:
+            _validate_handler_name(name)
+
+        def operation() -> dict[str, str]:
+            connection = self._require_connection()
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                now = _utc_now()
+                for name in names:
+                    connection.execute(
+                        """
+                        INSERT OR IGNORE INTO handler_dispatch(
+                            handler_name, local_log_seq, status, attempts,
+                            last_error_code, updated_at
+                        ) VALUES (?, ?, 'queued', 0, NULL, ?)
+                        """,
+                        (name, local_log_seq, now),
+                    )
+                rows = connection.execute(
+                    """
+                    SELECT handler_name, status
+                    FROM handler_dispatch
+                    WHERE local_log_seq = ?
+                    """,
+                    (local_log_seq,),
+                ).fetchall()
+                connection.execute("COMMIT")
+                return {str(row[0]): str(row[1]) for row in rows if str(row[0]) in names}
+            except Exception:
+                if connection.in_transaction:
+                    connection.execute("ROLLBACK")
+                raise
+
+        with self._lock:
+            self._require_open()
+            return self._with_busy_retry(operation)
+
+    def pending_handler_deliveries(
+        self,
+        handler_name: str,
+        limit: int,
+    ) -> list[HandlerDispatchState]:
+        _validate_handler_name(handler_name)
+        if limit <= 0:
+            return []
+        with self._lock:
+            rows = self._with_busy_retry(
+                lambda: self._require_connection().execute(
+                    """
+                    SELECT handler_name, local_log_seq, status, attempts, last_error_code
+                    FROM handler_dispatch
+                    WHERE handler_name = ? AND status IN ('queued', 'running')
+                    ORDER BY local_log_seq
+                    LIMIT ?
+                    """,
+                    (handler_name, limit),
+                ).fetchall()
+            )
+            return [_handler_dispatch_state(row) for row in rows]
+
+    def get_handler_delivery(
+        self,
+        handler_name: str,
+        local_log_seq: int,
+    ) -> HandlerDispatchState | None:
+        _validate_handler_name(handler_name)
+        with self._lock:
+            row = self._with_busy_retry(
+                lambda: self._require_connection().execute(
+                    """
+                    SELECT handler_name, local_log_seq, status, attempts, last_error_code
+                    FROM handler_dispatch
+                    WHERE handler_name = ? AND local_log_seq = ?
+                    """,
+                    (handler_name, local_log_seq),
+                ).fetchone()
+            )
+            return None if row is None else _handler_dispatch_state(row)
+
+    def mark_handler_running(self, handler_name: str, local_log_seq: int) -> int:
+        return self._update_handler_running(handler_name, local_log_seq)
+
+    def mark_handler_succeeded(self, handler_name: str, local_log_seq: int) -> None:
+        self._finish_handler_delivery(
+            handler_name,
+            local_log_seq,
+            status="succeeded",
+            error_code=None,
+        )
+
+    def mark_handler_failed(
+        self,
+        handler_name: str,
+        local_log_seq: int,
+        *,
+        retry: bool,
+        error_code: str = "handler_failed",
+    ) -> None:
+        if not error_code or len(error_code) > 64:
+            raise ValueError("handler error code must be between 1 and 64 characters")
+        self._finish_handler_delivery(
+            handler_name,
+            local_log_seq,
+            status="queued" if retry else "failed",
+            error_code=error_code,
+        )
+
+    def mark_handler_exhausted(
+        self,
+        handler_name: str,
+        local_log_seq: int,
+        *,
+        max_attempts: int,
+    ) -> None:
+        _validate_handler_name(handler_name)
+        if max_attempts <= 0:
+            raise ValueError("max_attempts must be positive")
+
+        def operation() -> None:
+            cursor = self._require_connection().execute(
+                """
+                UPDATE handler_dispatch
+                SET status = 'failed', last_error_code = 'handler_failed', updated_at = ?
+                WHERE handler_name = ? AND local_log_seq = ?
+                  AND status IN ('queued', 'running') AND attempts >= ?
+                """,
+                (_utc_now(), handler_name, local_log_seq, max_attempts),
+            )
+            if cursor.rowcount != 1:
+                raise EventStoreError("handler delivery has not exhausted its attempt budget")
+
+        with self._lock:
+            self._require_open()
+            self._with_busy_retry(operation)
+
+    def handler_statuses(self, local_log_seq: int) -> dict[str, dict[str, object]]:
+        with self._lock:
+            rows = self._with_busy_retry(
+                lambda: self._require_connection().execute(
+                    """
+                    SELECT handler_name, local_log_seq, status, attempts, last_error_code
+                    FROM handler_dispatch
+                    WHERE local_log_seq = ?
+                    ORDER BY handler_name
+                    """,
+                    (local_log_seq,),
+                ).fetchall()
+            )
+            return {
+                state.handler_name: {
+                    "status": state.status,
+                    "attempts": state.attempts,
+                    "error_code": state.error_code,
+                }
+                for state in (_handler_dispatch_state(row) for row in rows)
+            }
+
+    def has_pending_handler_deliveries(
+        self,
+        handler_names: tuple[str, ...] | None = None,
+    ) -> bool:
+        if handler_names is not None:
+            names = tuple(dict.fromkeys(handler_names))
+            if not names:
+                return False
+            for name in names:
+                _validate_handler_name(name)
+            placeholders = ",".join("?" for _name in names)
+            query = f"""
+                SELECT 1 FROM handler_dispatch
+                WHERE status IN ('queued', 'running')
+                  AND handler_name IN ({placeholders})
+                LIMIT 1
+            """
+            parameters: tuple[object, ...] = names
+        else:
+            query = """
+                SELECT 1 FROM handler_dispatch
+                WHERE status IN ('queued', 'running')
+                LIMIT 1
+            """
+            parameters = ()
+        with self._lock:
+            row = self._with_busy_retry(
+                lambda: self._require_connection().execute(query, parameters).fetchone()
+            )
+            return row is not None
+
     def read_repo_after(self, repo_id: str, repo_seq: int, limit: int) -> list[StoredEvent]:
         return self._read_after(
             "repo_id = ? AND repo_seq > ?",
@@ -429,6 +741,7 @@ class EventStore:
             for row in rows:
                 self._stored_event(row)
             self._verify_sequence_state()
+            self._verify_dispatch_state()
             connection.execute("COMMIT")
         except Exception:
             if connection.in_transaction:
@@ -491,6 +804,33 @@ class EventStore:
         except (IndexError, KeyError, TypeError, ValueError, OverflowError) as exc:
             raise IntegrityError("cursor sequence metadata is malformed") from exc
 
+    def _verify_dispatch_state(self) -> None:
+        connection = self._require_connection()
+        try:
+            if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+                raise IntegrityError("dispatch foreign key integrity check failed")
+            for row in connection.execute(
+                "SELECT local_log_seq, decision_json, dispatched_at FROM core_dispatch"
+            ):
+                _require_integer(row[0], "core_dispatch.local_log_seq")
+                PolicyDecision.model_validate_json(
+                    _require_text(row[1], "core_dispatch.decision_json")
+                )
+                _require_aware_timestamp(row[2], "core_dispatch.dispatched_at")
+            for row in connection.execute(
+                """
+                SELECT handler_name, local_log_seq, status, attempts, last_error_code,
+                       updated_at
+                FROM handler_dispatch
+                """
+            ):
+                _handler_dispatch_state(row)
+                _require_aware_timestamp(row[5], "handler_dispatch.updated_at")
+        except IntegrityError:
+            raise
+        except (ValidationError, ValueError, TypeError, IndexError) as exc:
+            raise IntegrityError("durable dispatch state is malformed") from exc
+
     def _next_sequence(self, table: str, key_column: str, key: str) -> int:
         row = self._require_connection().execute(
             f"""
@@ -501,6 +841,73 @@ class EventStore:
             (key,),
         ).fetchone()
         return int(row[0])
+
+    def _update_handler_running(self, handler_name: str, local_log_seq: int) -> int:
+        _validate_handler_name(handler_name)
+
+        def operation() -> int:
+            connection = self._require_connection()
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                cursor = connection.execute(
+                    """
+                    UPDATE handler_dispatch
+                    SET status = 'running', attempts = attempts + 1,
+                        last_error_code = NULL, updated_at = ?
+                    WHERE handler_name = ? AND local_log_seq = ?
+                      AND status IN ('queued', 'running')
+                    """,
+                    (_utc_now(), handler_name, local_log_seq),
+                )
+                if cursor.rowcount != 1:
+                    raise EventStoreError("handler delivery is not pending")
+                row = connection.execute(
+                    """
+                    SELECT attempts FROM handler_dispatch
+                    WHERE handler_name = ? AND local_log_seq = ?
+                    """,
+                    (handler_name, local_log_seq),
+                ).fetchone()
+                if row is None:
+                    raise EventStoreError("handler delivery does not exist")
+                attempts = _require_integer(row[0], "handler_dispatch.attempts")
+                connection.execute("COMMIT")
+                return attempts
+            except Exception:
+                if connection.in_transaction:
+                    connection.execute("ROLLBACK")
+                raise
+
+        with self._lock:
+            self._require_open()
+            return self._with_busy_retry(operation)
+
+    def _finish_handler_delivery(
+        self,
+        handler_name: str,
+        local_log_seq: int,
+        *,
+        status: str,
+        error_code: str | None,
+    ) -> None:
+        _validate_handler_name(handler_name)
+
+        def operation() -> None:
+            connection = self._require_connection()
+            cursor = connection.execute(
+                """
+                UPDATE handler_dispatch
+                SET status = ?, last_error_code = ?, updated_at = ?
+                WHERE handler_name = ? AND local_log_seq = ? AND status = 'running'
+                """,
+                (status, error_code, _utc_now(), handler_name, local_log_seq),
+            )
+            if cursor.rowcount != 1:
+                raise EventStoreError("handler delivery is not running")
+
+        with self._lock:
+            self._require_open()
+            self._with_busy_retry(operation)
 
     def _read_after(
         self,
@@ -773,6 +1180,44 @@ def _serialize_event(event: ControlEvent) -> bytes:
     return body.encode()
 
 
+_HANDLER_NAME = re.compile(r"^[a-z][a-z0-9_.-]{0,63}$")
+
+
+def _validate_handler_name(handler_name: str) -> None:
+    if not isinstance(handler_name, str) or _HANDLER_NAME.fullmatch(handler_name) is None:
+        raise ValueError("handler name must be a safe lowercase identifier")
+
+
+def _handler_dispatch_state(row: sqlite3.Row) -> HandlerDispatchState:
+    handler_name = _require_text(row[0], "handler_dispatch.handler_name")
+    _validate_handler_name(handler_name)
+    local_log_seq = _require_integer(row[1], "handler_dispatch.local_log_seq")
+    if local_log_seq <= 0:
+        raise IntegrityError("handler_dispatch.local_log_seq must be positive")
+    status = _require_text(row[2], "handler_dispatch.status")
+    if status not in {"queued", "running", "succeeded", "failed"}:
+        raise IntegrityError("handler_dispatch.status is invalid")
+    attempts = _require_integer(row[3], "handler_dispatch.attempts")
+    if attempts < 0:
+        raise IntegrityError("handler_dispatch.attempts must not be negative")
+    error_code = row[4]
+    if error_code is not None:
+        error_code = _require_text(error_code, "handler_dispatch.last_error_code")
+        if not error_code or len(error_code) > 64:
+            raise IntegrityError("handler_dispatch.last_error_code is invalid")
+    return HandlerDispatchState(
+        handler_name=handler_name,
+        local_log_seq=local_log_seq,
+        status=status,
+        attempts=attempts,
+        error_code=error_code,
+    )
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 def _event_semantics(event: ControlEvent) -> dict[str, object]:
     return event.model_dump(mode="json", exclude={"created_at"})
 
@@ -801,6 +1246,17 @@ def _require_blob(value: object, field: str) -> bytes:
     if not isinstance(value, bytes):
         raise IntegrityError(f"{field} must be stored as a BLOB")
     return value
+
+
+def _require_aware_timestamp(value: object, field: str) -> datetime:
+    raw = _require_text(value, field)
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError as exc:
+        raise IntegrityError(f"{field} must be an ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise IntegrityError(f"{field} must include a UTC offset")
+    return parsed
 
 
 def _open_verified_regular_file(path: Path, label: str) -> int:

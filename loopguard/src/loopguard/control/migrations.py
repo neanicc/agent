@@ -4,7 +4,7 @@ import re
 import sqlite3
 
 
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 
 _EXPECTED_TABLE_XINFO = {
     "store_metadata": (
@@ -31,6 +31,19 @@ _EXPECTED_TABLE_XINFO = {
         ("nonce", "BLOB", 1, None, 0, 0),
         ("ciphertext", "BLOB", 1, None, 0, 0),
         ("created_at", "TEXT", 1, None, 0, 0),
+    ),
+    "core_dispatch": (
+        ("local_log_seq", "INTEGER", 1, None, 1, 0),
+        ("decision_json", "TEXT", 1, None, 0, 0),
+        ("dispatched_at", "TEXT", 1, None, 0, 0),
+    ),
+    "handler_dispatch": (
+        ("handler_name", "TEXT", 1, None, 1, 0),
+        ("local_log_seq", "INTEGER", 1, None, 2, 0),
+        ("status", "TEXT", 1, None, 0, 0),
+        ("attempts", "INTEGER", 1, None, 0, 0),
+        ("last_error_code", "TEXT", 0, None, 0, 0),
+        ("updated_at", "TEXT", 1, None, 0, 0),
     ),
 }
 
@@ -81,6 +94,29 @@ CREATE INDEX events_repo_replay ON events(repo_id, repo_seq);
 CREATE INDEX events_session_replay ON events(session_id, session_seq);
 """
 
+_MIGRATION_2 = """
+CREATE TABLE core_dispatch (
+    local_log_seq INTEGER NOT NULL PRIMARY KEY,
+    decision_json TEXT NOT NULL,
+    dispatched_at TEXT NOT NULL,
+    FOREIGN KEY(local_log_seq) REFERENCES events(local_log_seq) ON DELETE CASCADE
+);
+
+CREATE TABLE handler_dispatch (
+    handler_name TEXT NOT NULL,
+    local_log_seq INTEGER NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'succeeded', 'failed')),
+    attempts INTEGER NOT NULL CHECK (attempts >= 0),
+    last_error_code TEXT,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY(handler_name, local_log_seq),
+    FOREIGN KEY(local_log_seq) REFERENCES events(local_log_seq) ON DELETE CASCADE
+);
+
+CREATE INDEX handler_dispatch_pending
+ON handler_dispatch(handler_name, status, local_log_seq);
+"""
+
 
 def migrate(connection: sqlite3.Connection) -> None:
     row = connection.execute("PRAGMA user_version").fetchone()
@@ -97,10 +133,12 @@ def migrate(connection: sqlite3.Connection) -> None:
     connection.execute("BEGIN EXCLUSIVE")
     try:
         if version == 0:
-            for statement in _MIGRATION_1.split(";"):
-                if statement.strip():
-                    connection.execute(statement)
-            connection.execute(f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}")
+            _execute_script(connection, _MIGRATION_1)
+            version = 1
+        if version == 1:
+            _execute_script(connection, _MIGRATION_2)
+            version = 2
+        connection.execute(f"PRAGMA user_version = {version}")
         connection.execute("COMMIT")
         _validate_schema(connection)
     except Exception as exc:
@@ -195,6 +233,46 @@ def _validate_schema(connection: sqlite3.Connection) -> None:
     }
     if foreign_keys != required_foreign_keys:
         raise MigrationError("schema does not match version 1: cursor foreign keys differ")
+
+    handler_indexes: dict[str, tuple[str, ...]] = {}
+    for index in connection.execute("PRAGMA index_list(handler_dispatch)"):
+        if str(index[3]) != "c" or bool(index[2]) or bool(index[4]):
+            continue
+        quoted_name = str(index[1]).replace('"', '""')
+        handler_indexes[str(index[1])] = tuple(
+            row[2]
+            for row in connection.execute(f'PRAGMA index_info("{quoted_name}")')
+        )
+    if handler_indexes != {
+        "handler_dispatch_pending": ("handler_name", "status", "local_log_seq")
+    }:
+        raise MigrationError("schema does not match version 2: handler indexes differ")
+
+    expected_dispatch_foreign_key = {
+        ("local_log_seq", "events", "local_log_seq", "NO ACTION", "CASCADE", "NONE")
+    }
+    for table in ("core_dispatch", "handler_dispatch"):
+        foreign_keys = {
+            (row[3], row[2], row[4], row[5], row[6], row[7])
+            for row in connection.execute(f"PRAGMA foreign_key_list({table})")
+        }
+        if foreign_keys != expected_dispatch_foreign_key:
+            raise MigrationError(
+                f"schema does not match version 2: {table} foreign keys differ"
+            )
+
+    handler_row = connection.execute(
+        "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = 'handler_dispatch'"
+    ).fetchone()
+    handler_sql = _normalize_owned_schema_sql(handler_row[0] if handler_row is not None else "")
+    if "check(attempts>=0)" not in handler_sql or "check(statusin(,,,))" not in handler_sql:
+        raise MigrationError("schema does not match version 2: handler checks differ")
+
+
+def _execute_script(connection: sqlite3.Connection, script: str) -> None:
+    for statement in script.split(";"):
+        if statement.strip():
+            connection.execute(statement)
 
 
 def _normalize_schema_sql(sql: str) -> str:
