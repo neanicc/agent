@@ -30,6 +30,7 @@ from .crypto import (
 )
 from .events import ControlEvent
 from .migrations import MigrationError, migrate
+from .redaction import redact
 
 
 class EventStoreError(Exception):
@@ -201,6 +202,7 @@ class EventStore:
 
     def append(self, event: ControlEvent) -> StoredPosition:
         event = ControlEvent.model_validate(event)
+        event = event.model_copy(update={"payload": redact(event.payload)})
 
         def operation() -> StoredPosition:
             connection = self._require_connection()
