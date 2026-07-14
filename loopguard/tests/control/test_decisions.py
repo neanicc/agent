@@ -103,3 +103,63 @@ def test_action_request_accepts_matching_state():
         current_state_version=4,
         current_state_hash="sha256:state-4",
     )
+
+
+def test_action_request_rejects_unknown_top_level_field():
+    payload = _action().model_dump(mode="json")
+    payload["unexpected"] = "not part of the envelope"
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        ActionRequest.model_validate(payload)
+
+
+def test_policy_decision_rejects_unknown_top_level_field():
+    payload = _decision().model_dump(mode="json")
+    payload["unexpected"] = "not part of the envelope"
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        PolicyDecision.model_validate(payload)
+
+
+def test_action_request_rejects_unknown_nested_target_field():
+    payload = _action().model_dump(mode="json")
+    payload["target"]["repository_id"] = "repo_1"
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        ActionRequest.model_validate(payload)
+
+
+def test_action_request_parameters_remain_open_to_action_fields():
+    payload = _action().model_dump(mode="json")
+    payload["parameters"]["provider_extension"] = {"nested": "value"}
+
+    restored = ActionRequest.model_validate(payload)
+
+    assert restored.parameters["provider_extension"] == {"nested": "value"}
+
+
+def test_action_request_rejects_naive_expires_at():
+    payload = _action().model_dump(mode="json")
+    payload["expires_at"] = datetime(2026, 7, 14, 12, 0)
+
+    with pytest.raises(ValidationError, match="timezone"):
+        ActionRequest.model_validate(payload)
+
+
+def test_action_request_preserves_offset_aware_expiry_through_json():
+    offset = timezone(timedelta(hours=5, minutes=30))
+    expires_at = datetime(2026, 7, 14, 17, 30, tzinfo=offset)
+    action = _action().model_copy(update={"expires_at": expires_at})
+
+    restored = ActionRequest.model_validate_json(action.model_dump_json())
+
+    assert restored.expires_at == expires_at
+    assert restored.expires_at.utcoffset() == timedelta(hours=5, minutes=30)
+
+
+def test_action_request_rejects_state_version_mismatch():
+    with pytest.raises(ValueError, match="state mismatch"):
+        _action().validate_state(
+            current_state_version=5,
+            current_state_hash="sha256:state-4",
+        )

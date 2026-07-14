@@ -1,8 +1,7 @@
-from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 
 class ActionKind(StrEnum):
@@ -22,11 +21,15 @@ class TargetKind(StrEnum):
 
 
 class ActionTarget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     kind: TargetKind
     target_id: str
 
 
 class PolicyDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     schema_version: Literal[1] = 1
     decision_id: str
     action: Literal["allow", "warn", "pause", "interrupt", "inject", "request_approval"]
@@ -38,6 +41,8 @@ class PolicyDecision(BaseModel):
 
 
 class ActionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     schema_version: Literal[1] = 1
     action_id: str
     target: ActionTarget
@@ -46,7 +51,7 @@ class ActionRequest(BaseModel):
     expected_state_version: int
     expected_state_hash: str
     nonce: str
-    expires_at: datetime
+    expires_at: AwareDatetime
 
     def validate_state(
         self,

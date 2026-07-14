@@ -86,8 +86,9 @@ The product layer must not turn `LoopEvent` into a universal event object. It in
   context.
 - `VerificationRun`: baseline, impact set, commands, artifacts, and verdict.
 - `RepairRun`: failure evidence, candidate patches, evaluations, and publication status.
-- `ActionRequest`: explicit expiring capability with target, expected state version/hash, nonce,
-  and device/cloud signing proof.
+- `ActionRequest`: base expiring local/attached request with target, expected state version/hash,
+  and nonce. Remote actions use a proof-bearing subtype that requires device and cloud signing
+  proof; remote intake never accepts the unsigned base request.
 
 Cursor domains are not interchangeable: `local_log_seq` is host-wide durable order, `repo_seq` is
 repository order, `session_seq` is session order, `cloud_ingest_seq` is server ingest order, and

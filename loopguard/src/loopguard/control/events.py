@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 
 class EventKind(StrEnum):
@@ -19,6 +19,8 @@ class EventKind(StrEnum):
 
 
 class SessionRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     host_id: str
     repo_id: str
     session_id: str
@@ -27,10 +29,12 @@ class SessionRef(BaseModel):
 
 
 class ControlEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     schema_version: Literal[1] = 1
     event_id: str
     kind: EventKind
     source: str
     session: SessionRef
     payload: dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: AwareDatetime = Field(default_factory=lambda: datetime.now(timezone.utc))
