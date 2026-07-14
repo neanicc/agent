@@ -141,9 +141,15 @@ def encrypt(data_key: bytes, plaintext: bytes, aad: bytes) -> tuple[bytes, bytes
 
 def decrypt(data_key: bytes, nonce: bytes, ciphertext: bytes, aad: bytes) -> bytes:
     _require_data_key(data_key)
+    if not isinstance(nonce, (bytes, bytearray, memoryview)) or len(nonce) != 12:
+        raise IntegrityError("encrypted event nonce must contain exactly 12 bytes")
+    if not isinstance(ciphertext, (bytes, bytearray, memoryview)) or len(ciphertext) < 16:
+        raise IntegrityError("encrypted event ciphertext must contain a valid GCM tag")
+    if not isinstance(aad, (bytes, bytearray, memoryview)):
+        raise IntegrityError("encrypted event authenticated metadata must be bytes")
     try:
-        return AESGCM(data_key).decrypt(nonce, ciphertext, aad)
-    except InvalidTag as exc:
+        return AESGCM(data_key).decrypt(bytes(nonce), bytes(ciphertext), bytes(aad))
+    except (InvalidTag, TypeError, ValueError) as exc:
         raise IntegrityError("encrypted event integrity verification failed") from exc
 
 

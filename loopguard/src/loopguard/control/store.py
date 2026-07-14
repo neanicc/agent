@@ -44,12 +44,24 @@ class StoreBusyError(EventStoreError):
     """SQLite remained locked after the bounded retry budget was exhausted."""
 
 
+class StoreConfigurationError(EventStoreError):
+    """SQLite did not enforce the required durable-store configuration."""
+
+
 class DatabaseCorruptionError(EventStoreError):
     """SQLite state failed structural or quick integrity verification."""
 
 
+class OrphanedSidecarError(EventStoreError):
+    """SQLite sidecar state exists without its main database."""
+
+
 class UnsafePermissionsError(EventStoreError):
     """Existing local state is accessible to users other than its owner."""
+
+
+class EventIdConflictError(EventStoreError):
+    """An event ID was reused for different immutable event semantics."""
 
 
 class WrongKeyError(EventStoreError):
@@ -130,6 +142,7 @@ class EventStore:
                 lambda: self._require_connection().execute("PRAGMA journal_mode = WAL")
             )
             self._connection.execute("PRAGMA synchronous = FULL")
+            self._validate_connection_configuration(busy_timeout_ms)
             self._load_or_create_key(
                 is_new=is_new,
                 injected_material=key,
@@ -196,16 +209,21 @@ class EventStore:
             try:
                 duplicate = connection.execute(
                     """
-                    SELECT local_log_seq, repo_seq, session_seq
+                    SELECT local_log_seq, event_id, repo_id, session_id, repo_seq, session_seq,
+                           schema_version, key_id, nonce, ciphertext, created_at
                     FROM events
                     WHERE event_id = ?
                     """,
                     (token,),
                 ).fetchone()
                 if duplicate is not None:
-                    position = _position_from_row(duplicate)
+                    stored = self._stored_event(duplicate)
+                    if _event_semantics(stored.event) != _event_semantics(event):
+                        raise EventIdConflictError(
+                            f"event ID {event.event_id!r} conflicts with an existing event"
+                        )
                     connection.execute("COMMIT")
-                    return position
+                    return stored.position
 
                 repo_seq = self._next_sequence("repo_sequences", "repo_id", event.session.repo_id)
                 session_seq = self._next_sequence(
@@ -322,6 +340,25 @@ class EventStore:
             detail = "; ".join(str(row[0]) for row in rows[:3])
             raise DatabaseCorruptionError(f"SQLite quick_check failed: {detail}")
 
+    def _validate_connection_configuration(self, busy_timeout_ms: int) -> None:
+        connection = self._require_connection()
+        expected = {
+            "foreign_keys": 1,
+            "journal_mode": "wal",
+            "synchronous": 2,
+            "busy_timeout": busy_timeout_ms,
+        }
+        for pragma_name, expected_value in expected.items():
+            row = connection.execute(f"PRAGMA {pragma_name}").fetchone()
+            actual = row[0] if row is not None else None
+            if pragma_name == "journal_mode" and isinstance(actual, str):
+                actual = actual.lower()
+            if actual != expected_value:
+                raise StoreConfigurationError(
+                    f"SQLite {pragma_name} configuration mismatch: "
+                    f"expected {expected_value!r}, received {actual!r}"
+                )
+
     def _load_or_create_key(
         self,
         *,
@@ -398,44 +435,59 @@ class EventStore:
 
     def _verify_sequence_state(self) -> None:
         connection = self._require_connection()
-        checks = (
-            ("repo_sequences", "repo_id", "repo_id", "repo_seq"),
-            ("session_sequences", "session_id", "session_id", "session_seq"),
-        )
-        for sequence_table, sequence_key, event_key, event_sequence in checks:
-            allocated = {
-                str(row[0]): int(row[1])
+        try:
+            checks = (
+                ("repo_sequences", "repo_id", "repo_id", "repo_seq"),
+                ("session_sequences", "session_id", "session_id", "session_seq"),
+            )
+            for sequence_table, sequence_key, event_key, event_sequence in checks:
+                allocated = {
+                    _require_text(row[0], f"{sequence_table}.{sequence_key}"): _require_integer(
+                        row[1], f"{sequence_table}.last_seq"
+                    )
+                    for row in connection.execute(
+                        f"SELECT {sequence_key}, last_seq FROM {sequence_table}"
+                    )
+                }
+                observed: dict[str, int] = {}
                 for row in connection.execute(
-                    f"SELECT {sequence_key}, last_seq FROM {sequence_table}"
-                )
-            }
-            observed: dict[str, int] = {}
-            for row in connection.execute(
-                f"""
-                SELECT {event_key}, MIN({event_sequence}), MAX({event_sequence}), COUNT(*)
-                FROM events
-                GROUP BY {event_key}
-                """
-            ):
-                minimum, maximum, count = (int(row[1]), int(row[2]), int(row[3]))
-                if minimum != 1 or count != maximum:
-                    raise IntegrityError("cursor sequence metadata contains a replay gap")
-                observed[str(row[0])] = maximum
-            if allocated != observed:
-                raise IntegrityError("cursor sequence metadata does not match persisted events")
+                    f"""
+                    SELECT {event_key}, MIN({event_sequence}), MAX({event_sequence}), COUNT(*)
+                    FROM events
+                    GROUP BY {event_key}
+                    """
+                ):
+                    event_domain = _require_text(row[0], f"events.{event_key}")
+                    minimum = _require_integer(row[1], f"events.{event_sequence} minimum")
+                    maximum = _require_integer(row[2], f"events.{event_sequence} maximum")
+                    count = _require_integer(row[3], f"events.{event_sequence} count")
+                    if minimum != 1 or count != maximum:
+                        raise IntegrityError("cursor sequence metadata contains a replay gap")
+                    observed[event_domain] = maximum
+                if allocated != observed:
+                    raise IntegrityError("cursor sequence metadata does not match persisted events")
 
-        local_state = connection.execute(
-            "SELECT COALESCE(MAX(local_log_seq), 0), COUNT(*) FROM events"
-        ).fetchone()
-        local_maximum, local_count = int(local_state[0]), int(local_state[1])
-        if local_count != local_maximum:
-            raise IntegrityError("cursor sequence metadata contains a replay gap")
-        sqlite_sequence = connection.execute(
-            "SELECT seq FROM sqlite_sequence WHERE name = 'events'"
-        ).fetchone()
-        allocated_local = int(sqlite_sequence[0]) if sqlite_sequence is not None else 0
-        if allocated_local != local_maximum:
-            raise IntegrityError("cursor sequence metadata does not match persisted events")
+            local_state = connection.execute(
+                "SELECT COALESCE(MAX(local_log_seq), 0), COUNT(*) FROM events"
+            ).fetchone()
+            local_maximum = _require_integer(local_state[0], "events.local_log_seq maximum")
+            local_count = _require_integer(local_state[1], "events.local_log_seq count")
+            if local_count != local_maximum:
+                raise IntegrityError("cursor sequence metadata contains a replay gap")
+            sqlite_sequence = connection.execute(
+                "SELECT seq FROM sqlite_sequence WHERE name = 'events'"
+            ).fetchone()
+            allocated_local = (
+                _require_integer(sqlite_sequence[0], "sqlite_sequence.seq")
+                if sqlite_sequence is not None
+                else 0
+            )
+            if allocated_local != local_maximum:
+                raise IntegrityError("cursor sequence metadata does not match persisted events")
+        except IntegrityError:
+            raise
+        except (IndexError, KeyError, TypeError, ValueError, OverflowError) as exc:
+            raise IntegrityError("cursor sequence metadata is malformed") from exc
 
     def _next_sequence(self, table: str, key_column: str, key: str) -> int:
         row = self._require_connection().execute(
@@ -475,37 +527,50 @@ class EventStore:
             return [self._stored_event(row) for row in rows]
 
     def _stored_event(self, row: sqlite3.Row) -> StoredEvent:
-        row_metadata = _row_metadata(
-            local_log_seq=row["local_log_seq"],
-            event_id=row["event_id"],
-            repo_id=row["repo_id"],
-            session_id=row["session_id"],
-            repo_seq=row["repo_seq"],
-            session_seq=row["session_seq"],
-            schema_version=row["schema_version"],
-            key_id=row["key_id"],
-            created_at=row["created_at"],
-        )
-        plaintext = decrypt(
-            self._data_key,
-            bytes(row["nonce"]),
-            bytes(row["ciphertext"]),
-            _aad(row_metadata),
-        )
         try:
+            row_metadata = _row_metadata(
+                local_log_seq=_require_integer(row["local_log_seq"], "events.local_log_seq"),
+                event_id=_require_text(row["event_id"], "events.event_id"),
+                repo_id=_require_text(row["repo_id"], "events.repo_id"),
+                session_id=_require_text(row["session_id"], "events.session_id"),
+                repo_seq=_require_integer(row["repo_seq"], "events.repo_seq"),
+                session_seq=_require_integer(row["session_seq"], "events.session_seq"),
+                schema_version=_require_integer(
+                    row["schema_version"], "events.schema_version"
+                ),
+                key_id=_require_text(row["key_id"], "events.key_id"),
+                created_at=_require_text(row["created_at"], "events.created_at"),
+            )
+            plaintext = decrypt(
+                self._data_key,
+                _require_blob(row["nonce"], "events.nonce"),
+                _require_blob(row["ciphertext"], "events.ciphertext"),
+                _aad(row_metadata),
+            )
             event = ControlEvent.model_validate_json(plaintext)
+            if (
+                event_id_token(self._data_key, event.event_id) != row_metadata["event_id"]
+                or event.session.repo_id != row_metadata["repo_id"]
+                or event.session.session_id != row_metadata["session_id"]
+                or event.schema_version != row_metadata["schema_version"]
+                or event.created_at.isoformat() != row_metadata["created_at"]
+                or row_metadata["key_id"] != self._key_id
+            ):
+                raise IntegrityError(
+                    "encrypted event body does not match authenticated row metadata"
+                )
+            position = StoredPosition(
+                local_log_seq=row_metadata["local_log_seq"],
+                repo_seq=row_metadata["repo_seq"],
+                session_seq=row_metadata["session_seq"],
+            )
+            return StoredEvent(event=event, position=position)
+        except IntegrityError:
+            raise
         except (ValidationError, ValueError, UnicodeDecodeError) as exc:
             raise IntegrityError("encrypted event body is not a valid ControlEvent") from exc
-        if (
-            event_id_token(self._data_key, event.event_id) != row["event_id"]
-            or event.session.repo_id != row["repo_id"]
-            or event.session.session_id != row["session_id"]
-            or event.schema_version != row["schema_version"]
-            or event.created_at.isoformat() != row["created_at"]
-            or row["key_id"] != self._key_id
-        ):
-            raise IntegrityError("encrypted event body does not match authenticated row metadata")
-        return StoredEvent(event=event, position=_position_from_row(row))
+        except (IndexError, KeyError, TypeError, OverflowError) as exc:
+            raise IntegrityError("stored encrypted event row is malformed") from exc
 
     def _with_busy_retry(self, operation: Callable[[], _Result]) -> _Result:
         attempts = self._max_busy_retries + 1
@@ -523,13 +588,16 @@ class EventStore:
         raise AssertionError("unreachable")
 
     def _secure_database_files(self) -> None:
-        if os.name != "posix":
-            return
         for candidate in _database_files(self.path):
             try:
-                candidate.chmod(0o600)
+                descriptor = _open_verified_regular_file(candidate, "database file")
             except FileNotFoundError:
-                pass
+                continue
+            try:
+                if os.name == "posix":
+                    os.fchmod(descriptor, 0o600)
+            finally:
+                os.close(descriptor)
 
     def _close_after_failed_startup(self) -> None:
         connection = self._connection
@@ -550,23 +618,54 @@ class EventStore:
 
 def _prepare_storage_path(path: Path) -> bool:
     parent = path.parent
-    if not parent.exists():
+    created_parent = False
+    try:
+        parent_status = os.lstat(parent)
+    except FileNotFoundError:
         parent.mkdir(mode=0o700, parents=True)
-    if not parent.is_dir() or parent.is_symlink():
+        created_parent = True
+        parent_status = os.lstat(parent)
+    if not stat.S_ISDIR(parent_status.st_mode):
         raise UnsafePermissionsError(f"event-store directory is not a real directory: {parent}")
-    if os.name == "posix" and stat.S_IMODE(parent.stat().st_mode) != 0o700:
+    if created_parent and os.name == "posix":
+        os.chmod(parent, 0o700)
+        parent_status = os.lstat(parent)
+    if os.name == "posix" and stat.S_IMODE(parent_status.st_mode) != 0o700:
         raise UnsafePermissionsError(f"event-store directory must have mode 0700: {parent}")
 
-    if path.exists():
-        if not path.is_file() or path.is_symlink():
-            raise UnsafePermissionsError(f"event-store database is not a regular file: {path}")
-        if os.name == "posix" and stat.S_IMODE(path.stat().st_mode) != 0o600:
-            raise UnsafePermissionsError(f"event-store database must have mode 0600: {path}")
-        return False
+    try:
+        os.lstat(path)
+    except FileNotFoundError:
+        for sidecar in _database_files(path)[1:]:
+            try:
+                os.lstat(sidecar)
+            except FileNotFoundError:
+                continue
+            raise OrphanedSidecarError(
+                f"event-store sidecar exists without its main database: {sidecar}"
+            )
 
-    descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600)
-    os.close(descriptor)
-    return True
+        flags = os.O_CREAT | os.O_EXCL | os.O_RDWR
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(path, flags, 0o600)
+        try:
+            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                raise UnsafePermissionsError(
+                    f"event-store database is not a regular file: {path}"
+                )
+            if os.name == "posix":
+                os.fchmod(descriptor, 0o600)
+        finally:
+            os.close(descriptor)
+        return True
+
+    descriptor = _open_verified_regular_file(path, "database")
+    try:
+        if os.name == "posix" and stat.S_IMODE(os.fstat(descriptor).st_mode) != 0o600:
+            raise UnsafePermissionsError(f"event-store database must have mode 0600: {path}")
+    finally:
+        os.close(descriptor)
+    return False
 
 
 def _database_files(path: Path) -> tuple[Path, Path, Path]:
@@ -578,24 +677,25 @@ def _database_files(path: Path) -> tuple[Path, Path, Path]:
 
 
 def _validate_existing_sidecars(path: Path) -> None:
-    if os.name != "posix":
-        return
     for candidate in _database_files(path)[1:]:
         try:
-            mode = stat.S_IMODE(candidate.stat().st_mode)
+            descriptor = _open_verified_regular_file(candidate, "database sidecar")
         except FileNotFoundError:
             continue
-        if mode != 0o600:
-            raise UnsafePermissionsError(
-                f"event-store database sidecar must have mode 0600: {candidate}"
-            )
+        try:
+            if os.name == "posix" and stat.S_IMODE(os.fstat(descriptor).st_mode) != 0o600:
+                raise UnsafePermissionsError(
+                    f"event-store database sidecar must have mode 0600: {candidate}"
+                )
+        finally:
+            os.close(descriptor)
 
 
 def _validate_wal_structure(path: Path) -> None:
     wal_path = path.with_name(f"{path.name}-wal")
     for attempt in range(3):
         try:
-            wal_bytes = wal_path.read_bytes()
+            wal_bytes = _read_verified_regular_file(wal_path, "database WAL")
         except FileNotFoundError:
             return
         if not wal_bytes:
@@ -611,8 +711,8 @@ def _validate_wal_structure(path: Path) -> None:
 
 def _validate_wal_bytes(wal_bytes: bytes) -> None:
     header = wal_bytes[:32]
-    if len(header) != 32:
-        raise DatabaseCorruptionError("SQLite WAL header is truncated")
+    if len(header) < 32:
+        return
     magic, _, page_size = struct.unpack(">III", header[:12])
     if magic not in (0x377F0682, 0x377F0683):
         raise DatabaseCorruptionError("SQLite WAL header has an invalid magic value")
@@ -621,8 +721,6 @@ def _validate_wal_bytes(wal_bytes: bytes) -> None:
     if page_size < 512 or page_size > 65_536 or page_size & (page_size - 1):
         raise DatabaseCorruptionError("SQLite WAL declares an invalid page size")
     payload_size = len(wal_bytes) - 32
-    if payload_size % (24 + page_size) != 0:
-        raise DatabaseCorruptionError("SQLite WAL contains a truncated frame")
 
     byte_order = "little" if magic == 0x377F0682 else "big"
     checksum = _wal_checksum(header[:24], byte_order=byte_order)
@@ -631,7 +729,8 @@ def _validate_wal_bytes(wal_bytes: bytes) -> None:
 
     expected_salts = header[16:24]
     frame_size = 24 + page_size
-    for frame_offset in range(32, len(wal_bytes), frame_size):
+    complete_end = 32 + (payload_size // frame_size) * frame_size
+    for frame_offset in range(32, complete_end, frame_size):
         frame = wal_bytes[frame_offset : frame_offset + frame_size]
         if frame[8:16] != expected_salts:
             raise DatabaseCorruptionError("SQLite WAL frame salts do not match its header")
@@ -672,6 +771,10 @@ def _serialize_event(event: ControlEvent) -> bytes:
     return body.encode()
 
 
+def _event_semantics(event: ControlEvent) -> dict[str, object]:
+    return event.model_dump(mode="json", exclude={"created_at"})
+
+
 def _row_metadata(**values: object) -> dict[str, object]:
     return values
 
@@ -680,12 +783,57 @@ def _aad(row_metadata: dict[str, object]) -> bytes:
     return json.dumps(row_metadata, sort_keys=True, separators=(",", ":")).encode()
 
 
-def _position_from_row(row: sqlite3.Row) -> StoredPosition:
-    return StoredPosition(
-        local_log_seq=int(row["local_log_seq"]),
-        repo_seq=int(row["repo_seq"]),
-        session_seq=int(row["session_seq"]),
-    )
+def _require_integer(value: object, field: str) -> int:
+    if type(value) is not int:
+        raise IntegrityError(f"{field} must be stored as an INTEGER")
+    return value
+
+
+def _require_text(value: object, field: str) -> str:
+    if not isinstance(value, str):
+        raise IntegrityError(f"{field} must be stored as TEXT")
+    return value
+
+
+def _require_blob(value: object, field: str) -> bytes:
+    if not isinstance(value, bytes):
+        raise IntegrityError(f"{field} must be stored as a BLOB")
+    return value
+
+
+def _open_verified_regular_file(path: Path, label: str) -> int:
+    status = os.lstat(path)
+    if not stat.S_ISREG(status.st_mode):
+        raise UnsafePermissionsError(f"event-store {label} is not a regular file: {path}")
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except FileNotFoundError:
+        raise
+    except OSError as exc:
+        raise UnsafePermissionsError(
+            f"event-store {label} could not be opened without following links: {path}"
+        ) from exc
+    opened_status = os.fstat(descriptor)
+    if (
+        not stat.S_ISREG(opened_status.st_mode)
+        or opened_status.st_dev != status.st_dev
+        or opened_status.st_ino != status.st_ino
+    ):
+        os.close(descriptor)
+        raise UnsafePermissionsError(f"event-store {label} is not a regular file: {path}")
+    return descriptor
+
+
+def _read_verified_regular_file(path: Path, label: str) -> bytes:
+    descriptor = _open_verified_regular_file(path, label)
+    try:
+        chunks: list[bytes] = []
+        while chunk := os.read(descriptor, 1024 * 1024):
+            chunks.append(chunk)
+        return b"".join(chunks)
+    finally:
+        os.close(descriptor)
 
 
 def _is_busy_error(exc: sqlite3.OperationalError) -> bool:

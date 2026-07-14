@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 
 import pytest
 
 from loopguard.control.events import ControlEvent, EventKind, SessionRef
-from loopguard.control.store import EventStore, StoreClosedError
+from loopguard.control.store import EventIdConflictError, EventStore, StoreClosedError
 
 
 def _event(
@@ -13,12 +14,14 @@ def _event(
     *,
     repo_id: str = "r",
     session_id: str = "s",
+    source: str = "test",
+    kind: EventKind = EventKind.SESSION_STARTED,
     payload: dict[str, object] | None = None,
 ) -> ControlEvent:
     return ControlEvent(
         event_id=event_id,
-        kind=EventKind.SESSION_STARTED,
-        source="test",
+        kind=kind,
+        source=source,
         session=SessionRef(host_id="h", repo_id=repo_id, session_id=session_id),
         payload=payload or {},
     )
@@ -34,6 +37,69 @@ def test_append_is_idempotent_and_replay_uses_cursor(tmp_path):
 
     assert [row.event.event_id for row in rows] == ["evt_2"]
     assert rows[0].repo_seq == 2
+
+
+def test_reconstructed_duplicate_may_differ_only_in_created_at(tmp_path):
+    original = _event("evt_retry", payload={"attempt": 1})
+    reconstructed = original.model_copy(
+        update={"created_at": original.created_at + timedelta(minutes=5)}
+    )
+    with EventStore.for_test(tmp_path / "events.db") as store:
+        first = store.append(original)
+        retried = store.append(reconstructed)
+        next_position = store.append(_event("evt_next"))
+
+    assert retried == first
+    assert next_position.local_log_seq == 2
+    assert next_position.repo_seq == 2
+    assert next_position.session_seq == 2
+
+
+def test_duplicate_event_id_with_different_payload_conflicts_without_spending_sequences(tmp_path):
+    with EventStore.for_test(tmp_path / "events.db") as store:
+        store.append(_event("evt_conflict", payload={"value": "original"}))
+
+        with pytest.raises(EventIdConflictError):
+            store.append(_event("evt_conflict", payload={"value": "changed"}))
+
+        next_position = store.append(_event("evt_next"))
+
+    assert next_position.local_log_seq == 2
+    assert next_position.repo_seq == 2
+    assert next_position.session_seq == 2
+
+
+def test_duplicate_event_id_with_different_session_conflicts_without_creating_domain_cursors(
+    tmp_path,
+):
+    with EventStore.for_test(tmp_path / "events.db") as store:
+        store.append(_event("evt_conflict", repo_id="original", session_id="original"))
+
+        with pytest.raises(EventIdConflictError):
+            store.append(_event("evt_conflict", repo_id="other", session_id="other"))
+
+        next_position = store.append(_event("evt_next", repo_id="other", session_id="other"))
+
+    assert next_position.local_log_seq == 2
+    assert next_position.repo_seq == 1
+    assert next_position.session_seq == 1
+
+
+@pytest.mark.parametrize(
+    ("source", "kind"),
+    [
+        ("other-source", EventKind.SESSION_STARTED),
+        ("test", EventKind.TOOL_CALL),
+    ],
+)
+def test_duplicate_event_id_with_different_source_or_kind_conflicts(tmp_path, source, kind):
+    with EventStore.for_test(tmp_path / "events.db") as store:
+        store.append(_event("evt_conflict"))
+
+        with pytest.raises(EventIdConflictError):
+            store.append(_event("evt_conflict", source=source, kind=kind))
+
+        assert store.append(_event("evt_next")).local_log_seq == 2
 
 
 def test_interleaved_cursor_domains_are_independent(tmp_path):

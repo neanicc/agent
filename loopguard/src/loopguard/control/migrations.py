@@ -1,26 +1,36 @@
 from __future__ import annotations
 
+import re
 import sqlite3
 
 
 CURRENT_SCHEMA_VERSION = 1
 
-_EXPECTED_COLUMNS = {
-    "store_metadata": ("singleton", "key_id"),
-    "repo_sequences": ("repo_id", "last_seq"),
-    "session_sequences": ("session_id", "last_seq"),
+_EXPECTED_TABLE_XINFO = {
+    "store_metadata": (
+        ("singleton", "INTEGER", 0, None, 1, 0),
+        ("key_id", "TEXT", 1, None, 0, 0),
+    ),
+    "repo_sequences": (
+        ("repo_id", "TEXT", 0, None, 1, 0),
+        ("last_seq", "INTEGER", 1, None, 0, 0),
+    ),
+    "session_sequences": (
+        ("session_id", "TEXT", 0, None, 1, 0),
+        ("last_seq", "INTEGER", 1, None, 0, 0),
+    ),
     "events": (
-        "local_log_seq",
-        "event_id",
-        "repo_id",
-        "session_id",
-        "repo_seq",
-        "session_seq",
-        "schema_version",
-        "key_id",
-        "nonce",
-        "ciphertext",
-        "created_at",
+        ("local_log_seq", "INTEGER", 0, None, 1, 0),
+        ("event_id", "TEXT", 1, None, 0, 0),
+        ("repo_id", "TEXT", 1, None, 0, 0),
+        ("session_id", "TEXT", 1, None, 0, 0),
+        ("repo_seq", "INTEGER", 1, None, 0, 0),
+        ("session_seq", "INTEGER", 1, None, 0, 0),
+        ("schema_version", "INTEGER", 1, None, 0, 0),
+        ("key_id", "TEXT", 1, None, 0, 0),
+        ("nonce", "BLOB", 1, None, 0, 0),
+        ("ciphertext", "BLOB", 1, None, 0, 0),
+        ("created_at", "TEXT", 1, None, 0, 0),
     ),
 }
 
@@ -104,58 +114,88 @@ def migrate(connection: sqlite3.Connection) -> None:
 
 
 def _validate_schema(connection: sqlite3.Connection) -> None:
-    for table, expected_columns in _EXPECTED_COLUMNS.items():
-        columns = tuple(row[1] for row in connection.execute(f"PRAGMA table_info({table})"))
-        if columns != expected_columns:
+    for table, expected_shape in _EXPECTED_TABLE_XINFO.items():
+        quoted_table = table.replace('"', '""')
+        actual_shape = tuple(
+            (row[1], row[2], row[3], row[4], row[5], row[6])
+            for row in connection.execute(f'PRAGMA table_xinfo("{quoted_table}")')
+        )
+        if actual_shape != expected_shape:
             raise MigrationError(
-                f"schema does not match version {CURRENT_SCHEMA_VERSION}: {table} columns differ"
+                f"schema does not match version {CURRENT_SCHEMA_VERSION}: "
+                f"{table} table shape differs"
             )
 
-    required_primary_keys = {
-        "store_metadata": "singleton",
-        "repo_sequences": "repo_id",
-        "session_sequences": "session_id",
-        "events": "local_log_seq",
+    required_checks = {
+        "store_metadata": "check(singleton=1)",
+        "repo_sequences": "check(last_seq>0)",
+        "session_sequences": "check(last_seq>0)",
     }
-    for table, primary_key in required_primary_keys.items():
-        table_info = {row[1]: row for row in connection.execute(f"PRAGMA table_info({table})")}
-        if table_info[primary_key][5] != 1:
+    for table, required_check in required_checks.items():
+        row = connection.execute(
+            "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = ?",
+            (table,),
+        ).fetchone()
+        normalized_sql = _normalize_schema_sql(row[0] if row is not None else "")
+        if required_check not in normalized_sql:
             raise MigrationError(
-                f"schema does not match version 1: {table}.{primary_key} is not primary"
+                f"schema does not match version 1: {table} CHECK constraint differs"
             )
 
-    events_sql = connection.execute(
+    events_row = connection.execute(
         "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = 'events'"
-    ).fetchone()[0]
-    if "AUTOINCREMENT" not in events_sql.upper():
+    ).fetchone()
+    events_sql = _normalize_schema_sql(events_row[0] if events_row is not None else "")
+    if "local_log_seqintegerprimarykeyautoincrement" not in events_sql:
         raise MigrationError("schema does not match version 1: local cursor is not AUTOINCREMENT")
 
     unique_indexes: set[tuple[str, ...]] = set()
+    replay_indexes: dict[str, tuple[str, ...]] = {}
     for index in connection.execute("PRAGMA index_list(events)"):
-        if not index[2]:
-            continue
         quoted_name = str(index[1]).replace('"', '""')
-        unique_indexes.add(
-            tuple(
-                row[2]
-                for row in connection.execute(f'PRAGMA index_info("{quoted_name}")')
-            )
+        columns = tuple(
+            row[2]
+            for row in connection.execute(f'PRAGMA index_info("{quoted_name}")')
         )
+        is_unique = bool(index[2])
+        is_partial = bool(index[4])
+        if is_unique:
+            if is_partial:
+                raise MigrationError(
+                    "schema does not match version 1: event uniqueness must not be partial"
+                )
+            unique_indexes.add(columns)
+        elif str(index[3]) == "c":
+            if is_partial:
+                raise MigrationError(
+                    "schema does not match version 1: replay indexes must not be partial"
+                )
+            replay_indexes[str(index[1])] = columns
     required_unique_indexes = {
         ("event_id",),
         ("repo_id", "repo_seq"),
         ("session_id", "session_seq"),
     }
-    if not required_unique_indexes.issubset(unique_indexes):
+    if unique_indexes != required_unique_indexes:
         raise MigrationError("schema does not match version 1: event uniqueness differs")
+    required_replay_indexes = {
+        "events_repo_replay": ("repo_id", "repo_seq"),
+        "events_session_replay": ("session_id", "session_seq"),
+    }
+    if replay_indexes != required_replay_indexes:
+        raise MigrationError("schema does not match version 1: replay indexes differ")
 
     foreign_keys = {
-        (row[3], row[2], row[4])
+        (row[3], row[2], row[4], row[5], row[6], row[7])
         for row in connection.execute("PRAGMA foreign_key_list(events)")
     }
     required_foreign_keys = {
-        ("repo_id", "repo_sequences", "repo_id"),
-        ("session_id", "session_sequences", "session_id"),
+        ("repo_id", "repo_sequences", "repo_id", "NO ACTION", "NO ACTION", "NONE"),
+        ("session_id", "session_sequences", "session_id", "NO ACTION", "NO ACTION", "NONE"),
     }
     if foreign_keys != required_foreign_keys:
         raise MigrationError("schema does not match version 1: cursor foreign keys differ")
+
+
+def _normalize_schema_sql(sql: str) -> str:
+    return re.sub(r'[\s"`\[\]]+', "", sql).lower()

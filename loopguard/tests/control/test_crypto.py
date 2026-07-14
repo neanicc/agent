@@ -42,6 +42,40 @@ def test_aes_gcm_authenticates_ciphertext_and_aad():
         decrypt(key, nonce, ciphertext, b"cursor-domain:b:1")
 
 
+@pytest.mark.parametrize(
+    "malformed_nonce",
+    [
+        pytest.param(b"", id="empty"),
+        pytest.param(b"x" * 13, id="oversized"),
+        pytest.param("not-bytes", id="text"),
+        pytest.param(12345, id="integer"),
+    ],
+)
+def test_aes_gcm_rejects_malformed_nonce_as_integrity_error(malformed_nonce):
+    key = derive_data_key(b"fixture")
+    _, ciphertext = encrypt(key, b"control-event", b"cursor-domain:a:1")
+
+    with pytest.raises(IntegrityError, match="nonce"):
+        decrypt(key, malformed_nonce, ciphertext, b"cursor-domain:a:1")
+
+
+@pytest.mark.parametrize(
+    "malformed_ciphertext",
+    [
+        pytest.param(b"", id="empty"),
+        pytest.param(b"x" * 15, id="shorter-than-gcm-tag"),
+        pytest.param("not-bytes", id="text"),
+        pytest.param(12345, id="integer"),
+    ],
+)
+def test_aes_gcm_rejects_malformed_ciphertext_as_integrity_error(malformed_ciphertext):
+    key = derive_data_key(b"fixture")
+    nonce, _ = encrypt(key, b"control-event", b"cursor-domain:a:1")
+
+    with pytest.raises(IntegrityError, match="ciphertext"):
+        decrypt(key, nonce, malformed_ciphertext, b"cursor-domain:a:1")
+
+
 def test_platform_key_store_round_trips_through_injected_keyring_backend():
     backend = _FakeKeyring()
     store = PlatformKeyStore(backend=backend, service_name="loopguard-tests")
