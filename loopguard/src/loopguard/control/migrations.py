@@ -136,7 +136,9 @@ def _validate_schema(connection: sqlite3.Connection) -> None:
             "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = ?",
             (table,),
         ).fetchone()
-        normalized_sql = _normalize_schema_sql(row[0] if row is not None else "")
+        normalized_sql = _normalize_schema_sql(
+            _strip_sql_comments(row[0] if row is not None else "")
+        )
         if required_check not in normalized_sql:
             raise MigrationError(
                 f"schema does not match version 1: {table} CHECK constraint differs"
@@ -145,7 +147,9 @@ def _validate_schema(connection: sqlite3.Connection) -> None:
     events_row = connection.execute(
         "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = 'events'"
     ).fetchone()
-    events_sql = _normalize_schema_sql(events_row[0] if events_row is not None else "")
+    events_sql = _normalize_schema_sql(
+        _strip_sql_comments(events_row[0] if events_row is not None else "")
+    )
     if "local_log_seqintegerprimarykeyautoincrement" not in events_sql:
         raise MigrationError("schema does not match version 1: local cursor is not AUTOINCREMENT")
 
@@ -199,3 +203,49 @@ def _validate_schema(connection: sqlite3.Connection) -> None:
 
 def _normalize_schema_sql(sql: str) -> str:
     return re.sub(r'[\s"`\[\]]+', "", sql).lower()
+
+
+def _strip_sql_comments(sql: str) -> str:
+    stripped: list[str] = []
+    index = 0
+    quote_end: str | None = None
+    while index < len(sql):
+        character = sql[index]
+        following = sql[index + 1] if index + 1 < len(sql) else ""
+        if quote_end is not None:
+            stripped.append(character)
+            if character == quote_end:
+                if quote_end != "]" and following == quote_end:
+                    stripped.append(following)
+                    index += 2
+                    continue
+                quote_end = None
+            index += 1
+            continue
+
+        if character in ("'", '"', "`"):
+            quote_end = character
+            stripped.append(character)
+            index += 1
+            continue
+        if character == "[":
+            quote_end = "]"
+            stripped.append(character)
+            index += 1
+            continue
+        if character == "-" and following == "-":
+            index += 2
+            while index < len(sql) and sql[index] not in "\r\n":
+                index += 1
+            continue
+        if character == "/" and following == "*":
+            index += 2
+            while index + 1 < len(sql) and sql[index : index + 2] != "*/":
+                index += 1
+            if index + 1 < len(sql):
+                index += 2
+            stripped.append(" ")
+            continue
+        stripped.append(character)
+        index += 1
+    return "".join(stripped)

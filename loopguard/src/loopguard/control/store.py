@@ -712,7 +712,7 @@ def _validate_wal_structure(path: Path) -> None:
 def _validate_wal_bytes(wal_bytes: bytes) -> None:
     header = wal_bytes[:32]
     if len(header) < 32:
-        return
+        raise DatabaseCorruptionError("SQLite WAL header is truncated")
     magic, _, page_size = struct.unpack(">III", header[:12])
     if magic not in (0x377F0682, 0x377F0683):
         raise DatabaseCorruptionError("SQLite WAL header has an invalid magic value")

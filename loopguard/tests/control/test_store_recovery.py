@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from loopguard.control import store as store_module
+from loopguard.control import migrations as migrations_module
 from loopguard.control.crypto import CorruptKeyError, InMemoryKeyStore, IntegrityError, MissingKeyError
 from loopguard.control.events import ControlEvent, EventKind, SessionRef
 from loopguard.control.migrations import MigrationError, UnsupportedMigrationError
@@ -40,6 +41,7 @@ def _create_version_one_schema(
     repo_check: bool = True,
     replay_session_index: bool = True,
     event_id_uniqueness: str = "constraint",
+    comment_substitution: str | None = None,
 ) -> None:
     event_id_constraint = "UNIQUE(event_id)," if event_id_uniqueness == "constraint" else ""
     unique_substitute = ""
@@ -56,12 +58,25 @@ def _create_version_one_schema(
         if replay_session_index
         else ""
     )
+    store_metadata_check = " CHECK (singleton = 1)"
     repo_sequence_check = " CHECK (last_seq > 0)" if repo_check else ""
+    session_sequence_check = " CHECK (last_seq > 0)"
+    local_log_declaration = "INTEGER PRIMARY KEY AUTOINCREMENT"
+    if comment_substitution == "store_metadata_check":
+        store_metadata_check = " /* CHECK (singleton = 1) */"
+    elif comment_substitution == "repo_sequence_check":
+        repo_sequence_check = " -- CHECK (last_seq > 0)\n"
+    elif comment_substitution == "session_sequence_check":
+        session_sequence_check = " /* CHECK (last_seq > 0) */"
+    elif comment_substitution == "events_autoincrement":
+        local_log_declaration = (
+            "INTEGER PRIMARY KEY -- local_log_seq INTEGER PRIMARY KEY AUTOINCREMENT\n"
+        )
     connection = sqlite3.connect(path)
     connection.executescript(
         f"""
         CREATE TABLE store_metadata (
-            singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+            singleton INTEGER PRIMARY KEY{store_metadata_check},
             key_id TEXT NOT NULL
         );
         CREATE TABLE repo_sequences (
@@ -70,10 +85,10 @@ def _create_version_one_schema(
         );
         CREATE TABLE session_sequences (
             session_id TEXT PRIMARY KEY,
-            last_seq INTEGER NOT NULL CHECK (last_seq > 0)
+            last_seq INTEGER NOT NULL{session_sequence_check}
         );
         CREATE TABLE events (
-            local_log_seq INTEGER PRIMARY KEY AUTOINCREMENT,
+            local_log_seq {local_log_declaration},
             event_id TEXT NOT NULL,
             repo_id TEXT NOT NULL,
             session_id TEXT NOT NULL,
@@ -260,6 +275,53 @@ os._exit(0)
         replay = reopened.read_local_after(0, 10)
 
     assert [item.event.event_id for item in replay] == ["acknowledged-before-torn-tail"]
+
+
+def test_nonempty_truncated_wal_header_fails_closed_and_preserves_state(tmp_path):
+    path = tmp_path / "events.db"
+    wal_path = path.with_name(f"{path.name}-wal")
+    source_root = Path(__file__).parents[2] / "src"
+    with EventStore.for_test(path, key=b"truncated-header-key") as store:
+        store.append(_event("older-checkpointed-event"))
+
+    code = """
+import os
+import sys
+from pathlib import Path
+from loopguard.control.events import ControlEvent, EventKind, SessionRef
+from loopguard.control.store import EventStore
+
+store = EventStore.for_test(Path(sys.argv[1]), key=b"truncated-header-key")
+store.append(ControlEvent(
+    event_id="newly-acknowledged-wal-event",
+    kind=EventKind.SESSION_STARTED,
+    source="subprocess",
+    session=SessionRef(host_id="h", repo_id="r", session_id="s"),
+))
+os._exit(0)
+"""
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(source_root)
+    subprocess.run([sys.executable, "-c", code, str(path)], env=env, check=True, timeout=10)
+    wal_contents = wal_path.read_bytes()
+    assert len(wal_contents) > 32
+    wal_path.write_bytes(wal_contents[:16])
+    wal_path.chmod(0o600)
+    preserved = {
+        candidate: candidate.read_bytes()
+        for candidate in (path, wal_path, path.with_name(f"{path.name}-shm"))
+        if candidate.exists()
+    }
+
+    with pytest.raises(DatabaseCorruptionError, match="WAL header is truncated"):
+        with EventStore.for_test(path, key=b"truncated-header-key"):
+            pass
+
+    assert {
+        candidate: candidate.read_bytes()
+        for candidate in preserved
+        if candidate.exists()
+    } == preserved
 
 
 def test_corrupt_database_is_a_named_startup_failure(tmp_path):
@@ -461,6 +523,54 @@ def test_declared_current_schema_rejects_owned_shape_or_constraint_drift(
 
     with pytest.raises(MigrationError, match="schema does not match"):
         EventStore.for_test(path)
+
+
+@pytest.mark.parametrize(
+    "comment_substitution",
+    [
+        "store_metadata_check",
+        "repo_sequence_check",
+        "session_sequence_check",
+        "events_autoincrement",
+    ],
+)
+def test_declared_current_schema_rejects_constraints_present_only_in_comments(
+    tmp_path, comment_substitution
+):
+    path = tmp_path / "events.db"
+    _create_version_one_schema(path, comment_substitution=comment_substitution)
+    connection = sqlite3.connect(path)
+    commented_sql = "\n".join(
+        row[0]
+        for row in connection.execute(
+            "SELECT sql FROM sqlite_schema "
+            "WHERE type = 'table' AND (sql LIKE '%/*%' OR sql LIKE '%--%')"
+        )
+    )
+    connection.close()
+    assert "/*" in commented_sql or "--" in commented_sql
+
+    with pytest.raises(MigrationError, match="schema does not match"):
+        EventStore.for_test(path)
+
+
+def test_sql_comment_stripping_preserves_markers_inside_quoted_sql():
+    sql = """
+    SELECT '--single-quoted', '/* single-quoted */',
+           "--double-quoted", `/* backtick-quoted */`, [--bracket-quoted]
+    -- removable line comment
+    /* removable block comment */
+    """
+
+    stripped = migrations_module._strip_sql_comments(sql)
+
+    assert "'--single-quoted'" in stripped
+    assert "'/* single-quoted */'" in stripped
+    assert '"--double-quoted"' in stripped
+    assert "`/* backtick-quoted */`" in stripped
+    assert "[--bracket-quoted]" in stripped
+    assert "removable line comment" not in stripped
+    assert "removable block comment" not in stripped
 
 
 @pytest.mark.parametrize(
