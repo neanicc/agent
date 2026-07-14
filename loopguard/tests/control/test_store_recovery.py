@@ -42,6 +42,7 @@ def _create_version_one_schema(
     replay_session_index: bool = True,
     event_id_uniqueness: str = "constraint",
     comment_substitution: str | None = None,
+    quoted_token_substitution: str | None = None,
 ) -> None:
     event_id_constraint = "UNIQUE(event_id)," if event_id_uniqueness == "constraint" else ""
     unique_substitute = ""
@@ -58,34 +59,50 @@ def _create_version_one_schema(
         if replay_session_index
         else ""
     )
-    store_metadata_check = " CHECK (singleton = 1)"
-    repo_sequence_check = " CHECK (last_seq > 0)" if repo_check else ""
-    session_sequence_check = " CHECK (last_seq > 0)"
+    singleton_declaration = "INTEGER PRIMARY KEY CHECK (singleton = 1)"
+    repo_last_seq_declaration = (
+        "INTEGER NOT NULL CHECK (last_seq > 0)" if repo_check else "INTEGER NOT NULL"
+    )
+    session_last_seq_declaration = "INTEGER NOT NULL CHECK (last_seq > 0)"
     local_log_declaration = "INTEGER PRIMARY KEY AUTOINCREMENT"
     if comment_substitution == "store_metadata_check":
-        store_metadata_check = " /* CHECK (singleton = 1) */"
+        singleton_declaration = "INTEGER PRIMARY KEY /* CHECK (singleton = 1) */"
     elif comment_substitution == "repo_sequence_check":
-        repo_sequence_check = " -- CHECK (last_seq > 0)\n"
+        repo_last_seq_declaration = "INTEGER NOT NULL -- CHECK (last_seq > 0)\n"
     elif comment_substitution == "session_sequence_check":
-        session_sequence_check = " /* CHECK (last_seq > 0) */"
+        session_last_seq_declaration = "INTEGER NOT NULL /* CHECK (last_seq > 0) */"
     elif comment_substitution == "events_autoincrement":
         local_log_declaration = (
             "INTEGER PRIMARY KEY -- local_log_seq INTEGER PRIMARY KEY AUTOINCREMENT\n"
+        )
+    if quoted_token_substitution == "store_metadata_check":
+        singleton_declaration = 'INTEGER CONSTRAINT "CHECK(singleton=1)" PRIMARY KEY'
+    elif quoted_token_substitution == "repo_sequence_check":
+        repo_last_seq_declaration = (
+            'INTEGER NOT NULL CONSTRAINT "CHECK(last_seq>0)" CHECK(last_seq >= 0)'
+        )
+    elif quoted_token_substitution == "session_sequence_check":
+        session_last_seq_declaration = (
+            'INTEGER NOT NULL CONSTRAINT "CHECK(last_seq>0)" CHECK(last_seq >= 0)'
+        )
+    elif quoted_token_substitution == "events_autoincrement":
+        local_log_declaration = (
+            'INTEGER CONSTRAINT "local_log_seq INTEGER PRIMARY KEY AUTOINCREMENT" PRIMARY KEY'
         )
     connection = sqlite3.connect(path)
     connection.executescript(
         f"""
         CREATE TABLE store_metadata (
-            singleton INTEGER PRIMARY KEY{store_metadata_check},
+            singleton {singleton_declaration},
             key_id TEXT NOT NULL
         );
         CREATE TABLE repo_sequences (
             repo_id TEXT PRIMARY KEY,
-            last_seq INTEGER NOT NULL{repo_sequence_check}
+            last_seq {repo_last_seq_declaration}
         );
         CREATE TABLE session_sequences (
             session_id TEXT PRIMARY KEY,
-            last_seq INTEGER NOT NULL{session_sequence_check}
+            last_seq {session_last_seq_declaration}
         );
         CREATE TABLE events (
             local_log_seq {local_log_declaration},
@@ -571,6 +588,46 @@ def test_sql_comment_stripping_preserves_markers_inside_quoted_sql():
     assert "[--bracket-quoted]" in stripped
     assert "removable line comment" not in stripped
     assert "removable block comment" not in stripped
+
+
+@pytest.mark.parametrize(
+    "quoted_token_substitution",
+    [
+        "store_metadata_check",
+        "repo_sequence_check",
+        "session_sequence_check",
+        "events_autoincrement",
+    ],
+)
+def test_declared_current_schema_rejects_constraints_present_only_in_quoted_names(
+    tmp_path, quoted_token_substitution
+):
+    path = tmp_path / "events.db"
+    _create_version_one_schema(path, quoted_token_substitution=quoted_token_substitution)
+
+    with pytest.raises(MigrationError, match="schema does not match"):
+        EventStore.for_test(path)
+
+
+def test_sql_constraint_masking_removes_quoted_tokens_but_keeps_real_ddl():
+    sql = """
+    CREATE TABLE "CHECK(fake=1)" (
+        real INTEGER CHECK(real = 1),
+        note TEXT DEFAULT 'AUTOINCREMENT -- still quoted',
+        `PRIMARY KEY AUTOINCREMENT` TEXT,
+        [CHECK(bracketed=1)] TEXT,
+        escaped TEXT CONSTRAINT "CHECK""(escaped=1)" UNIQUE
+    )
+    """
+
+    masked = migrations_module._mask_sql_quoted_content(sql)
+
+    assert "CHECK(real = 1)" in masked
+    assert "CHECK(fake=1)" not in masked
+    assert "AUTOINCREMENT -- still quoted" not in masked
+    assert "PRIMARY KEY AUTOINCREMENT" not in masked
+    assert "CHECK(bracketed=1)" not in masked
+    assert "CHECK(escaped=1)" not in masked
 
 
 @pytest.mark.parametrize(

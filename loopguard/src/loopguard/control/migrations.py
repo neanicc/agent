@@ -136,9 +136,7 @@ def _validate_schema(connection: sqlite3.Connection) -> None:
             "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = ?",
             (table,),
         ).fetchone()
-        normalized_sql = _normalize_schema_sql(
-            _strip_sql_comments(row[0] if row is not None else "")
-        )
+        normalized_sql = _normalize_owned_schema_sql(row[0] if row is not None else "")
         if required_check not in normalized_sql:
             raise MigrationError(
                 f"schema does not match version 1: {table} CHECK constraint differs"
@@ -147,9 +145,7 @@ def _validate_schema(connection: sqlite3.Connection) -> None:
     events_row = connection.execute(
         "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = 'events'"
     ).fetchone()
-    events_sql = _normalize_schema_sql(
-        _strip_sql_comments(events_row[0] if events_row is not None else "")
-    )
+    events_sql = _normalize_owned_schema_sql(events_row[0] if events_row is not None else "")
     if "local_log_seqintegerprimarykeyautoincrement" not in events_sql:
         raise MigrationError("schema does not match version 1: local cursor is not AUTOINCREMENT")
 
@@ -203,6 +199,43 @@ def _validate_schema(connection: sqlite3.Connection) -> None:
 
 def _normalize_schema_sql(sql: str) -> str:
     return re.sub(r'[\s"`\[\]]+', "", sql).lower()
+
+
+def _normalize_owned_schema_sql(sql: str) -> str:
+    without_comments = _strip_sql_comments(sql)
+    without_quoted_content = _mask_sql_quoted_content(without_comments)
+    return _normalize_schema_sql(without_quoted_content)
+
+
+def _mask_sql_quoted_content(sql: str) -> str:
+    """Mask strings and quoted identifiers before recognizing owned DDL tokens."""
+    masked: list[str] = []
+    index = 0
+    quote_end: str | None = None
+    while index < len(sql):
+        character = sql[index]
+        following = sql[index + 1] if index + 1 < len(sql) else ""
+        if quote_end is not None:
+            masked.append(" ")
+            if character == quote_end:
+                if quote_end != "]" and following == quote_end:
+                    masked.append(" ")
+                    index += 2
+                    continue
+                quote_end = None
+            index += 1
+            continue
+
+        if character in ("'", '"', "`"):
+            quote_end = character
+            masked.append(" ")
+        elif character == "[":
+            quote_end = "]"
+            masked.append(" ")
+        else:
+            masked.append(character)
+        index += 1
+    return "".join(masked)
 
 
 def _strip_sql_comments(sql: str) -> str:
