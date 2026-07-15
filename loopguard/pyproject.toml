@@ -24,6 +24,10 @@ control = [
     "keyring>=25",
     "pywin32>=306; sys_platform == 'win32'",
 ]
+context = [
+    "tree-sitter-language-pack>=0.9",
+    "watchfiles>=0.24",
+]
 cerebras = ["cerebras_cloud_sdk>=1.0"]
 litellm = ["litellm>=1.40"]
 server = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
@@ -34,6 +38,8 @@ all-dev = [
     "cryptography>=42",
     "keyring>=25",
     "pywin32>=306; sys_platform == 'win32'",
+    "tree-sitter-language-pack>=0.9",
+    "watchfiles>=0.24",
     "cerebras_cloud_sdk>=1.0",
     "litellm>=1.40",
     "fastapi>=0.110",

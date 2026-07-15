@@ -81,7 +81,7 @@ def test_error_catalog_codes_are_unique_and_documentable():
 def test_all_dev_extra_contains_every_product_extra():
     pyproject = tomllib.loads(Path("pyproject.toml").read_text())
     extras = pyproject["project"]["optional-dependencies"]
-    product_groups = {"control", "server", "cerebras", "litellm"}
+    product_groups = {"control", "context", "server", "cerebras", "litellm"}
     assert product_groups <= extras.keys()
 
     all_dev_names = {_requirement_name(requirement) for requirement in extras["all-dev"]}

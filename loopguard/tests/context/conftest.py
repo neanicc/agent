@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
+
 from loopguard.context.models import ChangeObservation
 
 
@@ -25,3 +28,33 @@ def observation(
         after_hash=after_hash,
         reconciliation_id=reconciliation_id,
     )
+
+
+def make_git_repo(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "init", "--quiet", str(path)], check=True)
+    subprocess.run(
+        ["git", "-C", str(path), "config", "user.name", "LoopGuard Tests"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(path), "config", "user.email", "tests@loopguard.invalid"],
+        check=True,
+    )
+    return path.resolve()
+
+
+def commit_all(repository: Path, message: str = "checkpoint") -> None:
+    subprocess.run(["git", "-C", str(repository), "add", "-A"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "commit", "--quiet", "-m", message],
+        check=True,
+    )
+
+
+def write(path: Path, content: str | bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(content, bytes):
+        path.write_bytes(content)
+    else:
+        path.write_text(content)

@@ -13,6 +13,7 @@ from types import TracebackType
 from loopguard.control.dispatch import HandlerDelivery
 from loopguard.control.events import EventKind
 
+from .hashing import content_fingerprint
 from .models import ChangeObservation, ChangeRecord, ContextCheckpoint
 
 
@@ -527,16 +528,13 @@ class ChangeJournal:
 
 
 def _content_fingerprint(observation: ChangeObservation) -> str:
-    body = "\0".join(
-        (
-            observation.repo_id,
-            observation.worktree_id,
-            observation.path,
-            observation.before_hash or "",
-            observation.after_hash or "",
-        )
+    return content_fingerprint(
+        observation.repo_id,
+        observation.worktree_id,
+        observation.path,
+        observation.before_hash,
+        observation.after_hash,
     )
-    return hashlib.sha256(f"loopguard-change-content-v1\0{body}".encode()).hexdigest()
 
 
 def _record_id(observation: ChangeObservation, fingerprint: str) -> str:

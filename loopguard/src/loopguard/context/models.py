@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import (
     AfterValidator,
@@ -11,6 +11,7 @@ from pydantic import (
     ConfigDict,
     Field,
     field_validator,
+    model_validator,
 )
 
 
@@ -51,6 +52,9 @@ class ChangeObservation(ContextModel):
     symbols: list[NonEmptyStr] = Field(default_factory=list, max_length=4096)
     verification_ids: list[NonEmptyStr] = Field(default_factory=list, max_length=4096)
     reconciliation_id: NonEmptyStr | None = Field(default=None, max_length=512)
+    observation_kind: Literal["change", "reconciliation.current_state"] = "change"
+    history_complete: bool = True
+    recovery_reason: Literal["overflow", "restart"] | None = None
     observed_at: AwareDatetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
@@ -66,6 +70,15 @@ class ChangeObservation(ContextModel):
         if len(set(values)) != len(values):
             raise ValueError("list values must be unique")
         return values
+
+    @model_validator(mode="after")
+    def reconciliation_truth_is_explicit(self) -> ChangeObservation:
+        if self.observation_kind == "reconciliation.current_state":
+            if self.recovery_reason is None or self.history_complete:
+                raise ValueError("recovered current state cannot claim complete history")
+        elif self.recovery_reason is not None or not self.history_complete:
+            raise ValueError("ordinary changes cannot carry recovery semantics")
+        return self
 
 
 class ChangeRecord(ContextModel):
