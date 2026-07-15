@@ -13,6 +13,7 @@ from loopguard.adapters.base import (
     LifecycleError,
     LifecycleErrorCode,
     ManagedRunRequest,
+    ManagedStartEvidence,
 )
 
 
@@ -76,6 +77,27 @@ def test_managed_run_request_carries_every_safety_boundary(tmp_path):
     assert request.max_tokens == 20_000
     assert request.max_cost_usd == 2.5
     assert request.model_dump(mode="json")["schema_version"] == 1
+
+
+def test_managed_start_evidence_is_shared_and_requires_an_absolute_worktree(tmp_path):
+    evidence = ManagedStartEvidence(
+        proof_contract_id="proof-1",
+        baseline_id="baseline-1",
+        worktree_lease_id="lease-1",
+        worktree_id="worktree-1",
+        worktree_root=tmp_path / "worktree",
+        captured_before_first_mutation=True,
+    )
+    assert evidence.worktree_root.is_absolute()
+    with pytest.raises(ValidationError):
+        ManagedStartEvidence(
+            proof_contract_id="proof-1",
+            baseline_id="baseline-1",
+            worktree_lease_id="lease-1",
+            worktree_id="worktree-1",
+            worktree_root=Path("relative"),
+            captured_before_first_mutation=True,
+        )
 
 
 @pytest.mark.parametrize(

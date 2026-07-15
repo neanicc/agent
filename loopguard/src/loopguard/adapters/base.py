@@ -137,6 +137,26 @@ class ManagedRunRequest(BaseModel):
         return value
 
 
+class ManagedStartEvidence(BaseModel):
+    """Proof that managed execution is authorized before its first mutation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    proof_contract_id: str = Field(min_length=1, max_length=256)
+    baseline_id: str = Field(min_length=1, max_length=256)
+    worktree_lease_id: str = Field(min_length=1, max_length=256)
+    worktree_id: str = Field(min_length=1, max_length=256)
+    worktree_root: Path
+    captured_before_first_mutation: bool
+
+    @field_validator("worktree_root")
+    @classmethod
+    def _require_absolute_worktree(cls, value: Path) -> Path:
+        if not value.is_absolute():
+            raise ValueError("managed evidence worktree root must be absolute")
+        return value
+
+
 @runtime_checkable
 class AgentAdapter(Protocol):
     capabilities: AdapterCapabilities

@@ -13,8 +13,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from loopguard.adapters.base import (
     AdapterCapabilities,
     AdapterFailure,
@@ -22,6 +20,7 @@ from loopguard.adapters.base import (
     LifecycleError,
     LifecycleErrorCode,
     ManagedRunRequest,
+    ManagedStartEvidence,
 )
 from loopguard.adapters.jsonrpc import (
     JsonRpcClient,
@@ -73,17 +72,6 @@ CREATE TABLE sessions (
 );
 PRAGMA user_version = 1;
 """
-
-
-class ManagedStartEvidence(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    proof_contract_id: str = Field(min_length=1, max_length=256)
-    baseline_id: str = Field(min_length=1, max_length=256)
-    worktree_lease_id: str = Field(min_length=1, max_length=256)
-    worktree_id: str = Field(min_length=1, max_length=256)
-    worktree_root: Path
-    captured_before_first_mutation: bool
 
 
 class CodexRpc(Protocol):
