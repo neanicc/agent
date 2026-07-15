@@ -18,21 +18,22 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ --help                        Show this message and exit.                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ quickstart   Prove offline loop protection through the real daemon in under  │
-│              two minutes.                                                    │
-│ doctor       Check daemon, storage, encryption, dispatch, and integration    │
-│              health.                                                         │
-│ explain      Print the cause, safe fixes, and local reference for an error   │
-│              code.                                                           │
+│ quickstart    Prove offline loop protection through the real daemon in under │
+│               two minutes.                                                   │
+│ doctor        Check daemon, storage, encryption, dispatch, and integration   │
+│               health.                                                        │
+│ explain       Print the cause, safe fixes, and local reference for an error  │
+│               code.                                                          │
 │ demo                                                                         │
-│ projects     List the demo projects an agent can really run.                 │
-│ run          Run a real agent on a demo project and guard it live in the     │
-│              terminal.                                                       │
+│ projects      List the demo projects an agent can really run.                │
+│ run           Run a real agent on a demo project and guard it live in the    │
+│               terminal.                                                      │
 │ inspect                                                                      │
 │ init-config                                                                  │
 │ serve                                                                        │
-│ daemon       Manage the owner-only local LoopGuard daemon.                   │
-│ config       Inspect and validate layered LoopGuard configuration.           │
+│ daemon        Manage the owner-only local LoopGuard daemon.                  │
+│ config        Inspect and validate layered LoopGuard configuration.          │
+│ integrations  Install and verify native agent integrations.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -224,6 +225,151 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ --json                                                                       │
 │ --home        PATH                                                           │
 │ --help              Show this message and exit.                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard integrations`
+
+```text
+
+ Usage: loopguard integrations [OPTIONS] COMMAND [ARGS]...
+
+ Install and verify native agent integrations.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ install    Install one native agent integration.                             │
+│ verify     Verify one native agent integration.                              │
+│ uninstall  Uninstall one native agent integration.                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard integrations install`
+
+```text
+
+ Usage: loopguard integrations install [OPTIONS] COMMAND [ARGS]...
+
+ Install one native agent integration.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ codex  Install LoopGuard's checksum-pinned Codex integration.                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard integrations install codex`
+
+```text
+
+ Usage: loopguard integrations install codex [OPTIONS]
+
+ Install LoopGuard's checksum-pinned Codex integration.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --fallback                      Use hooks.json only when this Codex version  │
+│                                 cannot activate plugins.                     │
+│ --scope                   TEXT  Fallback scope: user or project.             │
+│                                 [default: user]                              │
+│ --settings                PATH  Fallback hooks.json path.                    │
+│ --repository              PATH  Repository for project fallback scope.       │
+│ --executable              TEXT  LoopGuard executable for fallback hooks.     │
+│                                 [default: loopguard]                         │
+│ --codex-executable        TEXT  Codex executable for plugin install.         │
+│                                 [default: codex]                             │
+│ --codex-version           TEXT  Explicit compatibility version probe.        │
+│ --home                    PATH  Override LOOPGUARD_HOME for plugin staging.  │
+│ --dry-run                       Preview without changing Codex.              │
+│ --json                          Emit stable machine-readable output.         │
+│ --help                          Show this message and exit.                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard integrations verify`
+
+```text
+
+ Usage: loopguard integrations verify [OPTIONS] COMMAND [ARGS]...
+
+ Verify one native agent integration.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ codex  Verify exact installation, discovery, and Codex-reported hook trust.  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard integrations verify codex`
+
+```text
+
+ Usage: loopguard integrations verify codex [OPTIONS]
+
+ Verify exact installation, discovery, and Codex-reported hook trust.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --settings                PATH  Fallback hooks.json path.                    │
+│ --scope                   TEXT  Fallback scope: user or project.             │
+│                                 [default: user]                              │
+│ --executable              TEXT  Executable recorded in fallback hooks.       │
+│                                 [default: loopguard]                         │
+│ --codex-executable        TEXT  Codex executable for plugin verification.    │
+│                                 [default: codex]                             │
+│ --cwd                     PATH  Working directory for effective Codex hook   │
+│                                 lookup (defaults to current directory).      │
+│ --json                          Emit stable machine-readable output.         │
+│ --help                          Show this message and exit.                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard integrations uninstall`
+
+```text
+
+ Usage: loopguard integrations uninstall [OPTIONS] COMMAND [ARGS]...
+
+ Uninstall one native agent integration.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ codex  Remove only the exact LoopGuard Codex plugin or fallback handlers.    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard integrations uninstall codex`
+
+```text
+
+ Usage: loopguard integrations uninstall codex [OPTIONS]
+
+ Remove only the exact LoopGuard Codex plugin or fallback handlers.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --settings                PATH  Fallback hooks.json path; omit for plugin.   │
+│ --scope                   TEXT  Fallback scope: user or project.             │
+│                                 [default: user]                              │
+│ --repository              PATH  Repository for project fallback scope.       │
+│ --executable              TEXT  Executable recorded in fallback hooks.       │
+│                                 [default: loopguard]                         │
+│ --codex-executable        TEXT  Codex executable for plugin removal.         │
+│                                 [default: codex]                             │
+│ --json                          Emit stable machine-readable output.         │
+│ --help                          Show this message and exit.                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```

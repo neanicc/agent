@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+[ -d "$repo_root/.git" ] || [ -f "$repo_root/.git" ] || exit 0
+exec loopguard hook-entry codex "$1" --integration-version 1

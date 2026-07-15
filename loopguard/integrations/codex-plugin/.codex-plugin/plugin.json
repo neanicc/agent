@@ -1,0 +1,34 @@
+{
+  "name": "codex-plugin",
+  "version": "0.1.0",
+  "description": "Attach Codex lifecycle events to the local LoopGuard circuit breaker.",
+  "author": {
+    "name": "LoopGuard contributors",
+    "url": "https://github.com/neanicc/agent"
+  },
+  "homepage": "https://github.com/neanicc/agent/tree/main/loopguard",
+  "repository": "https://github.com/neanicc/agent",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "agent-safety",
+    "loop-detection"
+  ],
+  "interface": {
+    "displayName": "LoopGuard",
+    "shortDescription": "Local circuit breaker for runaway agent loops.",
+    "longDescription": "Forwards a documented subset of Codex lifecycle events to the owner-only LoopGuard daemon for local observation and policy decisions.",
+    "developerName": "LoopGuard contributors",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Observe",
+      "Block supported tool calls",
+      "Request approval"
+    ],
+    "websiteURL": "https://github.com/neanicc/agent/tree/main/loopguard",
+    "defaultPrompt": [
+      "Show the current LoopGuard protection status."
+    ],
+    "brandColor": "#0D9488"
+  }
+}

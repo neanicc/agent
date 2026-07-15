@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import subprocess
+import sys
 from enum import Enum
 from pathlib import Path
 
@@ -14,14 +16,22 @@ from .config import LoopGuardConfig
 from .configuration import ControlConfiguration, ConfigurationError, load_configuration
 from .control.diagnostics import build_doctor_report
 from .control.errors import error_for, render_error
-from .control.paths import ControlPaths, UnsafeStatePathError
+from .control.paths import ControlPaths, UnsafeStatePathError, ensure_private_home
 from .storage import read_jsonl
 
 app = typer.Typer(help="LoopGuard semantic circuit breaker")
 daemon_app = typer.Typer(help="Manage the owner-only local LoopGuard daemon.")
 config_app = typer.Typer(help="Inspect and validate layered LoopGuard configuration.")
+integrations_app = typer.Typer(help="Install and verify native agent integrations.")
+integrations_install_app = typer.Typer(help="Install one native agent integration.")
+integrations_verify_app = typer.Typer(help="Verify one native agent integration.")
+integrations_uninstall_app = typer.Typer(help="Uninstall one native agent integration.")
 app.add_typer(daemon_app, name="daemon")
 app.add_typer(config_app, name="config")
+app.add_typer(integrations_app, name="integrations")
+integrations_app.add_typer(integrations_install_app, name="install")
+integrations_app.add_typer(integrations_verify_app, name="verify")
+integrations_app.add_typer(integrations_uninstall_app, name="uninstall")
 
 
 def _echo_json(value: object) -> None:
@@ -286,6 +296,228 @@ def config_validate(
         _echo_json({"valid": True, "path": str(loaded.path), "schema_version": 1})
     else:
         typer.echo(f"Configuration is valid: {loaded.path}")
+
+
+def _codex_version(executable: str) -> str:
+    try:
+        result = subprocess.run(
+            [executable, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError("could not execute Codex to determine plugin compatibility") from exc
+    if result.returncode != 0:
+        raise RuntimeError("could not determine the installed Codex version")
+    return result.stdout.strip()
+
+
+def _integration_failure(message: str, *, as_json: bool) -> None:
+    if as_json:
+        _echo_json({"status": "error", "message": message})
+    else:
+        typer.echo(f"LoopGuard integration error: {message}")
+    raise typer.Exit(1)
+
+
+@integrations_install_app.command("codex")
+def integrations_install_codex(
+    fallback: bool = typer.Option(
+        False,
+        "--fallback",
+        help="Use hooks.json only when this Codex version cannot activate plugins.",
+    ),
+    scope: str = typer.Option("user", help="Fallback scope: user or project."),
+    settings: Path | None = typer.Option(None, help="Fallback hooks.json path."),
+    repository: Path | None = typer.Option(None, help="Repository for project fallback scope."),
+    executable: str = typer.Option("loopguard", help="LoopGuard executable for fallback hooks."),
+    codex_executable: str = typer.Option("codex", help="Codex executable for plugin install."),
+    codex_version: str | None = typer.Option(None, help="Explicit compatibility version probe."),
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME for plugin staging."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview without changing Codex."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Install LoopGuard's checksum-pinned Codex integration."""
+    from .adapters.codex_hooks import (
+        CodexInstallError,
+        codex_project_hooks_path,
+        codex_plugin_available,
+        find_codex_fallback_events,
+        install_codex_hooks,
+        install_codex_plugin,
+    )
+
+    try:
+        version = codex_version or _codex_version(codex_executable)
+        plugin_available = codex_plugin_available(version)
+        if fallback:
+            if plugin_available:
+                raise CodexInstallError(
+                    "this Codex version supports plugins; fallback would duplicate plugin hooks"
+                )
+            fallback_path = settings or (
+                (repository or Path.cwd()) / ".codex" / "hooks.json"
+                if scope == "project"
+                else Path.home() / ".codex" / "hooks.json"
+            )
+            if dry_run:
+                result = install_codex_hooks(
+                    fallback_path,
+                    executable=executable,
+                    scope=scope,
+                    plugin_available=False,
+                    repository=repository,
+                    dry_run=True,
+                )
+            else:
+                result = install_codex_hooks(
+                    fallback_path,
+                    executable=executable,
+                    scope=scope,
+                    plugin_available=False,
+                    repository=repository,
+                )
+        else:
+            if not plugin_available:
+                raise CodexInstallError(
+                    "installed Codex cannot activate plugins; rerun with --fallback after review"
+                )
+            codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+            candidate_paths = [settings or codex_home / "hooks.json"]
+            project_path = codex_project_hooks_path(repository or Path.cwd())
+            if project_path is not None:
+                candidate_paths.append(project_path)
+            for candidate in candidate_paths:
+                if find_codex_fallback_events(candidate):
+                    raise CodexInstallError(
+                        f"fallback hooks remain at {candidate}; uninstall them before plugin install"
+                    )
+            paths = ControlPaths.from_home(home)
+            ensure_private_home(paths.home)
+            result = install_codex_plugin(
+                paths.home / "integrations",
+                codex_executable=codex_executable,
+                dry_run=dry_run,
+            )
+    except (CodexInstallError, RuntimeError, UnsafeStatePathError) as exc:
+        _integration_failure(str(exc), as_json=as_json)
+    payload = result.to_dict()
+    payload["next_step"] = "Review and trust the exact LoopGuard definition in Codex /hooks."
+    if as_json:
+        _echo_json(payload)
+    else:
+        typer.echo(f"LoopGuard Codex {result.mode} prepared ({result.hook_checksum}).")
+        typer.echo(str(payload["next_step"]))
+
+
+@integrations_verify_app.command("codex")
+def integrations_verify_codex(
+    settings: Path | None = typer.Option(None, help="Fallback hooks.json path."),
+    scope: str = typer.Option("user", help="Fallback scope: user or project."),
+    executable: str = typer.Option("loopguard", help="Executable recorded in fallback hooks."),
+    codex_executable: str = typer.Option("codex", help="Codex executable for plugin verification."),
+    cwd: Path | None = typer.Option(
+        None,
+        help="Working directory for effective Codex hook lookup (defaults to current directory).",
+    ),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Verify exact installation, discovery, and Codex-reported hook trust."""
+    from .adapters.codex_hooks import (
+        CodexInstallError,
+        verify_codex_hooks,
+        verify_codex_plugin,
+    )
+
+    try:
+        if settings is None:
+            result = verify_codex_plugin(
+                codex_executable=codex_executable,
+                cwd=cwd or Path.cwd(),
+            )
+        else:
+            result = verify_codex_hooks(
+                settings,
+                executable=executable,
+                scope=scope,
+            )
+    except CodexInstallError as exc:
+        _integration_failure(str(exc), as_json=as_json)
+    if as_json:
+        _echo_json(result.to_dict())
+    else:
+        typer.echo(f"LoopGuard Codex integration: {result.status}")
+        if result.trust_required:
+            typer.echo("Review the exact hook definition in Codex /hooks.")
+    if not result.healthy:
+        raise typer.Exit(1)
+
+
+@integrations_uninstall_app.command("codex")
+def integrations_uninstall_codex(
+    settings: Path | None = typer.Option(None, help="Fallback hooks.json path; omit for plugin."),
+    scope: str = typer.Option("user", help="Fallback scope: user or project."),
+    repository: Path | None = typer.Option(None, help="Repository for project fallback scope."),
+    executable: str = typer.Option("loopguard", help="Executable recorded in fallback hooks."),
+    codex_executable: str = typer.Option("codex", help="Codex executable for plugin removal."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Remove only the exact LoopGuard Codex plugin or fallback handlers."""
+    from .adapters.codex_hooks import (
+        CodexInstallError,
+        uninstall_codex_hooks,
+        uninstall_codex_plugin,
+    )
+
+    try:
+        if settings is None:
+            result = uninstall_codex_plugin(codex_executable=codex_executable)
+        else:
+            result = uninstall_codex_hooks(
+                settings,
+                executable=executable,
+                scope=scope,
+                repository=repository,
+            )
+    except CodexInstallError as exc:
+        _integration_failure(str(exc), as_json=as_json)
+    if as_json:
+        _echo_json(result.to_dict())
+    else:
+        typer.echo(f"LoopGuard Codex integration: {result.status}")
+
+
+@app.command("hook-entry", hidden=True)
+def hook_entry_command(
+    vendor: str,
+    hook_name: str,
+    integration_version: int = typer.Option(..., help="Pinned integration protocol version."),
+    fail_closed: bool = typer.Option(False, "--fail-closed"),
+) -> None:
+    """Internal native-hook entry point; input is one bounded JSON object on stdin."""
+    from .adapters.codex_hooks import INTEGRATION_VERSION
+    from .adapters.hook_client import HookClient
+    from .adapters.hook_entry import MAX_HOOK_INPUT_BYTES, process_hook_input
+
+    if integration_version != INTEGRATION_VERSION:
+        typer.echo("LoopGuard hook warning: incompatible integration version", err=True)
+        return
+    raw_input = sys.stdin.buffer.read(MAX_HOOK_INPUT_BYTES + 1)
+    result = process_hook_input(
+        vendor,
+        hook_name,
+        raw_input,
+        client=HookClient(),
+        fail_closed=fail_closed,
+    )
+    if result.stdout:
+        typer.echo(result.stdout, nl=False)
+    if result.stderr:
+        typer.echo(result.stderr, err=True, nl=False)
+    if result.exit_code:
+        raise typer.Exit(result.exit_code)
 
 
 @app.command()

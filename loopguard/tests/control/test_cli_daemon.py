@@ -33,14 +33,17 @@ def test_production_commands_are_discoverable():
     root = runner.invoke(app, ["--help"])
     daemon = runner.invoke(app, ["daemon", "--help"])
     config = runner.invoke(app, ["config", "--help"])
+    integrations = runner.invoke(app, ["integrations", "--help"])
 
-    assert root.exit_code == daemon.exit_code == config.exit_code == 0
-    for command in ("quickstart", "doctor", "explain", "daemon", "config"):
+    assert root.exit_code == daemon.exit_code == config.exit_code == integrations.exit_code == 0
+    for command in ("quickstart", "doctor", "explain", "daemon", "config", "integrations"):
         assert command in root.stdout
     for command in ("start", "status", "doctor"):
         assert command in daemon.stdout
     for command in ("path", "show", "validate"):
         assert command in config.stdout
+    for command in ("install", "verify", "uninstall"):
+        assert command in integrations.stdout
 
 
 def test_doctor_json_reports_missing_daemon_with_structured_fix(tmp_path, monkeypatch):
@@ -152,6 +155,9 @@ def test_generated_cli_reference_has_no_drift():
         "loopguard daemon status",
         "loopguard daemon doctor",
         "loopguard init-config",
+        "loopguard integrations install codex",
+        "loopguard integrations verify codex",
+        "loopguard integrations uninstall codex",
         "loopguard demo",
         "loopguard projects",
         "loopguard run",
