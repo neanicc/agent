@@ -23,6 +23,22 @@ from .store import EventIdConflictError, EventStore, EventStoreError
 from .transport import LocalTransport, UnixSocketTransport
 
 
+def _is_potentially_mutating_tool(event: ControlEvent) -> bool:
+    tool_name = event.payload.get("tool_name")
+    if not isinstance(tool_name, str):
+        return True
+    normalized = tool_name.strip().lower().replace("-", "_")
+    return normalized not in {
+        "glob",
+        "grep",
+        "list",
+        "ls",
+        "read",
+        "search",
+        "view_image",
+    }
+
+
 class CompletionPolicy(Protocol):
     def policy_decision(
         self,
@@ -64,6 +80,7 @@ class DaemonServices:
     handoff_store: object | None = None
     worktree_manager: object | None = None
     context_mcp_launcher: object | None = None
+    attached_collision_policy: str = "warn"
 
     @classmethod
     def from_verification_workflow(
@@ -115,6 +132,7 @@ class DaemonServices:
         event: ControlEvent,
         core_decision: PolicyDecision,
     ) -> PolicyDecision:
+        attachment_failed = self._observe_attached_session(event)
         workflow = self.verification_workflow
         if (
             workflow is not None
@@ -155,10 +173,94 @@ class DaemonServices:
                     }
                 )
                 return self._validate(event, core_decision, decision)
+        collision_decision = self._attached_collision_policy(
+            event,
+            core_decision,
+            attachment_failed=attachment_failed,
+        )
+        if collision_decision is not None:
+            core_decision = collision_decision
         if self.completion_enforcement is None:
             return core_decision
         decision = self.completion_enforcement.policy_decision(event, core_decision)
         return self._validate(event, core_decision, decision)
+
+    def _observe_attached_session(self, event: ControlEvent) -> bool:
+        manager = self.worktree_manager
+        worktree_id = event.session.worktree_id
+        if manager is None or worktree_id is None:
+            return False
+        try:
+            if event.kind is EventKind.SESSION_STOPPED:
+                manager.detach(event.session.repo_id, event.session.session_id)
+            elif event.kind in {EventKind.SESSION_STARTED, EventKind.TOOL_CALL}:
+                manager.attach(
+                    event.session.repo_id,
+                    event.session.session_id,
+                    worktree_id,
+                )
+        except Exception:
+            return True
+        return False
+
+    def _attached_collision_policy(
+        self,
+        event: ControlEvent,
+        core_decision: PolicyDecision,
+        *,
+        attachment_failed: bool,
+    ) -> PolicyDecision | None:
+        manager = self.worktree_manager
+        worktree_id = event.session.worktree_id
+        if (
+            manager is None
+            or event.kind is not EventKind.TOOL_CALL
+            or worktree_id is None
+            or not _is_potentially_mutating_tool(event)
+        ):
+            return None
+        collision = None
+        if not attachment_failed:
+            try:
+                collision = manager.attached_mutation_decision(
+                    event.session.repo_id,
+                    event.session.session_id,
+                    worktree_id,
+                    policy=self.attached_collision_policy,
+                )
+            except Exception:
+                attachment_failed = True
+        if attachment_failed:
+            action = core_decision.action
+            if action == "allow":
+                action = "pause" if self.attached_collision_policy == "block" else "warn"
+            return core_decision.model_copy(
+                update={
+                    "decision_id": f"worktree-collision-unavailable:{event.event_id}",
+                    "action": action,
+                    "reason": "Attached worktree collision state is temporarily unavailable.",
+                    "metadata": {
+                        **core_decision.metadata,
+                        "worktree_collision": {"status": "unavailable"},
+                    },
+                }
+            )
+        if collision is None or not collision.collision:
+            return None
+        action = core_decision.action
+        if action == "allow":
+            action = "warn" if collision.action == "warn" else "pause"
+        return core_decision.model_copy(
+            update={
+                "decision_id": f"worktree-collision:{event.event_id}",
+                "action": action,
+                "reason": collision.reason,
+                "metadata": {
+                    **core_decision.metadata,
+                    "worktree_collision": collision.model_dump(mode="json"),
+                },
+            }
+        )
 
     @staticmethod
     def _validate(

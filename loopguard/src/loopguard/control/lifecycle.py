@@ -13,6 +13,7 @@ from loopguard.context.index import SymbolIndex
 from loopguard.context.journal import ChangeJournal
 from loopguard.context.leases import LeaseManager
 from loopguard.context.watcher import ChangeReconciler
+from loopguard.context.worktrees import WorktreeManager
 
 from .daemon import DaemonServices, LoopGuardDaemon
 from .dispatch import Handler
@@ -45,6 +46,7 @@ async def run_foreground_daemon(
     lease_manager: LeaseManager | None = None
     handoff_store: HandoffStore | None = None
     mcp_launcher: ContextMCPLauncher | None = None
+    worktree_manager: WorktreeManager | None = None
     daemon: LoopGuardDaemon | None = None
     stop = stop_event or asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -56,6 +58,7 @@ async def run_foreground_daemon(
         lease_manager = LeaseManager(paths.home / "leases.db")
         handoff_store = HandoffStore(paths.home / "handoffs.db")
         mcp_launcher = ContextMCPLauncher(paths.home)
+        worktree_manager = WorktreeManager(root=paths.home / "worktrees")
         services = DaemonServices(
             change_journal=journal,
             change_watcher=ChangeReconciler,
@@ -63,7 +66,9 @@ async def run_foreground_daemon(
             lease_manager=lease_manager,
             digest_service=DigestBuilder(),
             handoff_store=handoff_store,
+            worktree_manager=worktree_manager,
             context_mcp_launcher=mcp_launcher,
+            attached_collision_policy=configuration.daemon.attached_collision_policy,
         )
         settings = configuration.daemon
         daemon = LoopGuardDaemon(
@@ -96,6 +101,8 @@ async def run_foreground_daemon(
             await daemon.close()
         if mcp_launcher is not None:
             mcp_launcher.close()
+        if worktree_manager is not None:
+            worktree_manager.close()
         if handoff_store is not None:
             handoff_store.close()
         if lease_manager is not None:

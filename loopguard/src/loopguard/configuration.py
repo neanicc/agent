@@ -27,6 +27,7 @@ class DaemonSettings(BaseModel):
     handler_queue_size: int = Field(default=128, gt=0, le=65_536)
     handler_max_attempts: int = Field(default=3, gt=0, le=100)
     handler_retry_delay_seconds: float = Field(default=0.05, ge=0, le=300)
+    attached_collision_policy: Literal["warn", "block"] = "warn"
 
 
 class TelemetrySettings(BaseModel):
@@ -79,6 +80,7 @@ _ENVIRONMENT = {
         "daemon.handler_retry_delay_seconds",
         float,
     ),
+    "LOOPGUARD_ATTACHED_COLLISION_POLICY": ("daemon.attached_collision_policy", str),
     "LOOPGUARD_TRIP_COUNT": ("guard.trip_count", int),
     "LOOPGUARD_ACTION": ("guard.action", str),
     "LOOPGUARD_TELEMETRY_ENABLED": ("telemetry.enabled", _parse_bool),

@@ -142,13 +142,15 @@ def context_mcp_cmd(
         from .context.journal import ChangeJournal
         from .context.leases import LeaseManager
         from .context.mcp_server import ContextServices, build_context_server
+        from .context.worktrees import WorktreeManager
 
         capability = load_capability_from_environment(paths.home)
         journal = ChangeJournal(paths.home / "context.db")
         leases = LeaseManager(paths.home / "leases.db")
         handoffs = HandoffStore(paths.home / "handoffs.db")
         symbol_index = SymbolIndex(paths.home / "symbols.db")
-        resources.extend([symbol_index, handoffs, leases, journal])
+        worktree_manager = WorktreeManager(root=paths.home / "worktrees")
+        resources.extend([worktree_manager, symbol_index, handoffs, leases, journal])
         server = build_context_server(
             ContextServices(
                 journal=journal,
@@ -156,6 +158,7 @@ def context_mcp_cmd(
                 handoffs=handoffs,
                 digest=DigestBuilder(),
                 symbol_index=symbol_index,
+                worktree_manager=worktree_manager,
             ),
             capability=capability,
         )
