@@ -254,7 +254,7 @@ def _blocking_result(
                 "decision": {"behavior": "deny", "message": safe_reason},
             }
         }
-    elif hook_name == "UserPromptSubmit":
+    elif hook_name in {"UserPromptSubmit", "Stop"}:
         body = {"decision": "block", "reason": safe_reason}
     else:
         body = {
@@ -303,6 +303,7 @@ def _can_block(hook_name: object) -> bool:
     return isinstance(hook_name, str) and hook_name in {
         "PreToolUse",
         "PermissionRequest",
+        "Stop",
         "UserPromptSubmit",
     }
 

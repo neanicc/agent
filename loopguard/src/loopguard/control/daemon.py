@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 from pydantic import ValidationError
 
 from .dispatch import DispatchError, EventDispatcher, Handler
-from .events import ControlEvent
+from .decisions import PolicyDecision, TargetKind
+from .events import ControlEvent, EventKind
 from .projection import to_loop_event
 from .protocol import (
     DEFAULT_MAX_FRAME_BYTES,
@@ -20,6 +23,131 @@ from .store import EventIdConflictError, EventStore, EventStoreError
 from .transport import LocalTransport, UnixSocketTransport
 
 
+class CompletionPolicy(Protocol):
+    def policy_decision(
+        self,
+        event: ControlEvent,
+        core_decision: PolicyDecision,
+    ) -> PolicyDecision: ...
+
+
+class VerificationCoordinator(Protocol):
+    proof_intake: object
+    runner: object
+    verification: object
+    completion: CompletionPolicy
+
+    def is_registered(self, session_id: str) -> bool: ...
+
+    async def before_mutation(self, event: ControlEvent): ...
+
+    async def submit_prompt(self, *args, **kwargs): ...
+
+    async def verify_completion(self, *args, **kwargs): ...
+
+
+@dataclass(frozen=True, slots=True)
+class DaemonServices:
+    """Production service registry without changing durable detector replay semantics."""
+
+    proof_intake: object | None = None
+    runner: object | None = None
+    artifact_store: object | None = None
+    verdict_service: object | None = None
+    completion_enforcement: CompletionPolicy | None = None
+    verification_workflow: VerificationCoordinator | None = None
+
+    @classmethod
+    def from_verification_workflow(
+        cls,
+        workflow: VerificationCoordinator,
+    ) -> DaemonServices:
+        verification = workflow.verification
+        return cls(
+            proof_intake=workflow.proof_intake,
+            runner=workflow.runner,
+            artifact_store=getattr(verification, "artifacts", None),
+            verdict_service=verification,
+            completion_enforcement=workflow.completion,
+            verification_workflow=workflow,
+        )
+
+    async def submit_prompt(self, *args, **kwargs):
+        if self.verification_workflow is None:
+            raise ValueError("verification workflow is not configured")
+        return await self.verification_workflow.submit_prompt(*args, **kwargs)
+
+    async def verify_completion(self, *args, **kwargs):
+        if self.verification_workflow is None:
+            raise ValueError("verification workflow is not configured")
+        return await self.verification_workflow.verify_completion(*args, **kwargs)
+
+    async def apply_policy(
+        self,
+        event: ControlEvent,
+        core_decision: PolicyDecision,
+    ) -> PolicyDecision:
+        workflow = self.verification_workflow
+        if (
+            workflow is not None
+            and event.kind is EventKind.TOOL_CALL
+            and workflow.is_registered(event.session.session_id)
+        ):
+            try:
+                gate = await workflow.before_mutation(event)
+            except Exception:
+                decision = core_decision.model_copy(
+                    update={
+                        "decision_id": f"verification-intake:{event.event_id}",
+                        "action": "pause",
+                        "reason": "Verification intake failed before mutation.",
+                        "metadata": {
+                            **core_decision.metadata,
+                            "verification_intake": {
+                                "status": "inconclusive",
+                                "reason": "mutation_gate_failed",
+                            },
+                        },
+                    }
+                )
+                return self._validate(event, core_decision, decision)
+            if not gate.allow:
+                decision = core_decision.model_copy(
+                    update={
+                        "decision_id": f"verification-intake:{event.event_id}",
+                        "action": "pause",
+                        "reason": f"Verification blocked mutation: {gate.reason}.",
+                        "metadata": {
+                            **core_decision.metadata,
+                            "verification_intake": {
+                                "status": gate.status,
+                                "reason": gate.reason,
+                            },
+                        },
+                    }
+                )
+                return self._validate(event, core_decision, decision)
+        if self.completion_enforcement is None:
+            return core_decision
+        decision = self.completion_enforcement.policy_decision(event, core_decision)
+        return self._validate(event, core_decision, decision)
+
+    @staticmethod
+    def _validate(
+        event: ControlEvent,
+        core_decision: PolicyDecision,
+        decision: PolicyDecision,
+    ) -> PolicyDecision:
+        if (
+            decision.target.kind is not TargetKind.SESSION
+            or decision.target.target_id != event.session.session_id
+            or decision.state_version != core_decision.state_version
+            or decision.state_hash != core_decision.state_hash
+        ):
+            raise DispatchError("policy overlay violated the core state contract")
+        return decision
+
+
 class LoopGuardDaemon:
     def __init__(
         self,
@@ -28,6 +156,7 @@ class LoopGuardDaemon:
         socket_path: str | Path | None = None,
         transport: LocalTransport | None = None,
         handlers: Mapping[str, Handler] | None = None,
+        services: DaemonServices | None = None,
         max_frame_bytes: int = DEFAULT_MAX_FRAME_BYTES,
         max_concurrent_clients: int = 32,
         idle_timeout: float = 30.0,
@@ -43,6 +172,7 @@ class LoopGuardDaemon:
         if idle_timeout <= 0 or write_timeout <= 0:
             raise ValueError("daemon timeouts must be positive")
         self.store = store
+        self.services = services or DaemonServices()
         self.transport = transport or UnixSocketTransport(Path(socket_path))
         self.max_frame_bytes = max_frame_bytes
         self.max_concurrent_clients = max_concurrent_clients
@@ -151,6 +281,10 @@ class LoopGuardDaemon:
                     if stored is None:
                         raise EventStoreError("persisted event is unavailable")
                     result = await self.dispatcher.dispatch(stored)
+                    decision = await self.services.apply_policy(
+                        stored.event,
+                        result.decision,
+                    )
                 except EventIdConflictError:
                     await self._send_error(
                         writer,
@@ -186,7 +320,7 @@ class LoopGuardDaemon:
                         "repo_seq": position.repo_seq,
                         "session_seq": position.session_seq,
                     },
-                    "decision": result.decision.model_dump(mode="json"),
+                    "decision": decision.model_dump(mode="json"),
                     "handlers": result.handlers,
                 }
                 await self._write(

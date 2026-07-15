@@ -177,6 +177,10 @@ class VerificationService:
             )
             return updated
 
+    def activate_without_baseline(self, run_id: str) -> VerificationRun:
+        """Continue an attached run while preserving that baseline ownership is absent."""
+        return self._transition(run_id, {RunStatus.BASELINING}, RunStatus.ACTIVE)
+
     def begin_completion(self, run_id: str) -> VerificationRun:
         return self._transition(run_id, {RunStatus.ACTIVE}, RunStatus.COMPLETING)
 
