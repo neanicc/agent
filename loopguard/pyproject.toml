@@ -9,8 +9,6 @@ description = "A local semantic circuit breaker for AI agents."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "cryptography>=42",
-    "keyring>=25",
     "numpy>=1.24",
     "pydantic>=2",
     "rapidfuzz>=3",
@@ -20,10 +18,27 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.5"]
+dev = ["build>=1.2", "pytest>=8", "ruff>=0.5"]
+control = [
+    "cryptography>=42",
+    "keyring>=25",
+    "pywin32>=306; sys_platform == 'win32'",
+]
 cerebras = ["cerebras_cloud_sdk>=1.0"]
 litellm = ["litellm>=1.40"]
 server = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
+all-dev = [
+    "build>=1.2",
+    "pytest>=8",
+    "ruff>=0.5",
+    "cryptography>=42",
+    "keyring>=25",
+    "pywin32>=306; sys_platform == 'win32'",
+    "cerebras_cloud_sdk>=1.0",
+    "litellm>=1.40",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+]
 
 [project.scripts]
 loopguard = "loopguard.cli:app"

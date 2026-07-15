@@ -1,3 +1,6 @@
+import time
+import warnings
+
 from fastapi.testclient import TestClient
 
 from loopguard.judge import JudgeVerdict
@@ -105,3 +108,17 @@ def test_websocket_streams_until_done():
                 break
         assert "event" in types
         assert types[-1] == "done"
+
+
+def test_start_run_broadcast_path_has_no_loopguard_runtime_warning():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        with TestClient(_app()) as client:
+            run_id = client.post("/runs", json={"mode": "auto", "model": "fake/model"}).json()[
+                "run_id"
+            ]
+            for _ in range(100):
+                if client.get(f"/runs/{run_id}").json()["status"] != "running":
+                    break
+                time.sleep(0.01)
+            assert client.get(f"/runs/{run_id}").json()["status"] != "running"

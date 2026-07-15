@@ -1,14 +1,14 @@
 # LoopGuard Production Implementation Progress
 
 - Branch: `feat/loopguard-production`
-- Current milestone/tranche: 1 of 11 — control-plane foundation
-- Current plan and immutable task ID: `docs/superpowers/plans/2026-07-02-control-plane-foundation.md`, `FOUNDATION-T06`
-- Last completed step: `FOUNDATION-T05` completed inline with a secure framed local protocol, authenticated POSIX transport, honest Windows capability gate, deterministic per-session guard dispatch, durable core/handler markers, crash replay, bounded idempotent handler retries, and graceful connection shutdown.
-- Expected/observed last commit: Expected next commit subject `feat: add durable local control daemon`; observed predecessor `a2e729e feat: redact secrets before event persistence`.
-- Task dependencies and owned files: `FOUNDATION-T06` depends on the durable daemon from `FOUNDATION-T05`; it owns daemon CLI lifecycle, quickstart, diagnostics, stable error/configuration contracts, CI, prototype warning cleanup, and foundation documentation.
-- Red/green/regression commands with exit codes and counts: Daemon RED exited 2 with the expected missing modules; durability/security edge tests then failed as expected before their fixes; focused daemon/protocol/transport GREEN exited 0 with 30 passed; complete control collection contains 235 tests; focused Ruff and `git diff --check` exited 0; full Python regression exited 0 with 306 passed and 4 known FOUNDATION-T06 warning-summary entries.
-- Evidence/artifact paths: daemon/protocol/store tests under `loopguard/tests/control`; Python console output in the active Codex task.
-- Last successful cumulative verification: 2026-07-14 — control plane 235 tests collected after the latest focused green runs, focused Ruff clean, full Python suite 306 passed with only the 4 known prototype server warning-summary entries assigned to `FOUNDATION-T06`, and `git diff --check` clean.
-- Known baseline failures: `loopguard/tests/test_agent.py:37` Ruff F841; `loopguard/tests/test_judge.py:1` Ruff F401; the latest full suite emitted 4 warning-summary entries from the known FastAPI/TestClient deprecation and prototype closed-event-loop/unawaited-broadcast debt. These are assigned to `FOUNDATION-T06`.
+- Current milestone/tranche: 2 of 13 — attached Codex and Claude integrations
+- Current plan and immutable task ID: `docs/superpowers/plans/2026-07-02-agent-integrations.md`, `INTEGRATIONS-T01`
+- Last completed step: `FOUNDATION-T06` completed inline with fail-closed state paths, foreground daemon lifecycle, isolated zero-key quickstart, read-only diagnostics, stable structured errors, strict layered configuration, complete generated CLI help, foundation CI/package extras, production-first documentation, and warning-safe prototype broadcasts.
+- Expected/observed last commit: Expected task commit subject `feat: expose daemon lifecycle and diagnostics`; observed predecessor `c2fe99d feat: add durable local control daemon`.
+- Task dependencies and owned files: `INTEGRATIONS-T01` depends on the versioned control event, decision, daemon, and diagnostics contracts completed by `FOUNDATION-T01` through `FOUNDATION-T06`; it owns only the adapter capability/protocol contract and its focused tests.
+- Red/green/regression commands with exit codes and counts: T06 CLI/quickstart RED tests failed for missing behavior and unsafe path mutation before implementation; focused CLI, quickstart, lifecycle, doctor, configuration, error, CLI-reference, and runtime-warning regressions exited 0; `python -m pytest -q -W error::RuntimeWarning` exited 0 with 337 passed; Ruff, generated CLI drift, and `git diff --check` exited 0; `python -m build` exited 0 and built both sdist and wheel.
+- Evidence/artifact paths: `loopguard/tests/control/test_cli_daemon.py`, `loopguard/tests/control/test_quickstart.py`, `loopguard/tests/control/test_error_contract.py`, `.github/workflows/control-foundation.yml`, `docs/getting-started/quickstart.md`, `docs/reference/`, and `loopguard/dist/` (ignored build output).
+- Last successful cumulative verification: 2026-07-15 — full warning-strict Python suite 337 passed, Ruff clean, generated CLI reference current, diff whitespace clean, and isolated sdist/wheel build successful.
+- Known baseline failures: No LoopGuard-owned baseline failures remain. One external `StarletteDeprecationWarning` from FastAPI/TestClient is recorded and is not suppressed.
 - Active blockers: None.
-- Next exact action: `FOUNDATION-T06` — add daemon CLI lifecycle, zero-key quickstart, diagnostics, CI, and foundation documentation; planned subject `feat: add daemon lifecycle and quickstart`.
+- Next exact action: Commit `FOUNDATION-T06` as `feat: expose daemon lifecycle and diagnostics`, verify a clean tree and commit subject, then begin `INTEGRATIONS-T01` with the adapter-capability RED test.
