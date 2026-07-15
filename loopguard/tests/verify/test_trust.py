@@ -6,6 +6,7 @@ import pytest
 
 from loopguard.verify.discovery import DiscoveredCheck, RequestedCapabilities, discover_checks
 from loopguard.verify.models import CheckSpec
+from loopguard.verify.runner import ExecutionAuthorization
 from loopguard.verify.trust import (
     ApprovalCapabilities,
     CommandTrustService,
@@ -49,6 +50,9 @@ def test_first_use_previews_exact_exec_form_and_benign_approval_is_hash_bound(tm
     assert first.preview.source_command is None
     assert approved.allowed is True
     assert approved.state is TrustState.APPROVED
+    authorization = ExecutionAuthorization.from_trust(approved)
+    assert authorization.approved is True
+    assert authorization.network is False
 
 
 def test_ambient_secret_environment_is_never_inherited_into_preview(tmp_path: Path, monkeypatch) -> None:
