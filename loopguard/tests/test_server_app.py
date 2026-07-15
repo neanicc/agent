@@ -1,3 +1,4 @@
+import asyncio
 import time
 import warnings
 
@@ -122,3 +123,26 @@ def test_start_run_broadcast_path_has_no_loopguard_runtime_warning():
                     break
                 time.sleep(0.01)
             assert client.get(f"/runs/{run_id}").json()["status"] != "running"
+
+
+def test_rest_run_without_websocket_never_creates_broadcast_coroutines(monkeypatch):
+    created_broadcasts = []
+    original_create_task = asyncio.BaseEventLoop.create_task
+
+    def tracking_create_task(loop, coroutine, *args, **kwargs):
+        code = getattr(coroutine, "cr_code", None)
+        if code is not None and code.co_name == "_broadcast":
+            created_broadcasts.append(coroutine)
+        return original_create_task(loop, coroutine, *args, **kwargs)
+
+    monkeypatch.setattr(asyncio.BaseEventLoop, "create_task", tracking_create_task)
+    with TestClient(_app()) as client:
+        run_id = client.post("/runs", json={"mode": "auto", "model": "fake/model"}).json()[
+            "run_id"
+        ]
+        for _ in range(100):
+            if client.get(f"/runs/{run_id}").json()["status"] != "running":
+                break
+            time.sleep(0.01)
+
+    assert created_broadcasts == []

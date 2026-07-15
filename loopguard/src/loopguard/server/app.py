@@ -73,7 +73,7 @@ def create_app(provider_factory: Callable | None = None,
                 return
 
             def enqueue() -> None:
-                if state["closing"]:
+                if state["closing"] or not subscribers.get(run_id):
                     return
                 broadcast = _broadcast(run_id, message)
                 try:
