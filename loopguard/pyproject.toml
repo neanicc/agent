@@ -25,6 +25,7 @@ control = [
     "pywin32>=306; sys_platform == 'win32'",
 ]
 context = [
+    "mcp>=1.0",
     "tree-sitter-language-pack>=0.9",
     "watchfiles>=0.24",
 ]
@@ -38,6 +39,7 @@ all-dev = [
     "cryptography>=42",
     "keyring>=25",
     "pywin32>=306; sys_platform == 'win32'",
+    "mcp>=1.0",
     "tree-sitter-language-pack>=0.9",
     "watchfiles>=0.24",
     "cerebras_cloud_sdk>=1.0",

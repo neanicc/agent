@@ -56,6 +56,14 @@ class DaemonServices:
     verdict_service: object | None = None
     completion_enforcement: CompletionPolicy | None = None
     verification_workflow: VerificationCoordinator | None = None
+    change_journal: object | None = None
+    change_watcher: object | None = None
+    symbol_index: object | None = None
+    lease_manager: object | None = None
+    digest_service: object | None = None
+    handoff_store: object | None = None
+    worktree_manager: object | None = None
+    context_mcp_launcher: object | None = None
 
     @classmethod
     def from_verification_workflow(
@@ -81,6 +89,26 @@ class DaemonServices:
         if self.verification_workflow is None:
             raise ValueError("verification workflow is not configured")
         return await self.verification_workflow.verify_completion(*args, **kwargs)
+
+    def context_services(self):
+        required = {
+            "journal": self.change_journal,
+            "leases": self.lease_manager,
+            "handoffs": self.handoff_store,
+            "digest": self.digest_service,
+        }
+        if any(service is None for service in required.values()):
+            raise ValueError("context services are not fully configured")
+        from loopguard.context.mcp_server import ContextServices
+
+        return ContextServices(
+            **required,
+            symbol_index=self.symbol_index,
+            watcher=self.change_watcher,
+            worktree_manager=self.worktree_manager,
+            mcp_launcher=self.context_mcp_launcher,
+            verification=self.verdict_service,
+        )
 
     async def apply_policy(
         self,

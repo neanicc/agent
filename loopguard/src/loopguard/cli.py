@@ -126,6 +126,50 @@ def doctor_cmd(
     _run_doctor(as_json=as_json, verbose=verbose, home=home)
 
 
+@app.command("context-mcp", hidden=True)
+def context_mcp_cmd(
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+) -> None:
+    """Run the capability-bound stdio context server for a managed agent."""
+    paths = ControlPaths.from_home(home)
+    resources: list[object] = []
+    try:
+        ensure_private_home(paths.home)
+        from .context.capability import load_capability_from_environment
+        from .context.digest import DigestBuilder
+        from .context.handoff import HandoffStore
+        from .context.index import SymbolIndex
+        from .context.journal import ChangeJournal
+        from .context.leases import LeaseManager
+        from .context.mcp_server import ContextServices, build_context_server
+
+        capability = load_capability_from_environment(paths.home)
+        journal = ChangeJournal(paths.home / "context.db")
+        leases = LeaseManager(paths.home / "leases.db")
+        handoffs = HandoffStore(paths.home / "handoffs.db")
+        symbol_index = SymbolIndex(paths.home / "symbols.db")
+        resources.extend([symbol_index, handoffs, leases, journal])
+        server = build_context_server(
+            ContextServices(
+                journal=journal,
+                leases=leases,
+                handoffs=handoffs,
+                digest=DigestBuilder(),
+                symbol_index=symbol_index,
+            ),
+            capability=capability,
+        )
+        server.run()
+    except (ImportError, OSError, ValueError, PermissionError) as exc:
+        typer.echo(f"LoopGuard context MCP unavailable: {type(exc).__name__}", err=True)
+        raise typer.Exit(1)
+    finally:
+        for resource in resources:
+            close = getattr(resource, "close", None)
+            if close is not None:
+                close()
+
+
 def _run_doctor(*, as_json: bool, verbose: bool, home: Path | None) -> None:
     paths = ControlPaths.from_home(home)
     report = build_doctor_report(paths)

@@ -6,9 +6,15 @@ import signal
 from collections.abc import Callable
 
 from loopguard.configuration import ControlConfiguration
+from loopguard.context.capability import ContextMCPLauncher
+from loopguard.context.digest import DigestBuilder
+from loopguard.context.handoff import HandoffStore
+from loopguard.context.index import SymbolIndex
 from loopguard.context.journal import ChangeJournal
+from loopguard.context.leases import LeaseManager
+from loopguard.context.watcher import ChangeReconciler
 
-from .daemon import LoopGuardDaemon
+from .daemon import DaemonServices, LoopGuardDaemon
 from .dispatch import Handler
 from .paths import (
     ControlPaths,
@@ -35,6 +41,10 @@ async def run_foreground_daemon(
     write_pid_file(paths.pid, os.getpid())
     store: EventStore | None = None
     journal: ChangeJournal | None = None
+    symbol_index: SymbolIndex | None = None
+    lease_manager: LeaseManager | None = None
+    handoff_store: HandoffStore | None = None
+    mcp_launcher: ContextMCPLauncher | None = None
     daemon: LoopGuardDaemon | None = None
     stop = stop_event or asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -42,11 +52,25 @@ async def run_foreground_daemon(
     try:
         store = store_factory() if store_factory is not None else EventStore.open(home=paths.home)
         journal = ChangeJournal(paths.home / "context.db")
+        symbol_index = SymbolIndex(paths.home / "symbols.db")
+        lease_manager = LeaseManager(paths.home / "leases.db")
+        handoff_store = HandoffStore(paths.home / "handoffs.db")
+        mcp_launcher = ContextMCPLauncher(paths.home)
+        services = DaemonServices(
+            change_journal=journal,
+            change_watcher=ChangeReconciler,
+            symbol_index=symbol_index,
+            lease_manager=lease_manager,
+            digest_service=DigestBuilder(),
+            handoff_store=handoff_store,
+            context_mcp_launcher=mcp_launcher,
+        )
         settings = configuration.daemon
         daemon = LoopGuardDaemon(
             store=store,
             socket_path=paths.socket,
             handlers=production_handlers(journal),
+            services=services,
             max_frame_bytes=settings.max_frame_bytes,
             max_concurrent_clients=settings.max_concurrent_clients,
             idle_timeout=settings.idle_timeout_seconds,
@@ -70,6 +94,14 @@ async def run_foreground_daemon(
             loop.remove_signal_handler(candidate)
         if daemon is not None:
             await daemon.close()
+        if mcp_launcher is not None:
+            mcp_launcher.close()
+        if handoff_store is not None:
+            handoff_store.close()
+        if lease_manager is not None:
+            lease_manager.close()
+        if symbol_index is not None:
+            symbol_index.close()
         if journal is not None:
             journal.close()
         if store is not None:
