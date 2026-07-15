@@ -12,7 +12,7 @@ from loopguard.control.decisions import PolicyDecision, TargetKind
 from loopguard.control.events import ControlEvent
 from loopguard.control.redaction import redact
 
-from .hook_client import HookClient, HookClientError
+from .hook_client import HookClientError
 from .normalize_hook import (
     MAX_HOOK_INPUT_BYTES,
     HookNormalizationError,
@@ -312,6 +312,8 @@ def _reject_json_constant() -> None:
 
 
 def main() -> None:
+    from .cloud_hook_client import FallbackHookClient
+
     parser = argparse.ArgumentParser(description="Forward a native agent hook to LoopGuard.")
     parser.add_argument("vendor", choices=("codex", "claude"))
     parser.add_argument("hook_name")
@@ -322,7 +324,7 @@ def main() -> None:
         arguments.vendor,
         arguments.hook_name,
         raw_input,
-        client=HookClient(),
+        client=FallbackHookClient.from_environment(),
         fail_closed=arguments.fail_closed,
     )
     if result.stdout:

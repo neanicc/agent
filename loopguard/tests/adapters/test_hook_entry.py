@@ -90,6 +90,37 @@ def test_stop_is_turn_completion_and_never_claims_session_termination(tmp_path):
     assert normalized.event.kind is not EventKind.SESSION_STOPPED
 
 
+@pytest.mark.parametrize("vendor", ["codex", "claude"])
+def test_pre_compact_is_normalized_without_claiming_turn_completion(tmp_path, vendor):
+    repository = _make_git_repo(tmp_path)
+
+    normalized = normalize_hook(
+        vendor,
+        "PreCompact",
+        {
+            "session_id": "vendor-session",
+            "cwd": str(repository),
+            "trigger": "auto",
+        },
+    )
+
+    assert normalized.event.kind is EventKind.CONTEXT_COMPACTED
+    assert normalized.event.kind is not EventKind.TURN_COMPLETED
+
+
+def test_claude_remote_signal_only_labels_execution_environment(tmp_path, monkeypatch):
+    repository = _make_git_repo(tmp_path)
+    monkeypatch.setenv("CLAUDE_CODE_REMOTE", "true")
+
+    normalized = normalize_hook(
+        "claude",
+        "SessionStart",
+        {"session_id": "vendor-session", "cwd": str(repository)},
+    )
+
+    assert normalized.event.payload["execution_environment"] == "cloud"
+
+
 def test_permission_request_is_a_typed_action_request_not_a_tool_call(tmp_path):
     repository = _make_git_repo(tmp_path)
 

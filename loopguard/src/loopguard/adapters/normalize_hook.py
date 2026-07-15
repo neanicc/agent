@@ -35,6 +35,7 @@ _SUPPORTED_HOOKS = {
             "PreToolUse",
             "PermissionRequest",
             "PostToolUse",
+            "PreCompact",
             "Stop",
         }
     ),
@@ -48,6 +49,7 @@ _SUPPORTED_HOOKS = {
             "PostToolUse",
             "PostToolUseFailure",
             "FileChanged",
+            "PreCompact",
             "Stop",
         }
     ),
@@ -61,6 +63,7 @@ _EVENT_KINDS = {
     "PostToolUse": EventKind.TOOL_RESULT,
     "PostToolUseFailure": EventKind.TOOL_RESULT,
     "FileChanged": EventKind.FILE_CHANGED,
+    "PreCompact": EventKind.CONTEXT_COMPACTED,
     "Stop": EventKind.TURN_COMPLETED,
 }
 
@@ -148,12 +151,19 @@ def normalize_hook(
     if timestamp.tzinfo is None or timestamp.utcoffset() is None:
         raise HookNormalizationError("invalid_clock")
     timestamp = timestamp.astimezone(timezone.utc).replace(microsecond=0)
+    execution_environment = (
+        "cloud"
+        if normalized_vendor == "claude"
+        and os.environ.get("CLAUDE_CODE_REMOTE", "").lower() == "true"
+        else "local"
+    )
 
     seed: dict[str, Any] = {
         "vendor": normalized_vendor,
         "hook_name": hook_name,
         "session_id": session_id,
         "raw": snapshot,
+        "execution_environment": execution_environment,
     }
     if hook_name == "PermissionRequest":
         seed["observed_at"] = timestamp.isoformat()
@@ -172,6 +182,7 @@ def normalize_hook(
             {
                 "vendor": normalized_vendor,
                 "hook_name": hook_name,
+                "execution_environment": execution_environment,
                 "action_request": action_request.model_dump(mode="json"),
             }
         )
@@ -189,7 +200,12 @@ def normalize_hook(
             action_request=action_request,
         )
 
-    payload = _payload_for(normalized_vendor, hook_name, snapshot)
+    payload = _payload_for(
+        normalized_vendor,
+        hook_name,
+        snapshot,
+        execution_environment=execution_environment,
+    )
     return NormalizedHook(
         vendor=normalized_vendor,
         hook_name=hook_name,
@@ -291,8 +307,18 @@ def _permission_request(
     )
 
 
-def _payload_for(vendor: str, hook_name: str, raw: dict[str, Any]) -> dict[str, Any]:
-    payload: dict[str, Any] = {"agent": f"{vendor}-code", "hook_name": hook_name}
+def _payload_for(
+    vendor: str,
+    hook_name: str,
+    raw: dict[str, Any],
+    *,
+    execution_environment: str,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "agent": f"{vendor}-code",
+        "hook_name": hook_name,
+        "execution_environment": execution_environment,
+    }
     if hook_name == "SessionStart":
         payload["start_source"] = _optional_string(raw.get("source"), maximum=128)
     elif hook_name == "SessionEnd":
@@ -344,6 +370,8 @@ def _payload_for(vendor: str, hook_name: str, raw: dict[str, Any]) -> dict[str, 
                 ),
             }
         )
+    elif hook_name == "PreCompact":
+        payload["trigger"] = _optional_string(raw.get("trigger"), maximum=128)
     elif hook_name == "Stop":
         payload["stop_hook_active"] = bool(raw.get("stop_hook_active", False))
     return _bounded_payload(payload)

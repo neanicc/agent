@@ -43,6 +43,32 @@ Doctor checks protocol/schema versions, daemon reachability, peer identity capab
 
 Configuration precedence is defaults → file → environment → CLI. Telemetry defaults off. See [configuration](../docs/reference/configuration.md) and [error reference](../docs/reference/errors.md).
 
+## Protect Codex and Claude Code sessions
+
+Start the local daemon, then install the native plugin for the agent you use:
+
+```bash
+loopguard integrations install codex
+loopguard integrations verify codex
+loopguard integrations install claude
+loopguard integrations verify claude
+```
+
+The installers stage versioned, checksum-pinned plugin files and preserve unrelated agent settings. Codex keeps hook trust under the user's control. Claude Code respects administrator-managed hook policy; LoopGuard reports the policy file and stays unavailable instead of bypassing it. Remove only LoopGuard-owned entries with `loopguard integrations uninstall codex` or `loopguard integrations uninstall claude`.
+
+Older agent releases can use an explicit `--fallback` after review. Plugin and fallback hooks are mutually exclusive, so the same event is never sent twice. Claude's `FileChanged` hook watches only `.env`, `.envrc`, and `CLAUDE.md`; it is not a general filesystem monitor.
+
+Repository hooks for Claude Code remote sessions are opt-in and fail open when neither transport is reachable. Configure all three runtime secrets, keep them out of Git, uninstall the local Claude plugin, and then prepare the reviewed project hook:
+
+```bash
+export LOOPGUARD_CLOUD_INGEST_URL=https://loopguard.example/v1/hook-events
+export LOOPGUARD_HOOK_KEY_ID=repository-key-id
+export LOOPGUARD_HOOK_SECRET=URL_SAFE_BASE64_256_BIT_SECRET
+loopguard integrations install claude --cloud --scope project
+```
+
+Cloud events use a short-timeout signed HTTPS request with timestamp, nonce, and body hash; redirects are refused. `CLAUDE_CODE_REMOTE=true` is treated only as an environment label, never as authentication. Setup reports cloud delivery as `conditional` until the deployment endpoint verifies a real signed smoke event for the intended tenant and repository.
+
 ## Embed the engine directly
 
 ```python

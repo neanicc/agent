@@ -9,6 +9,7 @@ class EventKind(StrEnum):
     SESSION_STARTED = "session.started"
     SESSION_STOPPED = "session.stopped"
     TURN_COMPLETED = "turn.completed"
+    CONTEXT_COMPACTED = "context.compacted"
     PROMPT_SUBMITTED = "prompt.submitted"
     TOOL_CALL = "tool.call"
     TOOL_RESULT = "tool.result"

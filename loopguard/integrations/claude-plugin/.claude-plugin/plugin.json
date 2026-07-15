@@ -1,0 +1,10 @@
+{
+  "name": "loopguard",
+  "description": "Attach Claude Code lifecycle events to LoopGuard's local circuit breaker.",
+  "version": "0.1.0",
+  "author": {"name": "LoopGuard contributors"},
+  "homepage": "https://github.com/neanicc/agent/tree/main/loopguard",
+  "repository": "https://github.com/neanicc/agent",
+  "license": "MIT",
+  "keywords": ["claude-code", "agent-safety", "loop-detection"]
+}

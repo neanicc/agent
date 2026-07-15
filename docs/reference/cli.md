@@ -260,7 +260,8 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ codex  Install LoopGuard's checksum-pinned Codex integration.                │
+│ codex   Install LoopGuard's checksum-pinned Codex integration.               │
+│ claude  Install LoopGuard's Claude Code plugin or reviewed fallback hooks.   │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -293,6 +294,37 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 
 ```
 
+## `loopguard integrations install claude`
+
+```text
+
+ Usage: loopguard integrations install claude [OPTIONS]
+
+ Install LoopGuard's Claude Code plugin or reviewed fallback hooks.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --fallback                       Use settings hooks only when this Claude    │
+│                                  version cannot activate plugins.            │
+│ --cloud                          Prepare project hooks for signed HTTPS      │
+│                                  fallback in Claude Code remote sessions.    │
+│ --scope                    TEXT  Plugin scope, or fallback scope: user or    │
+│                                  project.                                    │
+│                                  [default: user]                             │
+│ --settings                 PATH  Fallback settings.json path.                │
+│ --repository               PATH  Repository for project fallback scope.      │
+│ --executable               TEXT  LoopGuard executable for fallback hooks.    │
+│                                  [default: loopguard]                        │
+│ --claude-executable        TEXT  Claude Code executable for plugin install.  │
+│                                  [default: claude]                           │
+│ --claude-version           TEXT  Explicit compatibility version probe.       │
+│ --home                     PATH  Override LOOPGUARD_HOME for plugin staging. │
+│ --dry-run                        Preview without changing Claude Code.       │
+│ --json                           Emit stable machine-readable output.        │
+│ --help                           Show this message and exit.                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
 ## `loopguard integrations verify`
 
 ```text
@@ -305,7 +337,8 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ codex  Verify exact installation, discovery, and Codex-reported hook trust.  │
+│ codex   Verify exact installation, discovery, and Codex-reported hook trust. │
+│ claude  Verify exact Claude installation bytes and managed-hook policy.      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -334,6 +367,31 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 
 ```
 
+## `loopguard integrations verify claude`
+
+```text
+
+ Usage: loopguard integrations verify claude [OPTIONS]
+
+ Verify exact Claude installation bytes and managed-hook policy.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --settings                 PATH  Fallback settings.json path; omit for       │
+│                                  plugin.                                     │
+│ --scope                    TEXT  Fallback scope: user or project.            │
+│                                  [default: user]                             │
+│ --repository               PATH  Repository for project fallback scope.      │
+│ --executable               TEXT  Executable recorded in fallback hooks.      │
+│                                  [default: loopguard]                        │
+│ --claude-executable        TEXT  Claude Code executable for plugin           │
+│                                  verification.                               │
+│                                  [default: claude]                           │
+│ --json                           Emit stable machine-readable output.        │
+│ --help                           Show this message and exit.                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
 ## `loopguard integrations uninstall`
 
 ```text
@@ -346,7 +404,8 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ codex  Remove only the exact LoopGuard Codex plugin or fallback handlers.    │
+│ codex   Remove only the exact LoopGuard Codex plugin or fallback handlers.   │
+│ claude  Remove only exact LoopGuard Claude plugin or fallback handlers.      │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -370,6 +429,30 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │                                 [default: codex]                             │
 │ --json                          Emit stable machine-readable output.         │
 │ --help                          Show this message and exit.                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard integrations uninstall claude`
+
+```text
+
+ Usage: loopguard integrations uninstall claude [OPTIONS]
+
+ Remove only exact LoopGuard Claude plugin or fallback handlers.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --settings                 PATH  Fallback settings.json path; omit for       │
+│                                  plugin.                                     │
+│ --scope                    TEXT  Fallback scope: user or project.            │
+│                                  [default: user]                             │
+│ --repository               PATH  Repository for project fallback scope.      │
+│ --executable               TEXT  Executable recorded in fallback hooks.      │
+│                                  [default: loopguard]                        │
+│ --claude-executable        TEXT  Claude Code executable for plugin removal.  │
+│                                  [default: claude]                           │
+│ --json                           Emit stable machine-readable output.        │
+│ --help                           Show this message and exit.                 │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```

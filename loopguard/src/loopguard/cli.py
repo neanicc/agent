@@ -314,6 +314,22 @@ def _codex_version(executable: str) -> str:
     return result.stdout.strip()
 
 
+def _claude_version(executable: str) -> str:
+    try:
+        result = subprocess.run(
+            [executable, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError("could not execute Claude Code to determine plugin compatibility") from exc
+    if result.returncode != 0:
+        raise RuntimeError("could not determine the installed Claude Code version")
+    return result.stdout.strip()
+
+
 def _integration_failure(message: str, *, as_json: bool) -> None:
     if as_json:
         _echo_json({"status": "error", "message": message})
@@ -489,6 +505,189 @@ def integrations_uninstall_codex(
         typer.echo(f"LoopGuard Codex integration: {result.status}")
 
 
+@integrations_install_app.command("claude")
+def integrations_install_claude(
+    fallback: bool = typer.Option(
+        False,
+        "--fallback",
+        help="Use settings hooks only when this Claude version cannot activate plugins.",
+    ),
+    cloud: bool = typer.Option(
+        False,
+        "--cloud",
+        help="Prepare project hooks for signed HTTPS fallback in Claude Code remote sessions.",
+    ),
+    scope: str = typer.Option("user", help="Plugin scope, or fallback scope: user or project."),
+    settings: Path | None = typer.Option(None, help="Fallback settings.json path."),
+    repository: Path | None = typer.Option(None, help="Repository for project fallback scope."),
+    executable: str = typer.Option("loopguard", help="LoopGuard executable for fallback hooks."),
+    claude_executable: str = typer.Option("claude", help="Claude Code executable for plugin install."),
+    claude_version: str | None = typer.Option(None, help="Explicit compatibility version probe."),
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME for plugin staging."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview without changing Claude Code."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Install LoopGuard's Claude Code plugin or reviewed fallback hooks."""
+    from .adapters.claude_hooks import (
+        ClaudeInstallError,
+        claude_plugin_available,
+        find_claude_fallback_events,
+        install_claude_hooks,
+        install_claude_plugin,
+        verify_claude_plugin,
+    )
+    from .adapters.cloud_hook_client import CloudHookClient
+
+    try:
+        version = claude_version or _claude_version(claude_executable)
+        plugin_available = claude_plugin_available(version)
+        fallback_requested = fallback or cloud
+        repo = (repository or Path.cwd()).resolve()
+        claude_config = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
+        if cloud:
+            if scope != "project":
+                raise ClaudeInstallError("cloud fallback requires --scope project")
+            if CloudHookClient.from_environment() is None:
+                raise ClaudeInstallError(
+                    "cloud fallback requires LOOPGUARD_CLOUD_INGEST_URL, "
+                    "LOOPGUARD_HOOK_KEY_ID, and LOOPGUARD_HOOK_SECRET"
+                )
+        if fallback_requested:
+            if plugin_available and not (cloud and scope == "project"):
+                raise ClaudeInstallError(
+                    "this Claude Code version supports plugins; fallback would duplicate plugin hooks"
+                )
+            if cloud:
+                plugin = verify_claude_plugin(claude_executable=claude_executable)
+                if plugin.installed:
+                    raise ClaudeInstallError(
+                        "the LoopGuard Claude plugin is installed; uninstall it before cloud fallback"
+                    )
+            fallback_path = settings or (
+                repo / ".claude" / "settings.json"
+                if scope == "project"
+                else claude_config / "settings.json"
+            )
+            result = install_claude_hooks(
+                fallback_path,
+                executable=executable,
+                scope=scope,
+                plugin_available=False,
+                repository=repo if scope == "project" else None,
+                dry_run=dry_run,
+            )
+        else:
+            if not plugin_available:
+                raise ClaudeInstallError(
+                    "installed Claude Code cannot activate plugins; rerun with --fallback after review"
+                )
+            candidate_paths = [settings or claude_config / "settings.json"]
+            project_path = repo / ".claude" / "settings.json"
+            if project_path not in candidate_paths:
+                candidate_paths.append(project_path)
+            for candidate in candidate_paths:
+                if find_claude_fallback_events(candidate):
+                    raise ClaudeInstallError(
+                        f"fallback hooks remain at {candidate}; uninstall them before plugin install"
+                    )
+            paths = ControlPaths.from_home(home)
+            ensure_private_home(paths.home)
+            result = install_claude_plugin(
+                paths.home / "integrations",
+                claude_executable=claude_executable,
+                scope=scope,
+                dry_run=dry_run,
+            )
+    except (ClaudeInstallError, RuntimeError, UnsafeStatePathError, ValueError) as exc:
+        _integration_failure(str(exc), as_json=as_json)
+    payload = result.to_dict()
+    payload["next_step"] = (
+        "Run loopguard integrations verify claude; cloud delivery remains conditional "
+        "until a signed endpoint smoke test succeeds."
+        if cloud
+        else "Run loopguard integrations verify claude and review the exact hooks in Claude Code."
+    )
+    if as_json:
+        _echo_json(payload)
+    else:
+        typer.echo(f"LoopGuard Claude {result.mode} prepared ({result.status}).")
+        typer.echo(str(payload["next_step"]))
+
+
+@integrations_verify_app.command("claude")
+def integrations_verify_claude(
+    settings: Path | None = typer.Option(None, help="Fallback settings.json path; omit for plugin."),
+    scope: str = typer.Option("user", help="Fallback scope: user or project."),
+    repository: Path | None = typer.Option(None, help="Repository for project fallback scope."),
+    executable: str = typer.Option("loopguard", help="Executable recorded in fallback hooks."),
+    claude_executable: str = typer.Option(
+        "claude", help="Claude Code executable for plugin verification."
+    ),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Verify exact Claude installation bytes and managed-hook policy."""
+    from .adapters.claude_hooks import (
+        ClaudeInstallError,
+        verify_claude_hooks,
+        verify_claude_plugin,
+    )
+
+    try:
+        if settings is None:
+            result = verify_claude_plugin(claude_executable=claude_executable)
+        else:
+            result = verify_claude_hooks(
+                settings,
+                executable=executable,
+                scope=scope,
+                repository=repository,
+            )
+    except ClaudeInstallError as exc:
+        _integration_failure(str(exc), as_json=as_json)
+    if as_json:
+        _echo_json(result.to_dict())
+    else:
+        typer.echo(f"LoopGuard Claude integration: {result.status}")
+        if result.cloud_status == "conditional":
+            typer.echo("Cloud delivery is conditional until a signed endpoint smoke test succeeds.")
+    if not result.healthy:
+        raise typer.Exit(1)
+
+
+@integrations_uninstall_app.command("claude")
+def integrations_uninstall_claude(
+    settings: Path | None = typer.Option(None, help="Fallback settings.json path; omit for plugin."),
+    scope: str = typer.Option("user", help="Fallback scope: user or project."),
+    repository: Path | None = typer.Option(None, help="Repository for project fallback scope."),
+    executable: str = typer.Option("loopguard", help="Executable recorded in fallback hooks."),
+    claude_executable: str = typer.Option("claude", help="Claude Code executable for plugin removal."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Remove only exact LoopGuard Claude plugin or fallback handlers."""
+    from .adapters.claude_hooks import (
+        ClaudeInstallError,
+        uninstall_claude_hooks,
+        uninstall_claude_plugin,
+    )
+
+    try:
+        if settings is None:
+            result = uninstall_claude_plugin(claude_executable=claude_executable)
+        else:
+            result = uninstall_claude_hooks(
+                settings,
+                executable=executable,
+                scope=scope,
+                repository=repository,
+            )
+    except ClaudeInstallError as exc:
+        _integration_failure(str(exc), as_json=as_json)
+    if as_json:
+        _echo_json(result.to_dict())
+    else:
+        typer.echo(f"LoopGuard Claude integration: {result.status}")
+
+
 @app.command("hook-entry", hidden=True)
 def hook_entry_command(
     vendor: str,
@@ -498,7 +697,7 @@ def hook_entry_command(
 ) -> None:
     """Internal native-hook entry point; input is one bounded JSON object on stdin."""
     from .adapters.codex_hooks import INTEGRATION_VERSION
-    from .adapters.hook_client import HookClient
+    from .adapters.cloud_hook_client import FallbackHookClient
     from .adapters.hook_entry import MAX_HOOK_INPUT_BYTES, process_hook_input
 
     if integration_version != INTEGRATION_VERSION:
@@ -509,7 +708,7 @@ def hook_entry_command(
         vendor,
         hook_name,
         raw_input,
-        client=HookClient(),
+        client=FallbackHookClient.from_environment(),
         fail_closed=fail_closed,
     )
     if result.stdout:
