@@ -6,8 +6,10 @@ import signal
 from collections.abc import Callable
 
 from loopguard.configuration import ControlConfiguration
+from loopguard.context.journal import ChangeJournal
 
 from .daemon import LoopGuardDaemon
+from .dispatch import Handler
 from .paths import (
     ControlPaths,
     ensure_private_home,
@@ -15,6 +17,10 @@ from .paths import (
     write_pid_file,
 )
 from .store import EventStore
+
+
+def production_handlers(journal: ChangeJournal) -> dict[str, Handler]:
+    return {"context": journal.handle_delivery}
 
 
 async def run_foreground_daemon(
@@ -28,16 +34,19 @@ async def run_foreground_daemon(
     ensure_private_home(paths.home)
     write_pid_file(paths.pid, os.getpid())
     store: EventStore | None = None
+    journal: ChangeJournal | None = None
     daemon: LoopGuardDaemon | None = None
     stop = stop_event or asyncio.Event()
     loop = asyncio.get_running_loop()
     installed_signals: list[signal.Signals] = []
     try:
         store = store_factory() if store_factory is not None else EventStore.open(home=paths.home)
+        journal = ChangeJournal(paths.home / "context.db")
         settings = configuration.daemon
         daemon = LoopGuardDaemon(
             store=store,
             socket_path=paths.socket,
+            handlers=production_handlers(journal),
             max_frame_bytes=settings.max_frame_bytes,
             max_concurrent_clients=settings.max_concurrent_clients,
             idle_timeout=settings.idle_timeout_seconds,
@@ -61,6 +70,8 @@ async def run_foreground_daemon(
             loop.remove_signal_handler(candidate)
         if daemon is not None:
             await daemon.close()
+        if journal is not None:
+            journal.close()
         if store is not None:
             store.close()
         remove_owned_pid_file(paths.pid)

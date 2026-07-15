@@ -200,6 +200,12 @@ def normalize_hook(
             action_request=action_request,
         )
 
+    if hook_name == "FileChanged":
+        snapshot = dict(snapshot)
+        snapshot["file_path"] = _repository_relative_file_path(
+            snapshot.get("file_path"),
+            identity.root,
+        )
     payload = _payload_for(
         normalized_vendor,
         hook_name,
@@ -447,3 +453,16 @@ def _path_contains_symlink(path: Path) -> bool:
         except OSError:
             return False
     return False
+
+
+def _repository_relative_file_path(value: object, repository: Path) -> str:
+    raw = _bounded_string(value, "invalid_file_path", maximum=4_096)
+    candidate = Path(raw)
+    lexical = Path(os.path.abspath(candidate if candidate.is_absolute() else repository / candidate))
+    try:
+        relative = lexical.relative_to(repository)
+    except ValueError as exc:
+        raise HookNormalizationError("file_path_outside_repository") from exc
+    if not relative.parts:
+        raise HookNormalizationError("invalid_file_path")
+    return relative.as_posix()

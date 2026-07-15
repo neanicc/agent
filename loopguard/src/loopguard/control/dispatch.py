@@ -27,6 +27,8 @@ class HandlerDelivery:
     handler_name: str
     event: ControlEvent
     local_log_seq: int
+    repo_seq: int
+    session_seq: int
 
 
 Handler = Callable[[HandlerDelivery], Awaitable[None] | None]
@@ -230,6 +232,8 @@ class EventDispatcher:
             handler_name=handler_name,
             event=stored.event,
             local_log_seq=local_log_seq,
+            repo_seq=stored.repo_seq,
+            session_seq=stored.session_seq,
         )
         while True:
             state = self.store.get_handler_delivery(handler_name, local_log_seq)
