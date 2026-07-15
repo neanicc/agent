@@ -11,6 +11,7 @@ from loopguard.control.events import ControlEvent, EventKind, SessionRef
 NON_PROJECTING_KINDS = (
     EventKind.SESSION_STARTED,
     EventKind.SESSION_STOPPED,
+    EventKind.TURN_COMPLETED,
     EventKind.PROMPT_SUBMITTED,
     EventKind.FILE_CHANGED,
     EventKind.TEST_COMPLETED,

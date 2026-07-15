@@ -5,7 +5,7 @@ import time
 
 from loopguard.control.daemon import LoopGuardDaemon
 from loopguard.control.dispatch import EventDispatcher, GuardRegistry, HandlerDelivery
-from loopguard.control.events import ControlEvent
+from loopguard.control.events import ControlEvent, EventKind, SessionRef
 from loopguard.control.protocol import MessageType
 from loopguard.control.store import EventStore
 
@@ -147,6 +147,24 @@ def test_active_session_state_is_not_silently_evicted_by_idle_cleanup():
     decision = registry.observe(tool_event("evt-3"))
 
     assert decision.state_version == 3
+    assert decision.action == "request_approval"
+
+
+def test_turn_completion_does_not_evict_cross_turn_detector_state():
+    registry = GuardRegistry()
+    registry.observe(tool_event("evt-1"))
+    registry.observe(
+        ControlEvent(
+            event_id="turn-1",
+            kind=EventKind.TURN_COMPLETED,
+            source="codex-hooks",
+            session=SessionRef(host_id="host", repo_id="repo", session_id="session"),
+        )
+    )
+    registry.observe(tool_event("evt-2"))
+
+    decision = registry.observe(tool_event("evt-3"))
+
     assert decision.action == "request_approval"
 
 

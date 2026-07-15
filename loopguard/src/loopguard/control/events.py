@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 class EventKind(StrEnum):
     SESSION_STARTED = "session.started"
     SESSION_STOPPED = "session.stopped"
+    TURN_COMPLETED = "turn.completed"
     PROMPT_SUBMITTED = "prompt.submitted"
     TOOL_CALL = "tool.call"
     TOOL_RESULT = "tool.result"
