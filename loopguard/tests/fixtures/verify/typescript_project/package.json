@@ -1,0 +1,12 @@
+{
+  "name": "fixture-typescript-project",
+  "private": true,
+  "scripts": {
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "jest": "29.7.0",
+    "typescript": "5.9.2"
+  }
+}
