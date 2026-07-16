@@ -52,3 +52,18 @@ def catalog_models():
             **common,
         ),
     ]
+
+
+@pytest.fixture
+def repo_snapshot():
+    from loopguard.router.features import RepositorySnapshot
+
+    return RepositorySnapshot(
+        languages={"python", "typescript"},
+        file_count=180,
+        changed_file_count=2,
+        changed_symbol_count=4,
+        dependency_depth=3,
+        test_scope="targeted",
+        tool_requirements={"code"},
+    )
