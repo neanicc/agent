@@ -44,6 +44,7 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ integrations  Install and verify native agent integrations.                  │
 │ data          Manage owner-only local LoopGuard data.                        │
 │ dx            Inspect privacy-safe local developer-experience metrics.       │
+│ router        Validate and evaluate deterministic model routing.             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -649,6 +650,86 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ --home         PATH  Override LOOPGUARD_HOME.                                │
 │ --json               Emit stable machine-readable output.                    │
 │ --help               Show this message and exit.                             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard router`
+
+```text
+
+ Usage: loopguard router [OPTIONS] COMMAND [ARGS]...
+
+ Validate and evaluate deterministic model routing.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ evaluate  Compare observed holdout outcomes; never report estimated savings  │
+│           as fact.                                                           │
+│ policy    Validate versioned routing policies.                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard router evaluate`
+
+```text
+
+ Usage: loopguard router evaluate [OPTIONS]
+
+ Compare observed holdout outcomes; never report estimated savings as fact.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --since                      TEXT                    Window such as 30d or   │
+│                                                      24h.                    │
+│                                                      [default: 30d]          │
+│ --json                                               Emit stable             │
+│                                                      machine-readable        │
+│                                                      output.                 │
+│ --home                       PATH                    Override                │
+│                                                      LOOPGUARD_HOME.         │
+│ --minimum-sample-size        INTEGER RANGE           [default: 30]           │
+│                              [1<=x<=1000000]                                 │
+│ --help                                               Show this message and   │
+│                                                      exit.                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard router policy`
+
+```text
+
+ Usage: loopguard router policy [OPTIONS] COMMAND [ARGS]...
+
+ Validate versioned routing policies.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ validate  Validate a strict, versioned routing policy without invoking a     │
+│           model.                                                             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard router policy validate`
+
+```text
+
+ Usage: loopguard router policy validate [OPTIONS] PATH
+
+ Validate a strict, versioned routing policy without invoking a model.
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────╮
+│ *    path      PATH  [required]                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --json          Emit stable machine-readable output.                         │
+│ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```

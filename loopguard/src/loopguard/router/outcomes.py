@@ -24,6 +24,8 @@ class RoutingOutcome(BaseModel):
     phase: Literal["plan", "implement", "verify", "repair"] | None = None
     matched_rule: str | None = Field(default=None, max_length=128)
     automatic: bool | None = None
+    experiment_group: Literal["control", "routed"] | None = None
+    routing_mode: Literal["control", "shadow", "holdout", "automatic"] | None = None
     input_tokens: int | None = Field(default=None, ge=0)
     output_tokens: int | None = Field(default=None, ge=0)
     provider_reported_cost: Decimal | None = Field(default=None, ge=0, allow_inf_nan=False)

@@ -32,14 +32,84 @@ integrations_verify_app = typer.Typer(help="Verify one native agent integration.
 integrations_uninstall_app = typer.Typer(help="Uninstall one native agent integration.")
 data_app = typer.Typer(help="Manage owner-only local LoopGuard data.")
 dx_app = typer.Typer(help="Inspect privacy-safe local developer-experience metrics.")
+router_app = typer.Typer(help="Validate and evaluate deterministic model routing.")
+router_policy_app = typer.Typer(help="Validate versioned routing policies.")
 app.add_typer(daemon_app, name="daemon")
 app.add_typer(config_app, name="config")
 app.add_typer(integrations_app, name="integrations")
 app.add_typer(data_app, name="data")
 app.add_typer(dx_app, name="dx")
+app.add_typer(router_app, name="router")
 integrations_app.add_typer(integrations_install_app, name="install")
 integrations_app.add_typer(integrations_verify_app, name="verify")
 integrations_app.add_typer(integrations_uninstall_app, name="uninstall")
+router_app.add_typer(router_policy_app, name="policy")
+
+
+@router_policy_app.command("validate")
+def router_policy_validate(
+    path: Path,
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Validate a strict, versioned routing policy without invoking a model."""
+    try:
+        from .router.policy import validate_policy_toml
+
+        if path.stat().st_size > 1_000_000:
+            raise ValueError("policy exceeds the 1 MB size limit")
+        document = validate_policy_toml(path.read_text("utf-8"))
+    except Exception as exc:
+        payload = {"status": "error", "message": str(exc)}
+        typer.echo(json.dumps(payload, separators=(",", ":")) if as_json else payload["message"])
+        raise typer.Exit(1)
+    payload = {"status": "valid", "version": document.version, "rules": len(document.rules)}
+    typer.echo(
+        json.dumps(payload, separators=(",", ":")) if as_json else f"Valid {document.version}"
+    )
+
+
+@router_app.command("evaluate")
+def router_evaluate(
+    since: str = typer.Option("30d", help="Window such as 30d or 24h."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+    minimum_sample_size: int = typer.Option(30, min=1, max=1_000_000),
+) -> None:
+    """Compare observed holdout outcomes; never report estimated savings as fact."""
+    from datetime import datetime, timedelta, timezone
+
+    from .router.evaluation import evaluate_outcomes
+    from .router.outcomes import OutcomeRecorder
+
+    try:
+        amount, unit = int(since[:-1]), since[-1:].lower()
+        maximum = 3_650 if unit == "d" else 87_600
+        if amount <= 0 or unit not in {"d", "h"} or amount > maximum:
+            raise ValueError
+    except (ValueError, IndexError):
+        typer.echo(
+            '{"status":"error","message":"invalid --since window"}'
+            if as_json
+            else "Invalid --since window"
+        )
+        raise typer.Exit(1)
+    delta = timedelta(days=amount) if unit == "d" else timedelta(hours=amount)
+    paths = ControlPaths.from_home(home)
+    recorder = OutcomeRecorder.for_path(paths.home / "router.db")
+    try:
+        cutoff = datetime.now(timezone.utc) - delta
+        outcomes = [item for item in recorder.list(limit=10_000) if item.created_at >= cutoff]
+    finally:
+        recorder.close()
+    report = evaluate_outcomes(outcomes, minimum_sample_size=minimum_sample_size)
+    payload = report.model_dump(mode="json")
+    if as_json:
+        _echo_json(payload)
+        return
+    typer.echo(
+        f"Control {report.control.sample_size} / routed {report.routed.sample_size}; "
+        f"recommendation: {report.recommendation}."
+    )
 
 
 def _echo_json(value: object) -> None:

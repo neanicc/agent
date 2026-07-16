@@ -80,6 +80,9 @@ class DaemonServices:
     handoff_store: object | None = None
     worktree_manager: object | None = None
     context_mcp_launcher: object | None = None
+    routing_evaluator: object | None = None
+    routing_outcome_recorder: object | None = None
+    experiment_assigner: object | None = None
     attached_collision_policy: str = "warn"
 
     @classmethod

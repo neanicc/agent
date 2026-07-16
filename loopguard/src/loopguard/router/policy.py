@@ -171,19 +171,13 @@ class RouterPolicy:
         current_model_id: str | None = None,
         current_effort: str | None = None,
     ) -> RouterPolicy:
-        if len(source.encode("utf-8")) > 1_000_000:
-            raise PolicyConfigurationError("policy exceeds the 1 MB size limit")
-        try:
-            payload = tomllib.loads(source)
-            document = PolicyDocument.model_validate(payload)
-            return cls(
-                document,
-                catalog,
-                current_model_id=current_model_id,
-                current_effort=current_effort,
-            )
-        except (tomllib.TOMLDecodeError, ValidationError) as exc:
-            raise PolicyConfigurationError("policy validation failed") from exc
+        document = validate_policy_toml(source)
+        return cls(
+            document,
+            catalog,
+            current_model_id=current_model_id,
+            current_effort=current_effort,
+        )
 
     def route(
         self,
@@ -458,3 +452,15 @@ def _validated_rules(rules: Iterable[PolicyRule]) -> dict[str, PolicyRule]:
             seen.add(current)
             current = by_name[current].fallback_rule
     return by_name
+
+
+def validate_policy_toml(source: str) -> PolicyDocument:
+    if len(source.encode("utf-8")) > 1_000_000:
+        raise PolicyConfigurationError("policy exceeds the 1 MB size limit")
+    try:
+        payload = tomllib.loads(source)
+        document = PolicyDocument.model_validate(payload)
+        _validated_rules(document.rules)
+        return document
+    except (tomllib.TOMLDecodeError, ValidationError) as exc:
+        raise PolicyConfigurationError("policy validation failed") from exc
