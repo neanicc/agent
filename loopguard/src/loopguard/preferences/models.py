@@ -17,6 +17,7 @@ from typing_extensions import Annotated
 
 
 _IDENTIFIER = re.compile(r"^[a-z0-9](?:[a-z0-9._:-]{0,127})$")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _MAX_PARAMETERS_BYTES = 64 * 1024
 
 
@@ -36,6 +37,16 @@ def _identifier(value: str) -> str:
 
 NonEmptyText = Annotated[str, AfterValidator(_bounded_text)]
 Identifier = Annotated[str, AfterValidator(_identifier)]
+
+
+def _sha256(value: str) -> str:
+    normalized = value.strip().lower()
+    if not _SHA256.fullmatch(normalized):
+        raise ValueError("value must be a lowercase SHA-256 digest")
+    return normalized
+
+
+Sha256 = Annotated[str, AfterValidator(_sha256)]
 
 
 class RuleSource(StrEnum):
@@ -103,16 +114,53 @@ class PreferenceRule(PreferenceModel):
         return self
 
 
+class PreferenceSourceManifest(PreferenceModel):
+    source_id: Identifier
+    kind: Literal[
+        "builtin",
+        "repository",
+        "design_tokens",
+        "instructions",
+        "organization",
+        "user",
+        "learned",
+    ]
+    locator: NonEmptyText = Field(max_length=1_024)
+    sha256: Sha256
+    size_bytes: int = Field(ge=0, le=16 * 1024 * 1024)
+    trusted: bool
+
+
 class PreferenceProfile(PreferenceModel):
     schema_version: Literal[1] = 1
     profile_id: Identifier
     rules: list[PreferenceRule] = Field(default_factory=list, max_length=4_096)
+    design_tokens: dict[str, Any] = Field(default_factory=dict)
+    source_manifest: list[PreferenceSourceManifest] = Field(default_factory=list, max_length=1_024)
+
+    @field_validator("design_tokens")
+    @classmethod
+    def bounded_design_tokens(cls, value: dict[str, Any]) -> dict[str, Any]:
+        encoded = json.dumps(
+            value,
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        if len(encoded) > 1024 * 1024:
+            raise ValueError("compiled design tokens exceed 1 MiB")
+        _validate_json_shape(value)
+        return value
 
     @model_validator(mode="after")
     def unique_rule_ids(self) -> PreferenceProfile:
         ids = [rule.id for rule in self.rules]
         if len(ids) != len(set(ids)):
             raise ValueError("preference rule IDs must be unique")
+        source_ids = [source.source_id for source in self.source_manifest]
+        if len(source_ids) != len(set(source_ids)):
+            raise ValueError("preference source IDs must be unique")
         return self
 
     def rule(self, rule_id: str) -> PreferenceRule | None:

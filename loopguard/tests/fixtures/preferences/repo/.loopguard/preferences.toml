@@ -1,0 +1,9 @@
+schema_version = 1
+design_token_files = ["design-tokens.json"]
+
+[[rules]]
+id = "density"
+source = "repository"
+severity = "inform"
+statement = "Use the repository's comfortable default density"
+scopes = ["web"]

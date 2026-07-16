@@ -29,6 +29,7 @@ context = [
     "tree-sitter-language-pack>=0.9",
     "watchfiles>=0.24",
 ]
+preferences = ["jsonschema>=4.22", "Pillow>=10", "PyYAML>=6.0"]
 cerebras = ["cerebras_cloud_sdk>=1.0"]
 litellm = ["litellm>=1.40"]
 server = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
@@ -42,6 +43,9 @@ all-dev = [
     "mcp>=1.0",
     "tree-sitter-language-pack>=0.9",
     "watchfiles>=0.24",
+    "jsonschema>=4.22",
+    "Pillow>=10",
+    "PyYAML>=6.0",
     "cerebras_cloud_sdk>=1.0",
     "litellm>=1.40",
     "fastapi>=0.110",
@@ -55,7 +59,7 @@ loopguard = "loopguard.cli:app"
 where = ["src"]
 
 [tool.setuptools.package-data]
-loopguard = ["demo_projects/**/*", "adapters/templates/*", "router/*.toml"]
+loopguard = ["demo_projects/**/*", "adapters/templates/*", "router/*.toml", "preferences/*.toml"]
 
 [tool.ruff]
 line-length = 100
