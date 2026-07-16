@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import stat
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -50,7 +51,7 @@ def test_production_commands_are_discoverable():
         "dx",
     ):
         assert command in root.stdout
-    for command in ("start", "status", "doctor"):
+    for command in ("start", "install", "status", "doctor", "uninstall"):
         assert command in daemon.stdout
     for command in ("path", "show", "validate"):
         assert command in config.stdout
@@ -68,6 +69,7 @@ def test_doctor_json_reports_missing_daemon_with_structured_fix(tmp_path, monkey
     assert body["daemon"] == "unreachable"
     assert body["protocol"]["version"] == 1
     assert body["store"]["status"] == "missing"
+    assert body["user_service"]["automatic_startup"] in {"supported", "experimental"}
     assert body["agent_integrations"]["schema_version"] == 1
     assert len(body["agent_integrations"]["surfaces"]) == 6
     assert body["errors"][0]["code"] == "LGD-DAEMON-001"
@@ -96,6 +98,25 @@ def test_data_purge_requires_confirmation_and_dx_report_stays_local(tmp_path) ->
     assert json.loads(report.stdout)["upload_enabled"] is False
 
 
+def test_data_purge_refuses_to_orphan_an_installed_service(tmp_path, monkeypatch) -> None:
+    home = tmp_path / "loopguard"
+    home.mkdir()
+    (home / "events.db").write_text("events")
+    monkeypatch.setattr(
+        "loopguard.adapters.service_install.service_status",
+        lambda **_kwargs: SimpleNamespace(installed=True),
+    )
+
+    result = runner.invoke(
+        app,
+        ["data", "purge", "--confirm", "--home", str(home), "--json"],
+    )
+
+    assert result.exit_code == 1
+    assert json.loads(result.stdout)["code"] == "LGD-DATA-SERVICE-ACTIVE"
+    assert (home / "events.db").exists()
+
+
 def test_background_start_refuses_unmanaged_fork_with_capability_error(tmp_path):
     result = runner.invoke(
         app,
@@ -107,6 +128,32 @@ def test_background_start_refuses_unmanaged_fork_with_capability_error(tmp_path)
     assert body["code"] == "LGD-CAP-005"
     assert body["retryable"] is False
     assert "--foreground" in " ".join(body["suggested_commands"])
+
+
+def test_service_install_dry_run_previews_without_writes(tmp_path):
+    executable = tmp_path / ("loopguard.exe" if os.name == "nt" else "loopguard")
+    executable.write_text("#!/bin/sh\n")
+    if os.name == "posix":
+        os.chmod(executable, 0o700)
+    home = tmp_path / "state"
+
+    result = runner.invoke(
+        app,
+        [
+            "daemon",
+            "install",
+            "--executable",
+            str(executable),
+            "--home",
+            str(home),
+            "--dry-run",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert json.loads(result.stdout)["status"] == "preview"
+    assert not home.exists()
 
 
 def test_config_path_show_and_environment_precedence(tmp_path, monkeypatch):
@@ -189,6 +236,8 @@ def test_generated_cli_reference_has_no_drift():
     for command in (
         "loopguard daemon status",
         "loopguard daemon doctor",
+        "loopguard daemon install",
+        "loopguard daemon uninstall",
         "loopguard init-config",
         "loopguard integrations install codex",
         "loopguard integrations install claude",

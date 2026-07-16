@@ -1,0 +1,19 @@
+# Managed by LoopGuard service installer.
+[Unit]
+Description=LoopGuard local circuit-breaker daemon
+After=default.target
+
+[Service]
+Type=simple
+ExecStart={{EXEC_START}}
+Restart=on-failure
+RestartSec=2
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths={{STATE_HOME}}
+
+[Install]
+WantedBy=default.target

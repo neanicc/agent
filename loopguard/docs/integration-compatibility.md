@@ -31,6 +31,12 @@ Cloud observation remains `conditional` until a real signed-delivery compatibili
 an event. LoopGuard never infers cloud model selection, effort selection, interruption, injection,
 or tool blocking from local hook configuration.
 
+Automatic daemon startup is `supported` for a user LaunchAgent on macOS and a hardened user
+systemd unit on Linux. The Windows current-user scheduled task is `experimental`: its definition,
+SID binding, quoting, restart policy, upgrade, and uninstall paths are implemented, but LoopGuard
+does not report Windows automatic startup as supported until named-pipe transport and current-user
+ACL behavior pass on a real Windows CI runner.
+
 ## Evidence in the doctor report
 
 Each surface reports all capability names plus:
@@ -67,8 +73,10 @@ can additionally restart LoopGuard's own service and regenerate its owned wrappe
 changes vendor trust, credentials, policy, or unrelated configuration.
 
 `uninstall` removes only exact LoopGuard plugin/fallback definitions and retains the encrypted
-event store. Data purge is deliberately separate and requires `--confirm`. Neither command treats
-similar-looking third-party hooks as LoopGuard-owned.
+event store. With its default `--agent auto`, it also removes the exact LoopGuard-owned user
+service; explicit single-agent removal retains the shared service. Data purge is deliberately
+separate and requires `--confirm`. Neither command treats similar-looking third-party hooks or
+service files as LoopGuard-owned.
 
 To share diagnostics, first preview the fixed contents and redactions:
 

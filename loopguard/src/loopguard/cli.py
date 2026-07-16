@@ -224,6 +224,11 @@ def _run_doctor(
         write_diagnostic_bundle,
     )
     from .adapters.setup import apply_safe_fixes
+    from .adapters.service_install import (
+        ServiceInstallError,
+        safe_fix_user_service,
+        service_status,
+    )
 
     paths = ControlPaths.from_home(home)
     fixed: tuple[Path, ...] = ()
@@ -239,13 +244,26 @@ def _run_doctor(
                 paths.integration_trust,
             ),
         )
+        try:
+            service_fixes = safe_fix_user_service(home=paths.home)
+        except ServiceInstallError:
+            service_fixes = ()
+    else:
+        service_fixes = ()
     report = build_doctor_report(paths)
+    try:
+        report["user_service"] = service_status(home=paths.home).to_dict()
+    except ServiceInstallError:
+        report["user_service"] = {
+            "status": "unsafe",
+            "automatic_startup": "unavailable",
+        }
     integrations = probe_report(
         daemon_reachable=report["daemon"] == "reachable",
         home=paths.home,
     )
     report["agent_integrations"] = integrations.to_dict()
-    report["safe_fixes"] = len(fixed)
+    report["safe_fixes"] = len(fixed) + len(service_fixes)
     if verbose:
         report["diagnostics"] = {
             "home": str(paths.home),
@@ -369,6 +387,7 @@ def uninstall_cmd(
     as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
 ) -> None:
     """Remove only LoopGuard-owned integrations and retain all local event data."""
+    from .adapters.service_install import ServiceInstallError, uninstall_user_service
     from .adapters.setup import SetupError, uninstall_owned_integrations
 
     requested = tuple(part.strip().lower() for part in agent.split(",") if part.strip())
@@ -389,17 +408,30 @@ def uninstall_cmd(
             removers=removers,
             dry_run=dry_run,
         )
-    except (SetupError, RuntimeError) as exc:
+        if requested == ("auto",):
+            service = uninstall_user_service(
+                home=ControlPaths.from_home(home).home,
+                dry_run=dry_run,
+            ).to_dict()
+        else:
+            service = {
+                "status": "retained_for_other_integrations",
+                "changed": False,
+            }
+    except (ServiceInstallError, SetupError, RuntimeError) as exc:
         payload = {"status": "error", "message": str(exc)}
         _echo_json(payload) if as_json else typer.echo(str(exc))
         raise typer.Exit(1)
+    payload = result.to_dict()
+    payload["service"] = service
     if as_json:
-        _echo_json(result.to_dict())
+        _echo_json(payload)
     else:
         typer.echo(f"LoopGuard integrations: {result.status}.")
         typer.echo(
             "Local LoopGuard data retained. Purge requires `loopguard data purge --confirm`."
         )
+        typer.echo(f"LoopGuard user service: {service['status']}.")
 
 
 @data_app.command("purge")
@@ -411,11 +443,17 @@ def data_purge_cmd(
     as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
 ) -> None:
     """Permanently remove owner-controlled local data after explicit confirmation."""
+    from .adapters.service_install import ServiceInstallError, service_status
     from .adapters.setup import SetupError, purge_data
 
     try:
-        removed = purge_data(ControlPaths.from_home(home).home, confirmed=confirm)
-    except SetupError as exc:
+        paths = ControlPaths.from_home(home)
+        if confirm and service_status(home=paths.home).installed:
+            raise SetupError(
+                "LGD-DATA-SERVICE-ACTIVE: uninstall the LoopGuard user service before purge"
+            )
+        removed = purge_data(paths.home, confirmed=confirm)
+    except (ServiceInstallError, SetupError) as exc:
         code = str(exc).partition(":")[0]
         payload = {
             "status": "confirmation_required" if code == "LGD-DATA-CONFIRMATION" else "error",
@@ -559,13 +597,88 @@ def daemon_start(
         _exit_named_error("LGD-STORE-008", as_json=as_json)
 
 
+@daemon_app.command("install")
+def daemon_install(
+    executable: Path | None = typer.Option(
+        None,
+        help="Absolute LoopGuard console-script path; detected by default.",
+    ),
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview without writing a service."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Install or upgrade the current user's automatic LoopGuard daemon service."""
+    from .adapters.service_install import ServiceInstallError, install_user_service
+
+    paths = ControlPaths.from_home(home)
+    try:
+        resolved = _service_executable(executable)
+        if not dry_run:
+            ensure_private_home(paths.home)
+        result = install_user_service(
+            executable=resolved,
+            home=paths.home,
+            dry_run=dry_run,
+        )
+    except (RuntimeError, ServiceInstallError, UnsafeStatePathError) as exc:
+        payload = {"status": "error", "code": "LGD-SERVICE-INSTALL", "message": str(exc)}
+        _echo_json(payload) if as_json else typer.echo(str(exc))
+        raise typer.Exit(1)
+    _echo_json(result.to_dict()) if as_json else typer.echo(
+        f"LoopGuard user service: {result.status} ({result.destination})."
+    )
+
+
+@daemon_app.command("uninstall")
+def daemon_uninstall(
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview owned service removal."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Stop and remove only the current user's LoopGuard-owned service definition."""
+    from .adapters.service_install import ServiceInstallError, uninstall_user_service
+
+    try:
+        result = uninstall_user_service(
+            home=ControlPaths.from_home(home).home,
+            dry_run=dry_run,
+        )
+    except ServiceInstallError as exc:
+        payload = {"status": "error", "code": "LGD-SERVICE-UNINSTALL", "message": str(exc)}
+        _echo_json(payload) if as_json else typer.echo(str(exc))
+        raise typer.Exit(1)
+    _echo_json(result.to_dict()) if as_json else typer.echo(
+        f"LoopGuard user service: {result.status}. Local event data retained."
+    )
+
+
 @daemon_app.command("status")
 def daemon_status(
     as_json: bool = typer.Option(False, "--json"),
     home: Path | None = typer.Option(None),
 ) -> None:
-    """Report whether the configured daemon endpoint is reachable."""
-    _run_doctor(as_json=as_json, verbose=False, home=home)
+    """Report user-service installation plus live daemon reachability."""
+    from .adapters.service_install import ServiceInstallError, service_status
+
+    paths = ControlPaths.from_home(home)
+    core = build_doctor_report(paths)
+    try:
+        service = service_status(home=paths.home).to_dict()
+    except ServiceInstallError:
+        service = {"status": "unsafe", "running": False, "automatic_startup": "unavailable"}
+    payload = {
+        "schema_version": 1,
+        "daemon": core["daemon"],
+        "service": service,
+        "errors": core["errors"],
+    }
+    if as_json:
+        _echo_json(payload)
+    else:
+        typer.echo(f"LoopGuard daemon: {payload['daemon']}.")
+        typer.echo(f"User service: {service['status']}.")
+    if core["daemon"] != "reachable":
+        raise typer.Exit(1)
 
 
 @daemon_app.command("doctor")
@@ -688,14 +801,9 @@ class _GuidedSetupActions:
         if step == "daemon_extra":
             return ("Python extras: cryptography, keyring",)
         if step == "service":
-            if sys.platform == "darwin":
-                target = Path.home() / "Library/LaunchAgents/com.loopguard.daemon.plist"
-            elif sys.platform.startswith("linux"):
-                target = Path.home() / ".config/systemd/user/loopguardd.service"
-            elif os.name == "nt":
-                return ("Current-user scheduled task: LoopGuard Daemon",)
-            else:
-                return (f"Unsupported platform service: {sys.platform}",)
+            from .adapters.service_install import default_service_path
+
+            target = default_service_path(sys.platform, self.paths.home)
             return (f"User service definition: {target}",)
         if step == "integration":
             return tuple(self._integration_description(vendor) for vendor in self.agents)
@@ -728,7 +836,7 @@ class _GuidedSetupActions:
             from .adapters import service_install
 
             result = service_install.install_user_service(
-                executable=Path(sys.argv[0]).resolve(strict=False),
+                executable=_service_executable(None),
                 home=self.paths.home,
             )
             return "changed" if result.changed else "unchanged"
@@ -742,6 +850,9 @@ class _GuidedSetupActions:
                 return "preview"
             from .adapters import service_install
 
+            status = service_install.service_status(home=self.paths.home)
+            if status.running:
+                return "supported"
             service_install.start_user_service(home=self.paths.home)
             return "changed"
         if step == "synthetic_event":
@@ -880,6 +991,24 @@ def _project_root(path: Path) -> Path:
     if result.returncode != 0 or not result.stdout.strip():
         raise RuntimeError("project scope requires an accessible Git repository")
     return Path(result.stdout.strip()).resolve(strict=False)
+
+
+def _service_executable(explicit: Path | None) -> Path:
+    candidates: list[Path] = []
+    if explicit is not None:
+        candidates.append(explicit.expanduser().absolute())
+    invoked = Path(sys.argv[0]).expanduser()
+    if invoked.name.lower().startswith("loopguard"):
+        candidates.append(invoked.absolute())
+    discovered = shutil.which("loopguard")
+    if discovered is not None:
+        candidates.append(Path(discovered).absolute())
+    for candidate in candidates:
+        if candidate.is_file() and (os.name == "nt" or os.access(candidate, os.X_OK)):
+            return candidate
+    raise RuntimeError(
+        "an absolute executable LoopGuard console script is required; use --executable"
+    )
 
 
 def _optional_vendor_version(vendor: str) -> str | None:

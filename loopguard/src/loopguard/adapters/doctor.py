@@ -290,6 +290,7 @@ def build_diagnostic_payload(
         "store": core_report.get("store"),
         "state_permissions": core_report.get("state_permissions"),
         "integration": core_report.get("integration"),
+        "user_service": core_report.get("user_service"),
         "errors": safe_errors,
         "safe_fixes": core_report.get("safe_fixes", 0),
         "agent_integrations": integrations.to_dict(),
@@ -334,7 +335,10 @@ def write_diagnostic_bundle(
 
 def _redact_bundle_value(value: object, *, key: str = "") -> object:
     normalized = key.lower()
-    if any(token in normalized for token in ("path", "location", "session_id", "repo_id")):
+    if any(
+        token in normalized
+        for token in ("path", "location", "destination", "session_id", "repo_id")
+    ):
         if isinstance(value, list):
             return ["<redacted-local-value>"] * len(value)
         if value is not None:

@@ -24,6 +24,19 @@ compatible integration source per agent (plugin when supported within the reques
 otherwise one fallback), starts the daemon, and sends a synthetic event. Project scope uses
 repository-owned fallback hooks when global plugin activation cannot honor that boundary. Existing
 settings and unrelated hooks are preserved.
+
+You can inspect or manage only the automatic daemon service separately:
+
+```bash
+loopguard daemon install --dry-run
+loopguard daemon install
+loopguard daemon status --json
+loopguard daemon uninstall --dry-run
+```
+
+macOS uses a user LaunchAgent; Linux uses a user systemd unit. Windows uses a current-user
+scheduled task, but automatic startup remains `experimental` until named-pipe transport and ACL
+behavior pass the real Windows compatibility matrix.
 Repeated setup is a no-op.
 
 Expected final status before trust is deliberately honest:
@@ -111,4 +124,5 @@ loopguard uninstall --dry-run
 loopguard uninstall
 ```
 
-Permanent local data deletion is separate: `loopguard data purge --confirm`.
+Permanent local data deletion is separate: uninstall the user service first, then run
+`loopguard data purge --confirm`. Purge refuses to orphan an installed service.

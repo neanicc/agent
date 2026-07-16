@@ -149,9 +149,13 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ───────────────────────────────────────────────────────────────────╮
-│ start   Start the local daemon without unmanaged background forks.           │
-│ status  Report whether the configured daemon endpoint is reachable.          │
-│ doctor  Run the same full diagnostics as `loopguard doctor`.                 │
+│ start      Start the local daemon without unmanaged background forks.        │
+│ install    Install or upgrade the current user's automatic LoopGuard daemon  │
+│            service.                                                          │
+│ uninstall  Stop and remove only the current user's LoopGuard-owned service   │
+│            definition.                                                       │
+│ status     Report user-service installation plus live daemon reachability.   │
+│ doctor     Run the same full diagnostics as `loopguard doctor`.              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -174,13 +178,32 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 
 ```
 
+## `loopguard daemon install`
+
+```text
+
+ Usage: loopguard daemon install [OPTIONS]
+
+ Install or upgrade the current user's automatic LoopGuard daemon service.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --executable        PATH  Absolute LoopGuard console-script path; detected   │
+│                           by default.                                        │
+│ --home              PATH  Override LOOPGUARD_HOME.                           │
+│ --dry-run                 Preview without writing a service.                 │
+│ --json                    Emit stable machine-readable output.               │
+│ --help                    Show this message and exit.                        │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
 ## `loopguard daemon status`
 
 ```text
 
  Usage: loopguard daemon status [OPTIONS]
 
- Report whether the configured daemon endpoint is reachable.
+ Report user-service installation plus live daemon reachability.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --json                                                                       │
@@ -202,6 +225,23 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ --json                                                                       │
 │ --verbose                                                                    │
 │ --home           PATH                                                        │
+│ --help                 Show this message and exit.                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard daemon uninstall`
+
+```text
+
+ Usage: loopguard daemon uninstall [OPTIONS]
+
+ Stop and remove only the current user's LoopGuard-owned service definition.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --home           PATH  Override LOOPGUARD_HOME.                              │
+│ --dry-run              Preview owned service removal.                        │
+│ --json                 Emit stable machine-readable output.                  │
 │ --help                 Show this message and exit.                           │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
