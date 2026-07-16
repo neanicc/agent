@@ -36,7 +36,19 @@ def test_production_commands_are_discoverable():
     integrations = runner.invoke(app, ["integrations", "--help"])
 
     assert root.exit_code == daemon.exit_code == config.exit_code == integrations.exit_code == 0
-    for command in ("quickstart", "doctor", "explain", "daemon", "config", "integrations"):
+    for command in (
+        "quickstart",
+        "setup",
+        "uninstall",
+        "sessions",
+        "doctor",
+        "feedback",
+        "daemon",
+        "config",
+        "integrations",
+        "data",
+        "dx",
+    ):
         assert command in root.stdout
     for command in ("start", "status", "doctor"):
         assert command in daemon.stdout
@@ -56,9 +68,32 @@ def test_doctor_json_reports_missing_daemon_with_structured_fix(tmp_path, monkey
     assert body["daemon"] == "unreachable"
     assert body["protocol"]["version"] == 1
     assert body["store"]["status"] == "missing"
+    assert body["agent_integrations"]["schema_version"] == 1
+    assert len(body["agent_integrations"]["surfaces"]) == 6
     assert body["errors"][0]["code"] == "LGD-DAEMON-001"
     assert "loopguard daemon start --foreground" in body["errors"][0]["suggested_commands"]
     assert "traceback" not in result.stdout.lower()
+
+
+def test_setup_noninteractive_requires_explicit_agent_and_scope() -> None:
+    result = runner.invoke(app, ["setup", "--agent", "auto", "--non-interactive", "--json"])
+
+    assert result.exit_code == 2
+    assert json.loads(result.stdout)["code"] == "LGD-SETUP-NONINTERACTIVE"
+
+
+def test_data_purge_requires_confirmation_and_dx_report_stays_local(tmp_path) -> None:
+    home = tmp_path / "loopguard"
+    home.mkdir()
+    (home / "events.db").write_text("events")
+
+    refused = runner.invoke(app, ["data", "purge", "--home", str(home), "--json"])
+    report = runner.invoke(app, ["dx", "report", "--local", "--home", str(home), "--json"])
+
+    assert refused.exit_code == 2
+    assert home.exists()
+    assert json.loads(refused.stdout)["code"] == "LGD-DATA-CONFIRMATION"
+    assert json.loads(report.stdout)["upload_enabled"] is False
 
 
 def test_background_start_refuses_unmanaged_fork_with_capability_error(tmp_path):
@@ -161,6 +196,12 @@ def test_generated_cli_reference_has_no_drift():
         "loopguard integrations verify claude",
         "loopguard integrations uninstall codex",
         "loopguard integrations uninstall claude",
+        "loopguard setup",
+        "loopguard uninstall",
+        "loopguard sessions",
+        "loopguard data purge",
+        "loopguard dx report",
+        "loopguard feedback",
         "loopguard demo",
         "loopguard projects",
         "loopguard run",

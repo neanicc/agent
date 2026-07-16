@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.metadata
+import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
+import time
 from enum import Enum
 from pathlib import Path
 
@@ -26,9 +30,13 @@ integrations_app = typer.Typer(help="Install and verify native agent integration
 integrations_install_app = typer.Typer(help="Install one native agent integration.")
 integrations_verify_app = typer.Typer(help="Verify one native agent integration.")
 integrations_uninstall_app = typer.Typer(help="Uninstall one native agent integration.")
+data_app = typer.Typer(help="Manage owner-only local LoopGuard data.")
+dx_app = typer.Typer(help="Inspect privacy-safe local developer-experience metrics.")
 app.add_typer(daemon_app, name="daemon")
 app.add_typer(config_app, name="config")
 app.add_typer(integrations_app, name="integrations")
+app.add_typer(data_app, name="data")
+app.add_typer(dx_app, name="dx")
 integrations_app.add_typer(integrations_install_app, name="install")
 integrations_app.add_typer(integrations_verify_app, name="verify")
 integrations_app.add_typer(integrations_uninstall_app, name="uninstall")
@@ -95,6 +103,7 @@ def quickstart_cmd(
     as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
 ) -> None:
     """Prove offline loop protection through the real daemon in under two minutes."""
+    started = time.monotonic()
     try:
         from .quickstart import QuickstartUnavailableError, run_quickstart
 
@@ -107,6 +116,18 @@ def quickstart_cmd(
         raise typer.Exit(1)
     except UnsafeStatePathError:
         _exit_named_error("LGD-STATE-002", as_json=as_json)
+    if home is None:
+        try:
+            from .adapters.setup import record_dx_metric
+
+            record_dx_metric(
+                ControlPaths.from_home().home,
+                event="quickstart",
+                duration_seconds=max(0.0, time.monotonic() - started),
+                outcome_code="ok",
+            )
+        except (OSError, RuntimeError):
+            pass
     if as_json:
         _echo_json(result.to_dict())
         return
@@ -121,9 +142,23 @@ def doctor_cmd(
     as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
     verbose: bool = typer.Option(False, "--verbose", help="Add redacted local diagnostics."),
     home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+    fix_safe: bool = typer.Option(False, "--fix-safe", help="Repair LoopGuard-owned state only."),
+    bundle: Path | None = typer.Option(None, "--bundle", help="Write a redacted diagnostic ZIP."),
+    confirm_bundle: bool = typer.Option(
+        False,
+        "--confirm-bundle",
+        help="Confirm the displayed diagnostic redaction preview.",
+    ),
 ) -> None:
     """Check daemon, storage, encryption, dispatch, and integration health."""
-    _run_doctor(as_json=as_json, verbose=verbose, home=home)
+    _run_doctor(
+        as_json=as_json,
+        verbose=verbose,
+        home=home,
+        fix_safe=fix_safe,
+        bundle=bundle,
+        confirm_bundle=confirm_bundle,
+    )
 
 
 @app.command("context-mcp", hidden=True)
@@ -173,15 +208,66 @@ def context_mcp_cmd(
                 close()
 
 
-def _run_doctor(*, as_json: bool, verbose: bool, home: Path | None) -> None:
+def _run_doctor(
+    *,
+    as_json: bool,
+    verbose: bool,
+    home: Path | None,
+    fix_safe: bool = False,
+    bundle: Path | None = None,
+    confirm_bundle: bool = False,
+) -> None:
+    from .adapters.doctor import (
+        build_diagnostic_payload,
+        diagnostic_bundle_preview,
+        probe_report,
+        write_diagnostic_bundle,
+    )
+    from .adapters.setup import apply_safe_fixes
+
     paths = ControlPaths.from_home(home)
+    fixed: tuple[Path, ...] = ()
+    if fix_safe:
+        fixed = apply_safe_fixes(
+            paths.home,
+            (
+                paths.config,
+                paths.events_db,
+                paths.events_db.with_name(f"{paths.events_db.name}-wal"),
+                paths.events_db.with_name(f"{paths.events_db.name}-shm"),
+                paths.pid,
+                paths.integration_trust,
+            ),
+        )
     report = build_doctor_report(paths)
+    integrations = probe_report(
+        daemon_reachable=report["daemon"] == "reachable",
+        home=paths.home,
+    )
+    report["agent_integrations"] = integrations.to_dict()
+    report["safe_fixes"] = len(fixed)
     if verbose:
         report["diagnostics"] = {
             "home": str(paths.home),
             "config": str(paths.config),
             "socket": str(paths.socket),
         }
+    if bundle is not None and not confirm_bundle:
+        preview = diagnostic_bundle_preview()
+        if as_json:
+            _echo_json({"status": "confirmation_required", "bundle_preview": preview})
+        else:
+            typer.echo(json.dumps(preview, indent=2))
+            typer.echo("Review this preview, then rerun with --confirm-bundle.")
+        raise typer.Exit(2)
+    if bundle is not None:
+        report["diagnostic_bundle"] = str(
+            write_diagnostic_bundle(
+                bundle,
+                build_diagnostic_payload(report, integrations),
+                confirmed=confirm_bundle,
+            )
+        )
     if as_json:
         _echo_json(report)
     elif report["healthy"]:
@@ -200,6 +286,203 @@ def _run_doctor(*, as_json: bool, verbose: bool, home: Path | None) -> None:
             )
     if not report["healthy"]:
         raise typer.Exit(1)
+
+
+@app.command("setup")
+def setup_cmd(
+    agent: str = typer.Option("auto", "--agent", help="auto, codex, claude, or comma-separated."),
+    scope: str | None = typer.Option(None, "--scope", help="user or project."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview every change without writes."),
+    non_interactive: bool = typer.Option(
+        False,
+        "--non-interactive",
+        help="Require explicit agents and scope with stable errors.",
+    ),
+    resume_from: str | None = typer.Option(None, "--resume-from", help="Resume at a named step."),
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Prepare a local protected-session integration without approving vendor trust."""
+    from .adapters.setup import SetupError, SetupRequest, record_dx_metric, run_setup
+
+    try:
+        requested = tuple(part.strip().lower() for part in agent.split(",") if part.strip())
+        resolved = _resolve_setup_agents(requested, non_interactive=non_interactive)
+        resolved_scope = scope if scope is not None else (None if non_interactive else "user")
+        request = SetupRequest(
+            agents=resolved,
+            scope=resolved_scope,
+            dry_run=dry_run,
+            non_interactive=non_interactive,
+            resume_from=resume_from,
+        )
+        paths = ControlPaths.from_home(home)
+        actions = _GuidedSetupActions(
+            agents=resolved,
+            scope=resolved_scope or "user",
+            paths=paths,
+            repository=Path.cwd(),
+        )
+        result = run_setup(
+            request,
+            actions=actions,
+            metric_recorder=(
+                None
+                if dry_run
+                else lambda event, duration, outcome: record_dx_metric(
+                    paths.home,
+                    event=event,
+                    duration_seconds=duration,
+                    outcome_code=outcome,
+                )
+            ),
+        )
+    except (SetupError, RuntimeError) as exc:
+        payload = {"status": "error", "code": str(exc).partition(":")[0], "message": str(exc)}
+        _echo_json(payload) if as_json else typer.echo(str(exc))
+        raise typer.Exit(2)
+    payload = result.to_dict()
+    payload["trust_review"] = {vendor: _trust_review_step(vendor) for vendor in result.agents}
+    if as_json:
+        _echo_json(payload)
+    else:
+        typer.echo("LoopGuard setup preview:" if dry_run else "LoopGuard setup result:")
+        for step in result.steps:
+            typer.echo(f"  {step.name}: {step.status}")
+            for detail in step.details:
+                typer.echo(f"    - {detail}")
+        for vendor, instruction in payload["trust_review"].items():
+            typer.echo(f"  {vendor} trust review: {instruction}")
+        typer.echo(f"Status: {result.status}")
+        if result.resume_command:
+            typer.echo(f"Resume: {result.resume_command}")
+    if result.status == "failed":
+        raise typer.Exit(1)
+
+
+@app.command("uninstall")
+def uninstall_cmd(
+    agent: str = typer.Option("auto", "--agent", help="auto, codex, claude, or comma-separated."),
+    scope: str = typer.Option("user", "--scope", help="user or project."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview owned removals only."),
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Remove only LoopGuard-owned integrations and retain all local event data."""
+    from .adapters.setup import SetupError, uninstall_owned_integrations
+
+    requested = tuple(part.strip().lower() for part in agent.split(",") if part.strip())
+    try:
+        agents = _resolve_setup_agents(requested, non_interactive=False, all_if_auto=True)
+        repository = _project_root(Path.cwd()) if scope == "project" else Path.cwd().resolve()
+        removers = {
+            vendor: _integration_remover(
+                vendor,
+                scope=scope,
+                repository=repository,
+                paths=ControlPaths.from_home(home),
+            )
+            for vendor in agents
+        }
+        result = uninstall_owned_integrations(
+            agents=agents,
+            removers=removers,
+            dry_run=dry_run,
+        )
+    except (SetupError, RuntimeError) as exc:
+        payload = {"status": "error", "message": str(exc)}
+        _echo_json(payload) if as_json else typer.echo(str(exc))
+        raise typer.Exit(1)
+    if as_json:
+        _echo_json(result.to_dict())
+    else:
+        typer.echo(f"LoopGuard integrations: {result.status}.")
+        typer.echo(
+            "Local LoopGuard data retained. Purge requires `loopguard data purge --confirm`."
+        )
+
+
+@data_app.command("purge")
+def data_purge_cmd(
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Permanently delete local LoopGuard data."
+    ),
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Permanently remove owner-controlled local data after explicit confirmation."""
+    from .adapters.setup import SetupError, purge_data
+
+    try:
+        removed = purge_data(ControlPaths.from_home(home).home, confirmed=confirm)
+    except SetupError as exc:
+        code = str(exc).partition(":")[0]
+        payload = {
+            "status": "confirmation_required" if code == "LGD-DATA-CONFIRMATION" else "error",
+            "code": code,
+        }
+        _echo_json(payload) if as_json else typer.echo(str(exc))
+        raise typer.Exit(2 if code == "LGD-DATA-CONFIRMATION" else 1)
+    payload = {"status": "removed" if removed else "not_found"}
+    _echo_json(payload) if as_json else typer.echo(f"LoopGuard data: {payload['status']}.")
+
+
+@dx_app.command("report")
+def dx_report_cmd(
+    local: bool = typer.Option(False, "--local", help="Read local-only, privacy-safe timings."),
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Report setup timing and outcomes; upload is always off by default."""
+    from .adapters.setup import SetupError, build_dx_report
+
+    if not local:
+        typer.echo("Specify --local. Upload is disabled unless telemetry is explicitly enabled.")
+        raise typer.Exit(2)
+    try:
+        report = build_dx_report(ControlPaths.from_home(home).home)
+    except SetupError as exc:
+        payload = {"status": "error", "code": str(exc).partition(":")[0]}
+        _echo_json(payload) if as_json else typer.echo(str(exc))
+        raise typer.Exit(1)
+    _echo_json(report) if as_json else typer.echo(json.dumps(report, indent=2))
+
+
+@app.command("feedback")
+def feedback_cmd() -> None:
+    """Print a version-prefilled public support route without sending data."""
+    version = _loopguard_version()
+    typer.echo(
+        "Report an issue: https://github.com/neanicc/agent/issues/new"
+        f"?title=LoopGuard%20{version}%20feedback&labels=loopguard"
+    )
+    typer.echo("No diagnostic data is uploaded automatically.")
+
+
+@app.command("sessions")
+def sessions_cmd(
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """List locally observed sessions and exact attached-hook coverage."""
+    try:
+        payload = _protected_sessions(ControlPaths.from_home(home))
+    except RuntimeError as exc:
+        error = {"status": "error", "code": "LGD-SESSIONS-UNAVAILABLE", "message": str(exc)}
+        _echo_json(error) if as_json else typer.echo(str(exc))
+        raise typer.Exit(1)
+    if as_json:
+        _echo_json({"sessions": payload})
+        return
+    if not payload:
+        typer.echo("No protected attached sessions observed yet.")
+        return
+    for session in payload:
+        coverage = ", ".join(session["coverage"]) or "none verified"
+        typer.echo(
+            f"{session['vendor']} {session['status']} · session {session['session_id']} · "
+            f"coverage: {coverage}"
+        )
 
 
 @app.command("explain")
@@ -371,10 +654,401 @@ def _claude_version(executable: str) -> str:
             check=False,
         )
     except (OSError, subprocess.SubprocessError) as exc:
-        raise RuntimeError("could not execute Claude Code to determine plugin compatibility") from exc
+        raise RuntimeError(
+            "could not execute Claude Code to determine plugin compatibility"
+        ) from exc
     if result.returncode != 0:
         raise RuntimeError("could not determine the installed Claude Code version")
     return result.stdout.strip()
+
+
+class _GuidedSetupActions:
+    def __init__(
+        self,
+        *,
+        agents: tuple[str, ...],
+        scope: str,
+        paths: ControlPaths,
+        repository: Path,
+    ) -> None:
+        self.agents = agents
+        self.scope = scope
+        self.paths = paths
+        self.repository = (
+            _project_root(repository) if scope == "project" else repository.resolve(strict=False)
+        )
+        self.versions = {vendor: _optional_vendor_version(vendor) for vendor in agents}
+
+    def describe(self, step: str) -> tuple[str, ...]:
+        if step == "install_detected":
+            return tuple(
+                f"{vendor}: {version or 'not detected'}"
+                for vendor, version in self.versions.items()
+            )
+        if step == "daemon_extra":
+            return ("Python extras: cryptography, keyring",)
+        if step == "service":
+            if sys.platform == "darwin":
+                target = Path.home() / "Library/LaunchAgents/com.loopguard.daemon.plist"
+            elif sys.platform.startswith("linux"):
+                target = Path.home() / ".config/systemd/user/loopguardd.service"
+            elif os.name == "nt":
+                return ("Current-user scheduled task: LoopGuard Daemon",)
+            else:
+                return (f"Unsupported platform service: {sys.platform}",)
+            return (f"User service definition: {target}",)
+        if step == "integration":
+            return tuple(self._integration_description(vendor) for vendor in self.agents)
+        if step == "daemon":
+            return ("Start or restart only the LoopGuard user service",)
+        if step == "synthetic_event":
+            return ("Send one local synthetic lifecycle event and verify durable intake",)
+        return ()
+
+    def execute(self, step: str, *, dry_run: bool) -> str:
+        if step == "install_detected":
+            missing = [vendor for vendor, version in self.versions.items() if version is None]
+            if missing:
+                raise RuntimeError(f"installed agent not detected: {','.join(missing)}")
+            return "supported"
+        if step == "daemon_extra":
+            missing = [
+                dependency
+                for dependency in ("cryptography", "keyring")
+                if importlib.util.find_spec(dependency) is None
+            ]
+            if missing:
+                raise RuntimeError(
+                    "daemon dependencies missing; install loopguard[control]: " + ",".join(missing)
+                )
+            return "supported"
+        if step == "service":
+            if dry_run:
+                return "preview"
+            from .adapters import service_install
+
+            result = service_install.install_user_service(
+                executable=Path(sys.argv[0]).resolve(strict=False),
+                home=self.paths.home,
+            )
+            return "changed" if result.changed else "unchanged"
+        if step == "integration":
+            changed = False
+            for vendor in self.agents:
+                changed = self._install_integration(vendor, dry_run=dry_run) or changed
+            return "preview" if dry_run else "changed" if changed else "unchanged"
+        if step == "daemon":
+            if dry_run:
+                return "preview"
+            from .adapters import service_install
+
+            service_install.start_user_service(home=self.paths.home)
+            return "changed"
+        if step == "synthetic_event":
+            if dry_run:
+                return "preview"
+            from .adapters import service_install
+
+            service_install.verify_synthetic_event(home=self.paths.home)
+            return "supported"
+        raise RuntimeError(f"unsupported setup step: {step}")
+
+    def _install_integration(self, vendor: str, *, dry_run: bool) -> bool:
+        version = self.versions[vendor]
+        assert version is not None
+        if vendor == "codex":
+            from .adapters.codex_hooks import (
+                codex_plugin_available,
+                install_codex_hooks,
+                install_codex_plugin,
+            )
+
+            if codex_plugin_available(version) and self.scope == "user":
+                result = install_codex_plugin(
+                    self.paths.home / "integrations",
+                    dry_run=dry_run,
+                )
+            else:
+                if self.scope == "project" and _plugin_is_installed("codex", self.repository):
+                    raise RuntimeError(
+                        "global Codex plugin is already active; refusing duplicate project hooks"
+                    )
+                settings = (
+                    self.repository / ".codex" / "hooks.json"
+                    if self.scope == "project"
+                    else Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")) / "hooks.json"
+                )
+                result = install_codex_hooks(
+                    settings,
+                    scope=self.scope,
+                    repository=self.repository,
+                    dry_run=dry_run,
+                )
+            return result.changed
+        from .adapters.claude_hooks import (
+            claude_plugin_available,
+            install_claude_hooks,
+            install_claude_plugin,
+        )
+
+        if claude_plugin_available(version) and self.scope == "user":
+            result = install_claude_plugin(
+                self.paths.home / "integrations",
+                scope=self.scope,
+                dry_run=dry_run,
+            )
+        else:
+            if self.scope == "project" and _plugin_is_installed("claude", self.repository):
+                raise RuntimeError(
+                    "Claude plugin is already active; refusing duplicate project hooks"
+                )
+            config = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
+            settings = (
+                self.repository / ".claude" / "settings.json"
+                if self.scope == "project"
+                else config / "settings.json"
+            )
+            result = install_claude_hooks(
+                settings,
+                scope=self.scope,
+                repository=self.repository,
+                dry_run=dry_run,
+            )
+        return result.changed
+
+    def _integration_description(self, vendor: str) -> str:
+        version = self.versions[vendor]
+        assert version is not None
+        if vendor == "codex":
+            from .adapters.codex_hooks import codex_plugin_available
+
+            if codex_plugin_available(version) and self.scope == "user":
+                target = self.paths.home / "integrations/codex-marketplace"
+                return f"codex plugin: stage checksum-pinned marketplace at {target}"
+            target = (
+                self.repository / ".codex/hooks.json"
+                if self.scope == "project"
+                else Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")) / "hooks.json"
+            )
+            return f"codex fallback hooks: merge exact LoopGuard handlers into {target}"
+        from .adapters.claude_hooks import claude_plugin_available
+
+        if claude_plugin_available(version) and self.scope == "user":
+            target = self.paths.home / "integrations/claude-marketplace"
+            return f"claude plugin: stage checksum-pinned marketplace at {target}"
+        config = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
+        target = (
+            self.repository / ".claude/settings.json"
+            if self.scope == "project"
+            else config / "settings.json"
+        )
+        return f"claude fallback hooks: merge exact LoopGuard handlers into {target}"
+
+
+def _resolve_setup_agents(
+    requested: tuple[str, ...],
+    *,
+    non_interactive: bool,
+    all_if_auto: bool = False,
+) -> tuple[str, ...]:
+    if not requested:
+        return requested
+    if requested != ("auto",):
+        return tuple(dict.fromkeys(requested))
+    if non_interactive:
+        return requested
+    if all_if_auto:
+        return ("codex", "claude")
+    detected = tuple(vendor for vendor in ("codex", "claude") if shutil.which(vendor))
+    if not detected:
+        raise RuntimeError("no supported local agent installation was detected")
+    return detected
+
+
+def _project_root(path: Path) -> Path:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(path.resolve(strict=False)), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+            env={key: value for key, value in os.environ.items() if not key.startswith("GIT_")},
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError("project scope requires an accessible Git repository") from exc
+    if result.returncode != 0 or not result.stdout.strip():
+        raise RuntimeError("project scope requires an accessible Git repository")
+    return Path(result.stdout.strip()).resolve(strict=False)
+
+
+def _optional_vendor_version(vendor: str) -> str | None:
+    if shutil.which(vendor) is None:
+        return None
+    try:
+        return _codex_version(vendor) if vendor == "codex" else _claude_version(vendor)
+    except RuntimeError:
+        return None
+
+
+def _trust_review_step(vendor: str) -> str:
+    if vendor == "codex":
+        return "Open Codex /hooks; verify LoopGuard's exact definition and choose trust yourself."
+    return "Run `loopguard integrations verify claude`; review Claude Code's exact hook source."
+
+
+def _plugin_is_installed(vendor: str, repository: Path) -> bool:
+    try:
+        if vendor == "codex":
+            from .adapters.codex_hooks import verify_codex_plugin
+
+            return verify_codex_plugin(cwd=repository, hook_report=[]).installed
+        from .adapters.claude_hooks import verify_claude_plugin
+
+        return verify_claude_plugin().installed
+    except Exception as exc:  # noqa: BLE001 - normalize vendor registry failures
+        raise RuntimeError(
+            f"could not verify the {vendor} plugin registry; refusing potential duplicate hooks"
+        ) from exc
+
+
+def _integration_remover(
+    vendor: str,
+    *,
+    scope: str,
+    repository: Path,
+    paths: ControlPaths,
+):
+    def remove(dry_run: bool) -> str:
+        removed = False
+        if vendor == "codex":
+            from .adapters.codex_hooks import (
+                find_codex_fallback_events,
+                uninstall_codex_hooks,
+                uninstall_codex_plugin,
+                verify_codex_plugin,
+            )
+
+            settings = (
+                repository / ".codex" / "hooks.json"
+                if scope == "project"
+                else Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")) / "hooks.json"
+            )
+            fallback_installed = bool(find_codex_fallback_events(settings))
+            plugin_installed = False
+            if scope == "user" and shutil.which("codex"):
+                try:
+                    plugin_installed = verify_codex_plugin(cwd=repository).installed
+                except Exception:  # noqa: BLE001 - exact fallback removal remains available
+                    plugin_installed = False
+            if dry_run:
+                return "preview" if fallback_installed or plugin_installed else "not_installed"
+            if fallback_installed:
+                removed = uninstall_codex_hooks(
+                    settings,
+                    scope=scope,
+                    repository=repository,
+                ).changed
+            if plugin_installed:
+                removed = uninstall_codex_plugin().changed or removed
+        else:
+            from .adapters.claude_hooks import (
+                find_claude_fallback_events,
+                uninstall_claude_hooks,
+                uninstall_claude_plugin,
+                verify_claude_plugin,
+            )
+
+            config = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
+            settings = (
+                repository / ".claude" / "settings.json"
+                if scope == "project"
+                else config / "settings.json"
+            )
+            fallback_installed = bool(find_claude_fallback_events(settings))
+            plugin_installed = False
+            if scope == "user" and shutil.which("claude"):
+                try:
+                    plugin_installed = verify_claude_plugin().installed
+                except Exception:  # noqa: BLE001 - exact fallback removal remains available
+                    plugin_installed = False
+            if dry_run:
+                return "preview" if fallback_installed or plugin_installed else "not_installed"
+            if fallback_installed:
+                removed = uninstall_claude_hooks(
+                    settings,
+                    scope=scope,
+                    repository=repository,
+                ).changed
+            if plugin_installed:
+                removed = uninstall_claude_plugin().changed or removed
+        return "removed" if removed else "not_installed"
+
+    return remove
+
+
+def _protected_sessions(paths: ControlPaths) -> list[dict[str, object]]:
+    if not paths.events_db.exists():
+        return []
+    try:
+        from .adapters.doctor import probe_report
+        from .control.store import EventStore
+
+        integration_report = probe_report(daemon_reachable=True, home=paths.home)
+        events = []
+        with EventStore(paths.events_db) as store:
+            cursor = 0
+            while len(events) < 10_000:
+                page = store.read_local_after(cursor, 500)
+                if not page:
+                    break
+                events.extend(page)
+                cursor = page[-1].local_log_seq
+    except Exception as exc:  # noqa: BLE001 - normalize store/key failures without data leakage
+        raise RuntimeError(
+            "LoopGuard sessions are unavailable; run `loopguard doctor --json`."
+        ) from exc
+    grouped: dict[tuple[str, str], set[str]] = {}
+    for stored in events:
+        event = stored.event
+        if not event.source.endswith("-hooks"):
+            continue
+        vendor = event.source.removesuffix("-hooks")
+        grouped.setdefault((vendor, event.session.session_id), set()).add(event.kind.value)
+    result: list[dict[str, object]] = []
+    for (vendor, session_id), observed in sorted(grouped.items()):
+        try:
+            surface = integration_report.surface(f"{vendor}-attached-local")
+            coverage = surface.coverage
+            version = surface.installed_version
+        except KeyError:
+            coverage = ()
+            version = None
+        result.append(
+            {
+                "session_id": session_id,
+                "vendor": vendor,
+                "vendor_version": version,
+                "status": "protected_attached",
+                "coverage": list(coverage),
+                "observed_events": sorted(observed),
+            }
+        )
+    if result:
+        try:
+            from .adapters.setup import record_protected_session_metric
+
+            record_protected_session_metric(paths.home)
+        except (OSError, RuntimeError):
+            pass
+    return result
+
+
+def _loopguard_version() -> str:
+    try:
+        return importlib.metadata.version("loopguard")
+    except importlib.metadata.PackageNotFoundError:
+        return "development"
 
 
 def _integration_failure(message: str, *, as_json: bool) -> None:
@@ -568,7 +1242,9 @@ def integrations_install_claude(
     settings: Path | None = typer.Option(None, help="Fallback settings.json path."),
     repository: Path | None = typer.Option(None, help="Repository for project fallback scope."),
     executable: str = typer.Option("loopguard", help="LoopGuard executable for fallback hooks."),
-    claude_executable: str = typer.Option("claude", help="Claude Code executable for plugin install."),
+    claude_executable: str = typer.Option(
+        "claude", help="Claude Code executable for plugin install."
+    ),
     claude_version: str | None = typer.Option(None, help="Explicit compatibility version probe."),
     home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME for plugin staging."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview without changing Claude Code."),
@@ -663,7 +1339,9 @@ def integrations_install_claude(
 
 @integrations_verify_app.command("claude")
 def integrations_verify_claude(
-    settings: Path | None = typer.Option(None, help="Fallback settings.json path; omit for plugin."),
+    settings: Path | None = typer.Option(
+        None, help="Fallback settings.json path; omit for plugin."
+    ),
     scope: str = typer.Option("user", help="Fallback scope: user or project."),
     repository: Path | None = typer.Option(None, help="Repository for project fallback scope."),
     executable: str = typer.Option("loopguard", help="Executable recorded in fallback hooks."),
@@ -703,11 +1381,15 @@ def integrations_verify_claude(
 
 @integrations_uninstall_app.command("claude")
 def integrations_uninstall_claude(
-    settings: Path | None = typer.Option(None, help="Fallback settings.json path; omit for plugin."),
+    settings: Path | None = typer.Option(
+        None, help="Fallback settings.json path; omit for plugin."
+    ),
     scope: str = typer.Option("user", help="Fallback scope: user or project."),
     repository: Path | None = typer.Option(None, help="Repository for project fallback scope."),
     executable: str = typer.Option("loopguard", help="Executable recorded in fallback hooks."),
-    claude_executable: str = typer.Option("claude", help="Claude Code executable for plugin removal."),
+    claude_executable: str = typer.Option(
+        "claude", help="Claude Code executable for plugin removal."
+    ),
     as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
 ) -> None:
     """Remove only exact LoopGuard Claude plugin or fallback handlers."""
@@ -831,8 +1513,10 @@ def run_project(
     if proj is None:
         from .server.projects import PROJECTS
 
-        console.print(f"[red]Unknown project {project_id!r}.[/red] Try one of: "
-                      + ", ".join(p.id for p in PROJECTS))
+        console.print(
+            f"[red]Unknown project {project_id!r}.[/red] Try one of: "
+            + ", ".join(p.id for p in PROJECTS)
+        )
         raise typer.Exit(1)
 
     try:
@@ -854,21 +1538,34 @@ def run_project(
         is_err = output.startswith("Error:")
         color = "red" if is_err else "green"
         path = args.get("path", "")
-        console.print(f'[{color}][{step}] {name}({path!r}) -> {output[:70]}[/{color}]')
+        console.print(f"[{color}][{step}] {name}({path!r}) -> {output[:70]}[/{color}]")
 
     try:
         if proj.kind == "multi":
             result = run_multi_agent(
-                prov, agents=[(a.name, a.system) for a in proj.agents], task=the_task,
-                tools_schema=schemas, tool_impls=impls, guard=guard, run_id=proj.id,
-                max_steps=proj.max_steps, on_event=on_event,
+                prov,
+                agents=[(a.name, a.system) for a in proj.agents],
+                task=the_task,
+                tools_schema=schemas,
+                tool_impls=impls,
+                guard=guard,
+                run_id=proj.id,
+                max_steps=proj.max_steps,
+                on_event=on_event,
             )
         else:
             agent = proj.agents[0]
             result = run_agent(
-                prov, system=agent.system, task=the_task, tools_schema=schemas,
-                tool_impls=impls, guard=guard, run_id=proj.id, agent_name=agent.name,
-                max_steps=proj.max_steps, on_event=on_event,
+                prov,
+                system=agent.system,
+                task=the_task,
+                tools_schema=schemas,
+                tool_impls=impls,
+                guard=guard,
+                run_id=proj.id,
+                agent_name=agent.name,
+                max_steps=proj.max_steps,
+                on_event=on_event,
             )
         if result.final_text:
             console.print(f"\n[bold green]Agent:[/bold green] {result.final_text}")

@@ -22,6 +22,14 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │               two minutes.                                                   │
 │ doctor        Check daemon, storage, encryption, dispatch, and integration   │
 │               health.                                                        │
+│ setup         Prepare a local protected-session integration without          │
+│               approving vendor trust.                                        │
+│ uninstall     Remove only LoopGuard-owned integrations and retain all local  │
+│               event data.                                                    │
+│ feedback      Print a version-prefilled public support route without sending │
+│               data.                                                          │
+│ sessions      List locally observed sessions and exact attached-hook         │
+│               coverage.                                                      │
 │ explain       Print the cause, safe fixes, and local reference for an error  │
 │               code.                                                          │
 │ demo                                                                         │
@@ -34,6 +42,8 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ daemon        Manage the owner-only local LoopGuard daemon.                  │
 │ config        Inspect and validate layered LoopGuard configuration.          │
 │ integrations  Install and verify native agent integrations.                  │
+│ data          Manage owner-only local LoopGuard data.                        │
+│ dx            Inspect privacy-safe local developer-experience metrics.       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -50,6 +60,79 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ --home        PATH  Parent for isolated temporary state.                     │
 │ --json              Emit stable machine-readable output.                     │
 │ --help              Show this message and exit.                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard setup`
+
+```text
+
+ Usage: loopguard setup [OPTIONS]
+
+ Prepare a local protected-session integration without approving vendor trust.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --agent                  TEXT  auto, codex, claude, or comma-separated.      │
+│                                [default: auto]                               │
+│ --scope                  TEXT  user or project.                              │
+│ --dry-run                      Preview every change without writes.          │
+│ --non-interactive              Require explicit agents and scope with stable │
+│                                errors.                                       │
+│ --resume-from            TEXT  Resume at a named step.                       │
+│ --home                   PATH  Override LOOPGUARD_HOME.                      │
+│ --json                         Emit stable machine-readable output.          │
+│ --help                         Show this message and exit.                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard uninstall`
+
+```text
+
+ Usage: loopguard uninstall [OPTIONS]
+
+ Remove only LoopGuard-owned integrations and retain all local event data.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --agent          TEXT  auto, codex, claude, or comma-separated.              │
+│                        [default: auto]                                       │
+│ --scope          TEXT  user or project. [default: user]                      │
+│ --dry-run              Preview owned removals only.                          │
+│ --home           PATH  Override LOOPGUARD_HOME.                              │
+│ --json                 Emit stable machine-readable output.                  │
+│ --help                 Show this message and exit.                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard sessions`
+
+```text
+
+ Usage: loopguard sessions [OPTIONS]
+
+ List locally observed sessions and exact attached-hook coverage.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --home        PATH  Override LOOPGUARD_HOME.                                 │
+│ --json              Emit stable machine-readable output.                     │
+│ --help              Show this message and exit.                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard feedback`
+
+```text
+
+ Usage: loopguard feedback [OPTIONS]
+
+ Print a version-prefilled public support route without sending data.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -133,10 +216,14 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
  Check daemon, storage, encryption, dispatch, and integration health.
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --json                 Emit stable machine-readable output.                  │
-│ --verbose              Add redacted local diagnostics.                       │
-│ --home           PATH  Override LOOPGUARD_HOME.                              │
-│ --help                 Show this message and exit.                           │
+│ --json                        Emit stable machine-readable output.           │
+│ --verbose                     Add redacted local diagnostics.                │
+│ --home                  PATH  Override LOOPGUARD_HOME.                       │
+│ --fix-safe                    Repair LoopGuard-owned state only.             │
+│ --bundle                PATH  Write a redacted diagnostic ZIP.               │
+│ --confirm-bundle              Confirm the displayed diagnostic redaction     │
+│                               preview.                                       │
+│ --help                        Show this message and exit.                    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -453,6 +540,75 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │                                  [default: claude]                           │
 │ --json                           Emit stable machine-readable output.        │
 │ --help                           Show this message and exit.                 │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard data`
+
+```text
+
+ Usage: loopguard data [OPTIONS] COMMAND [ARGS]...
+
+ Manage owner-only local LoopGuard data.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ purge  Permanently remove owner-controlled local data after explicit         │
+│        confirmation.                                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard data purge`
+
+```text
+
+ Usage: loopguard data purge [OPTIONS]
+
+ Permanently remove owner-controlled local data after explicit confirmation.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --confirm              Permanently delete local LoopGuard data.              │
+│ --home           PATH  Override LOOPGUARD_HOME.                              │
+│ --json                 Emit stable machine-readable output.                  │
+│ --help                 Show this message and exit.                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard dx`
+
+```text
+
+ Usage: loopguard dx [OPTIONS] COMMAND [ARGS]...
+
+ Inspect privacy-safe local developer-experience metrics.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ report  Report setup timing and outcomes; upload is always off by default.   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard dx report`
+
+```text
+
+ Usage: loopguard dx report [OPTIONS]
+
+ Report setup timing and outcomes; upload is always off by default.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --local              Read local-only, privacy-safe timings.                  │
+│ --home         PATH  Override LOOPGUARD_HOME.                                │
+│ --json               Emit stable machine-readable output.                    │
+│ --help               Show this message and exit.                             │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
