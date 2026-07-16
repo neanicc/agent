@@ -10,9 +10,12 @@ from .models import (
     RuleSeverity,
     RuleSource,
 )
+from .evaluators import PreferenceArtifact, PreferenceEvaluator, evaluate_artifacts
 
 __all__ = [
     "PreferenceEvidence",
+    "PreferenceArtifact",
+    "PreferenceEvaluator",
     "PreferenceProfile",
     "PreferenceRule",
     "PreferenceSourceManifest",
@@ -20,4 +23,5 @@ __all__ = [
     "PreferenceVerdict",
     "RuleSeverity",
     "RuleSource",
+    "evaluate_artifacts",
 ]
