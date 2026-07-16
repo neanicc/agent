@@ -2,6 +2,7 @@
 
 from .catalog import CatalogDocument, CatalogTrustError, ModelCatalog, ModelSpec
 from .features import FeatureExtractor, RepositorySnapshot, TaskProfile
+from .policy import RouterPolicy, RoutingDecision
 
 __all__ = [
     "CatalogDocument",
@@ -10,5 +11,7 @@ __all__ = [
     "ModelCatalog",
     "ModelSpec",
     "RepositorySnapshot",
+    "RouterPolicy",
+    "RoutingDecision",
     "TaskProfile",
 ]

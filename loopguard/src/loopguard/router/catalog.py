@@ -44,6 +44,7 @@ class ModelSpec(BaseModel):
     output_cost_per_million: NonNegativeDecimal | None = None
     max_context_tokens: int | None = Field(default=None, gt=0)
     capabilities: frozenset[str] = Field(default_factory=frozenset, max_length=256)
+    tags: frozenset[str] = Field(default_factory=frozenset, max_length=256)
     observed_at: AwareDatetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     source: str = Field(max_length=512)
     source_kind: SourceKind = "provider_discovery"
@@ -72,7 +73,7 @@ class ModelSpec(BaseModel):
             raise ValueError("provider_revision must not be empty")
         return normalized
 
-    @field_validator("surfaces", "efforts", "capabilities")
+    @field_validator("surfaces", "efforts", "capabilities", "tags")
     @classmethod
     def _non_empty_tokens(cls, values: frozenset[str]) -> frozenset[str]:
         normalized = frozenset(value.strip() for value in values)
@@ -320,11 +321,12 @@ def _ordered_unique_models(models: Iterable[ModelSpec]) -> tuple[ModelSpec, ...]
 def _canonical_model(model: ModelSpec) -> dict[str, object]:
     payload = model.model_dump(
         mode="json",
-        exclude={"surfaces", "efforts", "capabilities", "capability_evidence"},
+        exclude={"surfaces", "efforts", "capabilities", "tags", "capability_evidence"},
     )
     payload["surfaces"] = sorted(model.surfaces)
     payload["efforts"] = sorted(model.efforts)
     payload["capabilities"] = sorted(model.capabilities)
+    payload["tags"] = sorted(model.tags)
     payload["capability_evidence"] = [
         [capability, evidence] for capability, evidence in sorted(model.capability_evidence)
     ]

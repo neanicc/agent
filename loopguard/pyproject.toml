@@ -55,7 +55,7 @@ loopguard = "loopguard.cli:app"
 where = ["src"]
 
 [tool.setuptools.package-data]
-loopguard = ["demo_projects/**/*", "adapters/templates/*"]
+loopguard = ["demo_projects/**/*", "adapters/templates/*", "router/*.toml"]
 
 [tool.ruff]
 line-length = 100
