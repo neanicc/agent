@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from .event import LoopEvent
 from .normalize import normalize_event
@@ -24,16 +24,28 @@ _JUDGE_SYSTEM = (
 
 
 class JudgeVerdict(BaseModel):
-    is_loop: bool
-    reasoning: str = ""
-    suggested_correction: str | None = None
-    confidence: float = 0.5
-    cost_usd: float = 0.0
+    model_config = ConfigDict(extra="forbid")
+
+    is_loop: bool = Field(strict=True)
+    reasoning: str = Field(default="", max_length=20_000)
+    suggested_correction: str | None = Field(default=None, max_length=20_000)
+    confidence: float = Field(default=0.5, ge=0, le=1, allow_inf_nan=False)
+    cost_usd: float = Field(default=0.0, ge=0, allow_inf_nan=False)
+    validated: bool = Field(default=True, strict=True)
+
+
+class _JudgeResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    is_loop: bool = Field(strict=True)
+    reasoning: str = Field(default="", max_length=20_000)
+    suggested_correction: str | None = Field(default=None, max_length=20_000)
+    confidence: float = Field(default=0.5, ge=0, le=1)
 
 
 def _defer(reason: str) -> JudgeVerdict:
     # Fail-safe: when the judge cannot decide, defer to Layer 1 (treat as a loop).
-    return JudgeVerdict(is_loop=True, reasoning=reason, confidence=0.0)
+    return JudgeVerdict(is_loop=True, reasoning=reason, confidence=0.0, validated=False)
 
 
 class LLMJudge:
@@ -43,6 +55,10 @@ class LLMJudge:
         # deployment guards a real repo, so the judge can name the exact right file
         # instead of guessing — this is what turns a flag into a working fix.
         self.context = context
+
+    @property
+    def model(self) -> str:
+        return self.provider.model
 
     def judge(
         self,
@@ -59,11 +75,12 @@ class LLMJudge:
         ]
         try:
             result = self._complete(messages)
+            verdict = self._parse(result.text)
+            return JudgeVerdict.model_validate(
+                {**verdict.model_dump(mode="python"), "cost_usd": result.cost_usd}
+            )
         except Exception as exc:  # noqa: BLE001 - any provider failure must fail safe
             return _defer(f"judge unavailable ({exc}); deferring to detector")
-        verdict = self._parse(result.text)
-        verdict.cost_usd = result.cost_usd
-        return verdict
 
     # Reasoning models (e.g. gpt-oss) spend completion tokens "thinking" before they
     # emit the JSON answer, so the budget must be generous or the JSON gets truncated
@@ -81,9 +98,7 @@ class LLMJudge:
                 response_format={"type": "json_object"},
             )
         except Exception:  # noqa: BLE001 - JSON mode unsupported -> retry without it
-            return self.provider.complete(
-                messages, temperature=0.0, max_tokens=self._MAX_TOKENS
-            )
+            return self.provider.complete(messages, temperature=0.0, max_tokens=self._MAX_TOKENS)
 
     @staticmethod
     def _render(events: list[LoopEvent], task: str | None, detector: str | None) -> str:
@@ -107,13 +122,8 @@ class LLMJudge:
         start, end = raw.find("{"), raw.rfind("}")
         if start != -1 and end != -1 and end > start:
             try:
-                data = json.loads(raw[start : end + 1])
-                return JudgeVerdict(
-                    is_loop=bool(data.get("is_loop", True)),
-                    reasoning=str(data.get("reasoning", "")),
-                    suggested_correction=(data.get("suggested_correction") or None),
-                    confidence=float(data.get("confidence", 0.5)),
-                )
+                data = _JudgeResponse.model_validate(json.loads(raw[start : end + 1]))
+                return JudgeVerdict(**data.model_dump())
             except Exception:  # noqa: BLE001 - malformed JSON falls through to defer
                 pass
         return _defer("unparseable judge output; deferring to detector")

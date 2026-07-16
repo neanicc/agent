@@ -122,3 +122,17 @@ def test_digest_cursor_never_moves_backwards_when_no_new_records_exist() -> None
 
     assert digest.next_repo_seq == 10
     assert digest.included_count == digest.omitted_count == 0
+
+
+def test_digest_enforces_token_estimate_independently_of_character_limit() -> None:
+    changes = [_record(seq, f"src/module_{seq}.py") for seq in range(1, 10)]
+
+    digest = DigestBuilder().build(
+        changes,
+        since=0,
+        budget=DigestBudget(max_chars=2_000, max_tokens_estimate=50),
+    )
+
+    assert len(digest.text) < 2_000
+    assert digest.tokens_estimate <= 50
+    assert digest.truncated is True

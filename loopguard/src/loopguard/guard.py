@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict, deque
+from decimal import Decimal
 from pathlib import Path
 from typing import Callable, TypeVar
 
@@ -10,6 +11,8 @@ from .decision import LoopDecision
 from .detectors import budget, exact, pingpong, semantic
 from .event import LoopEvent
 from .exceptions import LoopDetectedError
+from .router.budgets import BudgetReservation
+from .router.judge_cache import IncidentCacheKey, JudgeIncidentCache, incident_cache_key
 from .storage import export_jsonl as write_jsonl
 from .ui.terminal import apply_auto, apply_flag, pause_for_action, show_warning
 
@@ -17,20 +20,33 @@ F = TypeVar("F", bound=Callable)
 
 
 class LoopGuard:
-    def __init__(self, config: LoopGuardConfig | None = None, judge=None,
-                 on_observe=None, on_pause=None, on_auto=None):
+    def __init__(
+        self,
+        config: LoopGuardConfig | None = None,
+        judge=None,
+        on_observe=None,
+        on_pause=None,
+        on_auto=None,
+        budget_callback: Callable[[str, Decimal], BudgetReservation] | None = None,
+        judge_cache: JudgeIncidentCache | None = None,
+    ):
         self.config = config or LoopGuardConfig()
         self.judge = judge
         self.on_observe = on_observe
         self.on_pause = on_pause
         self.on_auto = on_auto
+        self.budget_callback = budget_callback
         self._events: dict[str, deque[LoopEvent]] = defaultdict(
             lambda: deque(maxlen=self.config.window_size)
         )
         self._all: list[LoopEvent] = []
         self._allowlisted: set[str] = set(self.config.allowlisted_tools)
         self._judge_cost: float = 0.0
-        self._judge_cache: dict[tuple[str, str | None], object] = {}
+        self._judge_cache = judge_cache or JudgeIncidentCache(
+            ttl_seconds=self.config.judge_cache_ttl_seconds,
+            max_entries=self.config.judge_cache_max_entries,
+        )
+        self._active_incidents: dict[tuple[str, str | None], IncidentCacheKey] = {}
 
     def observe(self, event: LoopEvent, task: str | None = None) -> LoopDecision:
         decision = self._evaluate(event, task)
@@ -64,6 +80,7 @@ class LoopGuard:
                     if not decision.tripped:
                         return decision
                     return self._handle(decision)
+        self._clear_active_incidents(event.run_id)
         return LoopDecision()
 
     def _cost_ceiling(self, run_id: str) -> LoopDecision | None:
@@ -85,16 +102,48 @@ class LoopGuard:
         if not (self.config.enable_judge and self.judge is not None):
             return decision
         run_id = decision.matching_events[0].run_id if decision.matching_events else "default"
-        key = (run_id, decision.detector)
-        # Judge once per (run, detector): an ongoing loop must not re-bill the judge each step.
-        verdict = self._judge_cache.get(key)
-        if verdict is None:
-            verdict = self.judge.judge(
-                decision.matching_events, task=task, detector=decision.detector
+        active_key = (run_id, decision.detector)
+        key = self._active_incidents.get(active_key)
+        if key is None:
+            model = getattr(self.judge, "model", None)
+            if not isinstance(model, str) or not model.strip():
+                provider = getattr(self.judge, "provider", None)
+                model = getattr(provider, "model", self.judge.__class__.__name__)
+            key = incident_cache_key(
+                policy_version=self.config.judge_policy_version,
+                detector_kind=decision.detector or "unknown",
+                events=decision.matching_events,
+                judge_model=str(model),
+                prompt_version=self.config.judge_prompt_version,
+                task=task,
+                context=getattr(self.judge, "context", None),
+                normalization_config=self.config,
             )
+            self._active_incidents[active_key] = key
+
+        def compute():
+            if self.budget_callback is not None:
+                try:
+                    reservation = self.budget_callback("judge", self.config.judge_reservation_usd)
+                except Exception as exc:
+                    raise _JudgeBudgetDenied("budget_callback_failed") from exc
+                if not reservation.allowed:
+                    raise _JudgeBudgetDenied(reservation.reason)
+            return self.judge.judge(decision.matching_events, task=task, detector=decision.detector)
+
+        try:
+            result = self._judge_cache.get_or_compute(key, compute)
+        except _JudgeBudgetDenied as exc:
+            decision.judge_reasoning = f"judge skipped: {exc.reason}"
+            return decision
+        except Exception:
+            decision.judge_reasoning = "judge unavailable; detector decision retained"
+            return decision
+        verdict = result.verdict
+        if result.computed:
             self._judge_cost += verdict.cost_usd
-            self._judge_cache[key] = verdict
         if not verdict.is_loop:
+            self._active_incidents.pop(active_key, None)
             return LoopDecision(
                 allowed=True,
                 tripped=False,
@@ -152,12 +201,13 @@ class LoopGuard:
         if run_id is None:
             self._events.clear()
             self._all.clear()
+            self._active_incidents.clear()
             self._judge_cache.clear()
             self._judge_cost = 0.0
         else:
             self._events.pop(run_id, None)
             self._all = [e for e in self._all if e.run_id != run_id]
-            self._judge_cache = {k: v for k, v in self._judge_cache.items() if k[0] != run_id}
+            self._clear_active_incidents(run_id)
 
     def allowlisted_tools(self) -> list[str]:
         return sorted(self._allowlisted)
@@ -173,6 +223,17 @@ class LoopGuard:
     def export_jsonl(self, path: str | Path) -> None:
         write_jsonl(self._all, path)
 
+    def _clear_active_incidents(self, run_id: str) -> None:
+        self._active_incidents = {
+            key: value for key, value in self._active_incidents.items() if key[0] != run_id
+        }
+
     @classmethod
     def from_config_file(cls, path: str | Path) -> "LoopGuard":
         return cls(LoopGuardConfig(**json.loads(Path(path).read_text())))
+
+
+class _JudgeBudgetDenied(Exception):
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+        super().__init__(reason)

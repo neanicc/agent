@@ -61,7 +61,8 @@ def test_ciphertext_hash_signature_and_wrong_key_fail_closed(tmp_path: Path) -> 
     store = ArtifactStore.for_test(root, key=b"correct-key")
     stored = store.put(b"test output", _context(), now=NOW)
     object_path = store.object_path(stored.manifest.artifact_id)
-    object_path.write_bytes(object_path.read_bytes()[:-1] + b"x")
+    ciphertext = object_path.read_bytes()
+    object_path.write_bytes(ciphertext[:-1] + bytes([ciphertext[-1] ^ 1]))
 
     with pytest.raises(ArtifactIntegrityError):
         store.read(stored.manifest)

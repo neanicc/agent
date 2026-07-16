@@ -22,6 +22,7 @@ class DigestBudget(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     max_chars: int = Field(default=4_000, ge=128, le=100_000)
+    max_tokens_estimate: int = Field(default=25_000, ge=16, le=1_000_000)
     max_records: int = Field(default=10_000, ge=1, le=100_000)
     max_symbols_per_entry: int = Field(default=20, ge=0, le=1_000)
     max_verifications_per_entry: int = Field(default=20, ge=0, le=1_000)
@@ -36,6 +37,7 @@ class ContextDigest(BaseModel):
     included_count: int = Field(ge=0)
     omitted_count: int = Field(ge=0)
     truncated: bool
+    tokens_estimate: int = Field(ge=0)
 
 
 class DigestBuilder:
@@ -94,7 +96,11 @@ class DigestBuilder:
             candidate_text = header + "\n".join(candidate_lines)
             if candidate_lines:
                 candidate_text += "\n"
-            if len(candidate_text) + reserved_footer_length <= budget.max_chars:
+            bounded_candidate = candidate_text + (" " * reserved_footer_length)
+            if (
+                len(bounded_candidate) <= budget.max_chars
+                and _tokens_estimate(bounded_candidate) <= budget.max_tokens_estimate
+            ):
                 lines.append(line)
             else:
                 omitted += 1
@@ -104,8 +110,9 @@ class DigestBuilder:
         if lines:
             text += "\n"
         text += footer
-        if len(text) > budget.max_chars:
-            raise ValueError("digest budget is too small for its cursor header")
+        tokens_estimate = _tokens_estimate(text)
+        if len(text) > budget.max_chars or tokens_estimate > budget.max_tokens_estimate:
+            raise ValueError("digest character/token budget is too small for its cursor header")
         return ContextDigest(
             text=text,
             since_repo_seq=since,
@@ -113,6 +120,7 @@ class DigestBuilder:
             included_count=len(lines),
             omitted_count=omitted,
             truncated=omitted > 0,
+            tokens_estimate=tokens_estimate,
         )
 
 
@@ -155,8 +163,7 @@ def _priority(
     direct_dependency_paths: Set[str],
 ) -> tuple[int, int, int, int, str, str]:
     failing = any(
-        verification_statuses.get(verification_id, "unknown")
-        in _FAILING_VERIFICATION_STATES
+        verification_statuses.get(verification_id, "unknown") in _FAILING_VERIFICATION_STATES
         for verification_id in record.verification_ids
     )
     return (
@@ -194,11 +201,13 @@ def _entry(
             }
             for verification_id in verification_ids[: budget.max_verifications_per_entry]
         ],
-        "verifications_omitted": max(
-            0, len(verification_ids) - budget.max_verifications_per_entry
-        ),
+        "verifications_omitted": max(0, len(verification_ids) - budget.max_verifications_per_entry),
     }
 
 
 def _footer(included: int, omitted: int) -> str:
     return f"Summary included={included} omitted={omitted}"
+
+
+def _tokens_estimate(text: str) -> int:
+    return (len(text.encode("utf-8")) + 3) // 4
