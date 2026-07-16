@@ -413,6 +413,22 @@ class ClaudeManagedAdapter:
         managed = self._sessions.get(session_id)
         return managed.status if managed is not None else None
 
+    def phase_switch_safe(self, session_id: str) -> bool:
+        managed = self._sessions.get(session_id)
+        return bool(
+            managed is not None
+            and managed.status == "between_turns"
+            and managed.ref.turn_id is None
+        )
+
+    def mark_route_orphaned(self, session_id: str) -> None:
+        managed = self._sessions.get(session_id)
+        if managed is None:
+            return
+        managed.status = "orphaned"
+        managed.state_version += 1
+        self._persist(managed)
+
     async def close(self) -> None:
         if self._closed:
             return

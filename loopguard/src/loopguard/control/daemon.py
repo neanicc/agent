@@ -83,6 +83,10 @@ class DaemonServices:
     routing_evaluator: object | None = None
     routing_outcome_recorder: object | None = None
     experiment_assigner: object | None = None
+    model_catalog: object | None = None
+    feature_extractor: object | None = None
+    routing_budget: object | None = None
+    phase_coordinator: object | None = None
     attached_collision_policy: str = "warn"
 
     @classmethod

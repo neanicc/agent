@@ -1,6 +1,7 @@
 """Deterministic, provider-neutral model routing primitives."""
 
 from .catalog import CatalogDocument, CatalogTrustError, ModelCatalog, ModelSpec
+from .coordinator import PhaseCoordinator, PhaseState, PhaseTransitionError
 from .evaluation import EvaluationReport, ShadowDecision, assign_experiment, evaluate_outcomes
 from .features import FeatureExtractor, RepositorySnapshot, TaskProfile
 from .outcomes import OutcomeRecorder, RoutingOutcome
@@ -14,6 +15,9 @@ __all__ = [
     "ModelCatalog",
     "ModelSpec",
     "OutcomeRecorder",
+    "PhaseCoordinator",
+    "PhaseState",
+    "PhaseTransitionError",
     "RepositorySnapshot",
     "RouterPolicy",
     "RoutingDecision",
