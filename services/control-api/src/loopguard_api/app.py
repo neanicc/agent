@@ -11,7 +11,7 @@ from http.cookies import SimpleCookie
 from typing import Any
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -19,6 +19,9 @@ from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from .auth import AuthService, CachedOidcJwksProvider, DatabaseMembershipStore
+from .authorization import Principal, current_principal, require_controller
+from .db import create_database_engine, tenant_session_factory
 from .errors import ApiProblem, problem_response
 from .settings import PublicBuild, Settings
 
@@ -32,10 +35,29 @@ class ValidationFixture(BaseModel):
     count: int = Field(gt=0)
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    auth_service: AuthService | None = None,
+) -> FastAPI:
     active = settings or Settings()
     app = FastAPI(title="LoopGuard Control API", version="0.1.0")
     app.state.settings = active
+    if auth_service is None:
+        engine = create_database_engine(active.database_url)
+        app.state.database_engine = engine
+        auth_service = AuthService(
+            issuer=active.oidc_issuer,
+            audience=active.oidc_audience,
+            jwks=CachedOidcJwksProvider(
+                active.oidc_issuer,
+                ttl_seconds=active.oidc_jwks_cache_ttl_seconds,
+                timeout_seconds=active.oidc_http_timeout_seconds,
+            ),
+            memberships=DatabaseMembershipStore(tenant_session_factory(engine)),
+            allowed_algorithms=active.oidc_allowed_algorithms,
+        )
+    app.state.auth_service = auth_service
 
     @app.exception_handler(ApiProblem)
     async def api_problem(request: Request, exc: ApiProblem):
@@ -76,6 +98,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/health", response_model=PublicBuild)
     async def health() -> PublicBuild:
         return PublicBuild(build_sha=active.build_sha, environment=active.environment)
+
+    @app.get("/v1/me")
+    async def me(principal: Principal = Depends(current_principal)) -> dict[str, Any]:
+        return {
+            "tenant_id": str(principal.tenant_id),
+            "role": principal.role,
+            "permissions": sorted(principal.permissions),
+        }
+
+    @app.post("/v1/actions", status_code=status.HTTP_202_ACCEPTED)
+    async def authorize_action(
+        _principal: Principal = Depends(require_controller),
+    ) -> dict[str, str]:
+        # CLOUD-T06 replaces this authorization seam with signed action persistence.
+        return {"status": "authorization_verified"}
 
     if active.environment == "test":
         @app.post("/_test/validate", include_in_schema=False)

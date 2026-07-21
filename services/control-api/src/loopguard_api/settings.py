@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///:memory:"
     oidc_issuer: str = "https://identity.test/"
     oidc_audience: str = "loopguard-control-api-test"
+    oidc_allowed_algorithms: tuple[Literal["RS256", "ES256", "EdDSA"], ...] = (
+        "RS256",
+        "ES256",
+        "EdDSA",
+    )
+    oidc_jwks_cache_ttl_seconds: int = Field(default=300, ge=30, le=3_600)
+    oidc_http_timeout_seconds: float = Field(default=5, gt=0, le=30)
     action_signing_active_key_id: str = "test-action-key"
     action_signing_active_algorithm: SigningAlgorithm = "Ed25519"
     action_signing_active_key_ref: str = "test://action-current"
