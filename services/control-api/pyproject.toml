@@ -9,13 +9,23 @@ description = "Hosted multi-tenant control plane for LoopGuard."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "alembic>=1.14,<2",
+    "asyncpg>=0.30,<1",
     "fastapi>=0.110",
     "pydantic-settings>=2.2",
+    "SQLAlchemy[asyncio]>=2.0.36,<3",
     "uvicorn[standard]>=0.29",
 ]
 
 [project.optional-dependencies]
-dev = ["httpx>=0.27", "pytest>=8", "ruff>=0.5"]
+dev = [
+    "aiosqlite>=0.20,<1",
+    "httpx>=0.27",
+    "pytest>=8",
+    "psycopg[binary]>=3.2,<4",
+    "ruff>=0.5",
+    "testcontainers[postgres]>=4.9,<5",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
