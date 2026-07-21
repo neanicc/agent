@@ -1,0 +1,79 @@
+# Control API error reference
+
+Every non-success response uses `application/problem+json` and includes a stable `code`, RFC 9457
+`type`, title, safe detail, request ID, retryability, and documentation URL. Optional `field` and
+`current_state` fields add safe corrective context. Include the request ID—not credentials,
+request bodies, or tokens—when contacting support.
+
+## LGAPI-BODY-TOO-LARGE
+
+- Meaning: the declared or streamed request body exceeded the endpoint limit (`413`).
+- Fix: reduce the batch or use the documented artifact upload flow.
+- Retry: only after reducing the body; reuse the same idempotency key for the same operation.
+
+## LGAPI-CSRF-REQUIRED
+
+- Meaning: a cookie-authenticated mutation lacked an allowed exact origin or matching CSRF proof
+  (`403`).
+- Fix: refresh the same-origin browser session and retry through the supported BFF.
+- Retry: safe after obtaining a new CSRF token; do not replay a stale form automatically.
+
+## LGAPI-FORBIDDEN
+
+- Meaning: the authenticated principal lacks the required tenant permission (`403`).
+- Fix: request the correct role from a tenant administrator or choose an allowed operation.
+- Retry: not retryable until authorization changes.
+
+## LGAPI-HOST-UNTRUSTED
+
+- Meaning: the HTTP `Host` value is outside the deployment allowlist (`400`).
+- Fix: use the configured API hostname or correct the ingress host rewrite.
+- Retry: not retryable until routing is corrected.
+
+## LGAPI-INTERNAL
+
+- Meaning: the service could not safely complete the request (`500`).
+- Fix: retry with backoff and provide the request ID if the failure persists.
+- Retry: retryable; preserve the original idempotency key for mutations.
+
+## LGAPI-METHOD-NOT-ALLOWED
+
+- Meaning: the resource does not implement that HTTP method (`405`).
+- Fix: use the method documented in the endpoint contract.
+- Retry: not retryable without changing the method.
+
+## LGAPI-NOT-FOUND
+
+- Meaning: the resource is absent or is not visible to the authenticated tenant (`404`).
+- Fix: refresh the parent list and verify the opaque resource ID.
+- Retry: not retryable without updated state. The response never reveals cross-tenant existence.
+
+## LGAPI-ORIGIN-DENIED
+
+- Meaning: a browser request supplied an origin outside the exact CORS allowlist (`403`).
+- Fix: use an approved web application origin; wildcard subdomains are intentionally unsupported.
+- Retry: not retryable from the denied origin.
+
+## LGAPI-PROXY-UNTRUSTED
+
+- Meaning: forwarded headers came from a peer outside the configured proxy networks (`400`).
+- Fix: send the request directly without forwarded headers or correct the deployment proxy policy.
+- Retry: not retryable until deployment routing is corrected.
+
+## LGAPI-REQUEST-INVALID
+
+- Meaning: one or more bounded request fields failed schema validation (`422`).
+- Fix: correct the named `field` using the endpoint schema. Rejected values are never echoed.
+- Retry: not retryable without changing the request.
+
+## LGAPI-TIMEOUT
+
+- Meaning: the request exceeded the service deadline (`504`).
+- Fix: reconcile the operation by idempotency key before retrying with backoff.
+- Retry: retryable, but acceptance or execution must not be inferred from the timeout.
+
+## LGAPI-UNAUTHORIZED
+
+- Meaning: authentication is missing, expired, or invalid (`401`).
+- Fix: obtain a fresh token through the supported OIDC flow and preserve the request ID.
+- Retry: safe only after reauthentication; do not loop on the same rejected credential.
