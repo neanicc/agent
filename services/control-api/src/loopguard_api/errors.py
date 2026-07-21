@@ -19,6 +19,7 @@ class ErrorDefinition:
 
 ERROR_CATALOG: dict[str, ErrorDefinition] = {
     "LGAPI-ACTION-CONFLICT": ErrorDefinition(409, "Action state conflict", "The action cannot transition from its current state."),
+    "LGAPI-ARTIFACT-INTEGRITY": ErrorDefinition(422, "Artifact integrity check failed", "The uploaded object does not match its authorized evidence declaration."),
     "LGAPI-BODY-TOO-LARGE": ErrorDefinition(413, "Request body too large", "The request exceeds the documented size limit."),
     "LGAPI-CSRF-REQUIRED": ErrorDefinition(403, "CSRF proof required", "Cookie-authenticated changes require an allowed origin and matching CSRF proof."),
     "LGAPI-DEVICE-PROOF-REQUIRED": ErrorDefinition(401, "Device proof required", "A current registered device signature is required for this action."),

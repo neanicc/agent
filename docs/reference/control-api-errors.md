@@ -11,6 +11,12 @@ request bodies, or tokens—when contacting support.
 - Fix: fetch the action by ID and reconcile its current state before taking another step.
 - Retry: do not create or re-sign a replacement until the existing action is reconciled.
 
+## LGAPI-ARTIFACT-INTEGRITY
+
+- Meaning: object checksum, size, media type, expiry, or evidence-manifest proof failed (`422`).
+- Fix: initiate a new upload and send the exact declared bytes with every required signed header.
+- Retry: do not complete the rejected upload again unless object metadata has become consistent.
+
 ## LGAPI-BODY-TOO-LARGE
 
 - Meaning: the declared or streamed request body exceeded the endpoint limit (`413`).

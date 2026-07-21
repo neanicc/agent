@@ -22,6 +22,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from .auth import AuthService, CachedOidcJwksProvider, DatabaseMembershipStore
 from .action_signing import Ed25519ActionSigner
 from .actions import ActionService
+from .artifacts import ArtifactService, MemoryKms, MemoryObjectStore
 from .authorization import Principal, current_principal
 from .db import create_database_engine, tenant_session_factory
 from .errors import ApiProblem, problem_response
@@ -30,6 +31,7 @@ from .pairing import PairingService
 from .routes.hooks import router as hooks_router
 from .routes.hosts import router as hosts_router
 from .routes.actions import router as actions_router
+from .routes.artifacts import router as artifacts_router
 from .routes.sessions import router as sessions_router
 from .settings import PublicBuild, Settings
 from .stream_tickets import StreamTicketService
@@ -52,6 +54,7 @@ def create_app(
     stream_ticket_service: StreamTicketService | None = None,
     subscription_service: SessionSubscriptionService | None = None,
     action_service: ActionService | None = None,
+    artifact_service: ArtifactService | None = None,
 ) -> FastAPI:
     active = settings or Settings()
     app = FastAPI(title="LoopGuard Control API", version="0.1.0")
@@ -82,6 +85,11 @@ def create_app(
             signer=Ed25519ActionSigner.generate(active.action_signing_active_key_id)
         )
     app.state.action_service = action_service
+    if artifact_service is None:
+        if active.environment in {"staging", "production"}:
+            raise ValueError("hosted deployments require object-store and KMS adapters")
+        artifact_service = ArtifactService(objects=MemoryObjectStore(), kms=MemoryKms())
+    app.state.artifact_service = artifact_service
 
     @app.exception_handler(ApiProblem)
     async def api_problem(request: Request, exc: ApiProblem):
@@ -144,6 +152,7 @@ def create_app(
     app.include_router(hooks_router)
     app.include_router(sessions_router)
     app.include_router(actions_router)
+    app.include_router(artifacts_router)
 
     app.add_middleware(
         CORSMiddleware,
