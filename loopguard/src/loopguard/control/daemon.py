@@ -87,6 +87,12 @@ class DaemonServices:
     feature_extractor: object | None = None
     routing_budget: object | None = None
     phase_coordinator: object | None = None
+    preference_service: object | None = None
+    preference_compiler: object | None = None
+    preference_store: object | None = None
+    preference_learner: object | None = None
+    preference_evaluators: object | None = None
+    visual_critic: object | None = None
     attached_collision_policy: str = "warn"
 
     @classmethod

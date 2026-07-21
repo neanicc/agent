@@ -50,6 +50,7 @@ class DigestBuilder:
         collision_paths: Set[str] = frozenset(),
         verification_statuses: Mapping[str, str] | None = None,
         direct_dependency_paths: Set[str] = frozenset(),
+        preference_warnings: Mapping[str, str] | None = None,
     ) -> ContextDigest:
         if not 0 <= since <= 2**63 - 1:
             raise ValueError("digest cursor is outside the supported range")
@@ -75,6 +76,27 @@ class DigestBuilder:
         )
 
         header = f"LoopGuard context since={since} next={next_repo_seq}\n"
+        warning_lines = _preference_warning_lines(preference_warnings or {})
+        warning_prefix = ""
+        warning_omitted = 0
+        for line in warning_lines:
+            candidate = header + warning_prefix + line + "\n" + _footer(0, len(candidates))
+            if (
+                len(candidate) <= budget.max_chars
+                and _tokens_estimate(candidate) <= budget.max_tokens_estimate
+            ):
+                warning_prefix += line + "\n"
+            else:
+                warning_omitted += 1
+        if warning_omitted:
+            omitted_line = f"Preference warnings omitted={warning_omitted}\n"
+            candidate = header + warning_prefix + omitted_line + _footer(0, len(candidates))
+            if (
+                len(candidate) <= budget.max_chars
+                and _tokens_estimate(candidate) <= budget.max_tokens_estimate
+            ):
+                warning_prefix += omitted_line
+        header += warning_prefix
         lines: list[str] = []
         omitted = 0
         reserved_footer_length = len(_footer(len(candidates), len(candidates)))
@@ -153,6 +175,35 @@ def _verification_statuses(values: Mapping[str, str]) -> dict[str, str]:
             raise ValueError("verification status entries must be bounded and non-empty")
         statuses[normalized_id] = normalized_status
     return statuses
+
+
+def _preference_warning_lines(values: Mapping[str, str]) -> list[str]:
+    if len(values) > 256:
+        raise ValueError("preference warning input exceeds the entry limit")
+    warnings: list[tuple[str, str]] = []
+    for warning_id, summary in values.items():
+        normalized_id = str(warning_id).strip()
+        normalized_summary = str(summary).strip()
+        if (
+            not normalized_id
+            or not normalized_summary
+            or len(normalized_id) > 512
+            or len(normalized_summary) > 1_024
+            or "\x00" in normalized_id
+            or "\x00" in normalized_summary
+        ):
+            raise ValueError("preference warnings must be bounded and non-empty")
+        warnings.append((normalized_id, normalized_summary))
+    return [
+        "Preference warning "
+        + json.dumps(
+            {"id": warning_id, "summary": summary},
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        for warning_id, summary in sorted(warnings)
+    ]
 
 
 def _priority(

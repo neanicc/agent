@@ -205,6 +205,10 @@ class VerificationVerdict(ProofModel):
     )
     missing_required_checks: list[NonEmptyStr] = Field(default_factory=list, max_length=1024)
     evidence_ids: list[NonEmptyStr] = Field(default_factory=list, max_length=1024)
+    preference_profile_id: NonEmptyStr | None = None
+    preference_verdict_ids: list[NonEmptyStr] = Field(default_factory=list, max_length=1024)
+    preference_warning_ids: list[NonEmptyStr] = Field(default_factory=list, max_length=1024)
+    preference_override_ids: list[NonEmptyStr] = Field(default_factory=list, max_length=1024)
 
 
 class VerificationRun(ProofModel):
@@ -214,6 +218,8 @@ class VerificationRun(ProofModel):
     baseline: Baseline | None = None
     results: list[CheckResult] = Field(default_factory=list, max_length=4096)
     evidence: list[EvidenceArtifact] = Field(default_factory=list, max_length=4096)
+    preference_profile_id: NonEmptyStr | None = None
+    preference_verdict_ids: list[NonEmptyStr] = Field(default_factory=list, max_length=1024)
     verdict: VerificationVerdict | None = None
     created_at: AwareDatetime
     updated_at: AwareDatetime

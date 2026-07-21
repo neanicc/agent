@@ -14,6 +14,10 @@ from loopguard.context.journal import ChangeJournal
 from loopguard.context.leases import LeaseManager
 from loopguard.context.watcher import ChangeReconciler
 from loopguard.context.worktrees import WorktreeManager
+from loopguard.preferences.compiler import PreferenceCompiler
+from loopguard.preferences.evaluators import evaluate_artifacts
+from loopguard.preferences.learning import PreferenceLearner
+from loopguard.preferences.service import PreferenceService
 
 from .daemon import DaemonServices, LoopGuardDaemon
 from .dispatch import Handler
@@ -48,6 +52,8 @@ async def run_foreground_daemon(
     mcp_launcher: ContextMCPLauncher | None = None
     worktree_manager: WorktreeManager | None = None
     daemon: LoopGuardDaemon | None = None
+    preference_learner: PreferenceLearner | None = None
+    preference_service: PreferenceService | None = None
     stop = stop_event or asyncio.Event()
     loop = asyncio.get_running_loop()
     installed_signals: list[signal.Signals] = []
@@ -59,6 +65,13 @@ async def run_foreground_daemon(
         handoff_store = HandoffStore(paths.home / "handoffs.db")
         mcp_launcher = ContextMCPLauncher(paths.home)
         worktree_manager = WorktreeManager(root=paths.home / "worktrees")
+        preference_compiler = PreferenceCompiler()
+        preference_learner = PreferenceLearner.for_path(paths.home / "preferences.db")
+        preference_service = PreferenceService.for_path(
+            paths.home / "preference-policy.db",
+            compiler=preference_compiler,
+            learner=preference_learner,
+        )
         services = DaemonServices(
             change_journal=journal,
             change_watcher=ChangeReconciler,
@@ -68,6 +81,12 @@ async def run_foreground_daemon(
             handoff_store=handoff_store,
             worktree_manager=worktree_manager,
             context_mcp_launcher=mcp_launcher,
+            preference_service=preference_service,
+            preference_compiler=preference_compiler,
+            preference_store=preference_learner.store,
+            preference_learner=preference_learner,
+            preference_evaluators=evaluate_artifacts,
+            visual_critic=None,
             attached_collision_policy=configuration.daemon.attached_collision_policy,
         )
         settings = configuration.daemon
@@ -111,6 +130,10 @@ async def run_foreground_daemon(
             symbol_index.close()
         if journal is not None:
             journal.close()
+        if preference_service is not None:
+            preference_service.close()
+        if preference_learner is not None:
+            preference_learner.close()
         if store is not None:
             store.close()
         remove_owned_pid_file(paths.pid)

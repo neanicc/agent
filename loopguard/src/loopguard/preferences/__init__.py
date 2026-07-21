@@ -12,6 +12,7 @@ from .models import (
 )
 from .evaluators import PreferenceArtifact, PreferenceEvaluator, evaluate_artifacts
 from .learning import PreferenceLearner, PreferenceLearningError
+from .service import PreferenceOverride, PreferenceService, PreferenceServiceError
 from .store import PreferenceActor, PreferenceScope
 from .visual_critic import VisualCritic, VisualCriticRequest, VisualImage
 
@@ -24,6 +25,9 @@ __all__ = [
     "PreferenceLearningError",
     "PreferenceProfile",
     "PreferenceRule",
+    "PreferenceOverride",
+    "PreferenceService",
+    "PreferenceServiceError",
     "PreferenceScope",
     "PreferenceSourceManifest",
     "PreferenceStatus",

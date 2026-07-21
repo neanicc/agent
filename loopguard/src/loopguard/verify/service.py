@@ -36,6 +36,9 @@ from .store import VerificationMetadata, VerificationStore
 from .verdict import derive_verdict
 
 if TYPE_CHECKING:
+    from loopguard.preferences.models import PreferenceVerdict
+    from loopguard.preferences.service import PreferenceService
+
     from .runner import CheckExecution
 
 
@@ -48,9 +51,16 @@ _TERMINAL = {
 
 
 class VerificationService:
-    def __init__(self, store: VerificationStore, artifacts: ArtifactStore) -> None:
+    def __init__(
+        self,
+        store: VerificationStore,
+        artifacts: ArtifactStore,
+        *,
+        preferences: PreferenceService | None = None,
+    ) -> None:
         self.store = store
         self.artifacts = artifacts
+        self.preferences = preferences
         self._lock = threading.RLock()
         self.artifacts.prune_unreferenced(self.store.artifact_ids())
         for artifact_id in self.store.artifact_ids():
@@ -63,6 +73,7 @@ class VerificationService:
         *,
         home: Path,
         key_store: KeyStore | None = None,
+        preferences: PreferenceService | None = None,
     ) -> VerificationService:
         resolved_home = home.expanduser().absolute()
         if resolved_home.is_symlink():
@@ -86,7 +97,11 @@ class VerificationService:
             key = generate_data_key()
             keys.put(credential_id, key)
         artifacts = ArtifactStore(artifact_root, key_material=key)
-        return cls(VerificationStore(database, integrity_key=key), artifacts)
+        return cls(
+            VerificationStore(database, integrity_key=key),
+            artifacts,
+            preferences=preferences,
+        )
 
     @classmethod
     def for_path(
@@ -94,6 +109,7 @@ class VerificationService:
         path: Path,
         *,
         key: bytes = b"loopguard-verification-test-key",
+        preferences: PreferenceService | None = None,
     ) -> VerificationService:
         """Open an isolated test store with explicitly injected deterministic key material."""
         database = path.expanduser().absolute()
@@ -101,7 +117,11 @@ class VerificationService:
             database.parent / f"{database.stem}.artifacts",
             key=key,
         )
-        return cls(VerificationStore(database, integrity_key=key), artifacts)
+        return cls(
+            VerificationStore(database, integrity_key=key),
+            artifacts,
+            preferences=preferences,
+        )
 
     def start(
         self,
@@ -110,9 +130,14 @@ class VerificationService:
         repository_id: str,
         repo_seq: int = 0,
         session_seq: int = 0,
+        preference_profile_id: str | None = None,
     ) -> str:
         if not repository_id.strip():
             raise ValueError("repository ID must not be empty")
+        if preference_profile_id is not None:
+            if self.preferences is None:
+                raise ValueError("preference service is required for a preference profile")
+            self.preferences.profile(preference_profile_id)
         now = datetime.now(timezone.utc)
         run_id = f"verify-{uuid.uuid4().hex}"
         run = VerificationRun(
@@ -123,6 +148,7 @@ class VerificationService:
             updated_at=now,
             repo_seq=repo_seq,
             session_seq=session_seq,
+            preference_profile_id=preference_profile_id,
         )
         metadata = VerificationMetadata(
             run_id=run_id,
@@ -200,6 +226,43 @@ class VerificationService:
             updated = run.model_copy(
                 update={
                     "results": [*run.results, result],
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            )
+            self.store.replace(updated, metadata)
+            return updated
+
+    def add_preference_verdict(
+        self,
+        run_id: str,
+        verdict: PreferenceVerdict,
+    ) -> VerificationRun:
+        from loopguard.preferences.models import PreferenceVerdict
+
+        candidate = PreferenceVerdict.model_validate(verdict)
+        with self._lock:
+            run, metadata = self._load_mutable(run_id)
+            _require_status(run, {RunStatus.ACTIVE, RunStatus.COMPLETING})
+            if self.preferences is None or run.preference_profile_id is None:
+                raise ValueError("verification run has no preference policy snapshot")
+            if candidate.artifact_id not in {
+                evidence.artifact_id for evidence in run.evidence
+            }:
+                raise ValueError("preference verdict artifact is not evidence for this run")
+            if candidate.verdict_id in run.preference_verdict_ids:
+                existing = self.preferences.verdict(candidate.verdict_id)
+                if existing != candidate:
+                    raise ValueError("preference verdict replay has conflicting semantics")
+                return run
+            if len(run.preference_verdict_ids) >= 1_024:
+                raise ValueError("verification preference verdict limit exceeded")
+            self.preferences.record_verdict(run.preference_profile_id, candidate)
+            updated = run.model_copy(
+                update={
+                    "preference_verdict_ids": [
+                        *run.preference_verdict_ids,
+                        candidate.verdict_id,
+                    ],
                     "updated_at": datetime.now(timezone.utc),
                 }
             )
@@ -347,6 +410,7 @@ class VerificationService:
                     if any(manifest.artifact_id == artifact_id for manifest in manifests)
                 ],
             )
+            verdict = self._with_preference_policy(run, metadata, verdict)
             completed = run.model_copy(
                 update={
                     "status": RunStatus.COMPLETED,
@@ -356,6 +420,84 @@ class VerificationService:
             )
             self.store.replace(completed, metadata)
             return completed
+
+    def _with_preference_policy(
+        self,
+        run: VerificationRun,
+        metadata: VerificationMetadata,
+        verdict: VerificationVerdict,
+    ) -> VerificationVerdict:
+        if run.preference_profile_id is None and not run.preference_verdict_ids:
+            return verdict
+        evidence = {
+            "preference_profile_id": run.preference_profile_id,
+            "preference_verdict_ids": list(run.preference_verdict_ids),
+        }
+        if self.preferences is None or run.preference_profile_id is None:
+            return verdict.model_copy(
+                update={
+                    **evidence,
+                    "status": _policy_unavailable_status(verdict.status),
+                    "missing_required_checks": [
+                        *verdict.missing_required_checks,
+                        "preference:service-unavailable",
+                    ],
+                }
+            )
+        try:
+            self.preferences.profile(run.preference_profile_id)
+            effective = self.preferences.effective_verdicts(
+                run.preference_verdict_ids,
+                run_id=run.run_id,
+                repository_id=metadata.repository_id,
+            )
+        except Exception:
+            return verdict.model_copy(
+                update={
+                    **evidence,
+                    "status": _policy_unavailable_status(verdict.status),
+                    "missing_required_checks": [
+                        *verdict.missing_required_checks,
+                        "preference:policy-unavailable",
+                    ],
+                }
+            )
+
+        warning_ids: list[str] = []
+        override_ids: list[str] = []
+        blocking_rules: list[str] = []
+        for preference_verdict, override in effective:
+            if override is not None:
+                override_ids.append(override.override_id)
+                continue
+            if preference_verdict.status.value != "violation":
+                continue
+            if preference_verdict.severity.value == "block":
+                blocking_rules.append(preference_verdict.rule_id)
+            else:
+                warning_ids.append(preference_verdict.verdict_id)
+
+        missing = list(verdict.missing_required_checks)
+        for rule_id in sorted(set(blocking_rules)):
+            check_id = f"preference:{rule_id}"
+            if check_id not in missing:
+                missing.append(check_id)
+        status = verdict.status
+        if blocking_rules and status in {
+            VerdictStatus.VERIFIED,
+            VerdictStatus.VERIFIED_WITH_PREEXISTING_FAILURES,
+            VerdictStatus.CHECKS_PASSED_UNBASELINED,
+        }:
+            status = VerdictStatus.INCOMPLETE
+        return verdict.model_copy(
+            update={
+                **evidence,
+                "status": status,
+                "missing_required_checks": missing,
+                "preference_warning_ids": warning_ids,
+                "preference_override_ids": override_ids,
+            }
+        )
 
     def mark_command_started(
         self,
@@ -569,6 +711,16 @@ def _require_status(run: VerificationRun, allowed: set[RunStatus]) -> None:
         raise ValueError(
             f"invalid verification transition from {run.status.value}"
         )
+
+
+def _policy_unavailable_status(status: VerdictStatus) -> VerdictStatus:
+    if status in {
+        VerdictStatus.VERIFIED,
+        VerdictStatus.VERIFIED_WITH_PREEXISTING_FAILURES,
+        VerdictStatus.CHECKS_PASSED_UNBASELINED,
+    }:
+        return VerdictStatus.INCONCLUSIVE
+    return status
 
 
 def _hash_model(payload: dict[str, object]) -> str:
