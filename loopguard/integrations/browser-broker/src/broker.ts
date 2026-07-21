@@ -4,7 +4,7 @@ import { lstat, mkdir } from "node:fs/promises";
 import { isIP } from "node:net";
 import { basename, join, resolve } from "node:path";
 import ipaddr from "ipaddr.js";
-import type { Browser, BrowserContext, BrowserType } from "playwright";
+import type { Browser, BrowserContext, BrowserServer, BrowserType } from "playwright";
 import type { CreateContextParams, PageAction } from "./protocol.js";
 import { PlaintextStorageLeaseManager } from "./storage.js";
 
@@ -36,6 +36,7 @@ export interface BrowserProcess {
   version(): string;
   isConnected(): boolean;
   on(event: "disconnected", handler: () => void): void;
+  endpoint(): string;
 }
 
 export interface BrowserLauncher {
@@ -64,6 +65,13 @@ type ContextLease = {
   lastUsedAt: number;
 };
 
+type EndpointLease = {
+  id: string;
+  sessionId: string;
+  browser: BrowserName;
+  lastUsedAt: number;
+};
+
 export type PublicContextLease = Pick<
   ContextLease,
   "id" | "sessionId" | "browser" | "context" | "artifactDirectory"
@@ -81,6 +89,8 @@ export class BrowserBroker {
   readonly #browsers = new Map<BrowserName, BrowserProcess>();
   readonly #contexts = new Map<string, ContextLease>();
   readonly #sessionContexts = new Map<string, string>();
+  readonly #endpointLeases = new Map<string, EndpointLease>();
+  readonly #sessionEndpointLeases = new Map<string, Set<string>>();
   readonly #disconnectTimers = new Map<string, NodeJS.Timeout>();
   readonly #idleTimer: NodeJS.Timeout;
   #closed = false;
@@ -193,9 +203,44 @@ export class BrowserBroker {
   async closeSession(sessionId: string): Promise<void> {
     this.#cancelDisconnect(sessionId);
     const contextId = this.#sessionContexts.get(sessionId);
-    if (contextId === undefined) return;
-    const lease = this.#contexts.get(contextId);
-    if (lease !== undefined) await this.#destroy(lease);
+    if (contextId !== undefined) {
+      const lease = this.#contexts.get(contextId);
+      if (lease !== undefined) await this.#destroy(lease);
+    }
+    for (const leaseId of this.#sessionEndpointLeases.get(sessionId) ?? []) {
+      this.#endpointLeases.delete(leaseId);
+    }
+    this.#sessionEndpointLeases.delete(sessionId);
+  }
+
+  async acquireEndpoint(
+    sessionId: string,
+    browserName: BrowserName,
+  ): Promise<{ leaseId: string; endpoint: string }> {
+    this.#assertOpen();
+    this.#cancelDisconnect(sessionId);
+    const browser = await this.#browser(browserName);
+    const leaseId = randomBytes(32).toString("base64url");
+    this.#endpointLeases.set(leaseId, {
+      id: leaseId,
+      sessionId,
+      browser: browserName,
+      lastUsedAt: this.#now(),
+    });
+    const sessionLeases = this.#sessionEndpointLeases.get(sessionId) ?? new Set<string>();
+    sessionLeases.add(leaseId);
+    this.#sessionEndpointLeases.set(sessionId, sessionLeases);
+    return { leaseId, endpoint: browser.endpoint() };
+  }
+
+  async releaseEndpoint(leaseId: string, sessionId: string): Promise<void> {
+    const lease = this.#endpointLeases.get(leaseId);
+    if (lease === undefined) throw new Error("unknown browser endpoint capability");
+    if (lease.sessionId !== sessionId) throw new Error("browser endpoint session mismatch");
+    this.#endpointLeases.delete(leaseId);
+    const sessionLeases = this.#sessionEndpointLeases.get(sessionId);
+    sessionLeases?.delete(leaseId);
+    if (sessionLeases?.size === 0) this.#sessionEndpointLeases.delete(sessionId);
   }
 
   async runPage(
@@ -276,15 +321,22 @@ export class BrowserBroker {
     const cutoff = this.#now() - this.#idleTtlMs;
     const stale = [...this.#contexts.values()].filter((lease) => lease.lastUsedAt < cutoff);
     for (const lease of stale) await this.#destroy(lease);
-    return stale.length;
+    const staleEndpoints = [...this.#endpointLeases.values()].filter(
+      (lease) => lease.lastUsedAt < cutoff,
+    );
+    for (const lease of staleEndpoints) {
+      await this.releaseEndpoint(lease.id, lease.sessionId);
+    }
+    return stale.length + staleEndpoints.length;
   }
 
-  health(): { browsers: Record<string, string>; activeContexts: number } {
+  health(): { browsers: Record<string, string>; activeContexts: number; activeEndpointLeases: number } {
     return {
       browsers: Object.fromEntries(
         [...this.#browsers].map(([name, browser]) => [name, browser.version()]),
       ),
       activeContexts: this.#contexts.size,
+      activeEndpointLeases: this.#endpointLeases.size,
     };
   }
 
@@ -295,6 +347,8 @@ export class BrowserBroker {
     for (const timer of this.#disconnectTimers.values()) clearTimeout(timer);
     this.#disconnectTimers.clear();
     for (const lease of [...this.#contexts.values()]) await this.#destroy(lease);
+    this.#endpointLeases.clear();
+    this.#sessionEndpointLeases.clear();
     for (const browser of this.#browsers.values()) await browser.close().catch(() => undefined);
     this.#browsers.clear();
     await this.#storageManager.cleanup();
@@ -314,6 +368,11 @@ export class BrowserBroker {
     this.#browsers.delete(name);
     const lost = [...this.#contexts.values()].filter((lease) => lease.browser === name);
     for (const lease of lost) await this.#destroy(lease);
+    for (const lease of [...this.#endpointLeases.values()]) {
+      if (lease.browser === name) {
+        await this.releaseEndpoint(lease.id, lease.sessionId);
+      }
+    }
   }
 
   #lease(contextId: string, sessionId: string): ContextLease {
@@ -386,20 +445,29 @@ export class PlaywrightLauncher implements BrowserLauncher {
   async launch(browser: BrowserName): Promise<BrowserProcess> {
     const playwright = await import("playwright");
     const type = playwright[browser] as BrowserType<Browser>;
-    const instance = await type.launch({ headless: true });
-    return new PlaywrightBrowserProcess(instance);
+    const server = await type.launchServer({ headless: true });
+    try {
+      const controller = await type.connect(server.wsEndpoint());
+      return new PlaywrightBrowserProcess(server, controller);
+    } catch (error) {
+      await server.close().catch(() => undefined);
+      throw error;
+    }
   }
 }
 
 class PlaywrightBrowserProcess implements BrowserProcess {
-  constructor(readonly browser: Browser) {}
+  constructor(readonly server: BrowserServer, readonly browser: Browser) {}
   async newContext(options: Record<string, unknown>): Promise<BrowserContextHandle> {
     return (await this.browser.newContext(options)) as BrowserContext;
   }
-  close() { return this.browser.close(); }
+  async close() {
+    await this.server.close();
+  }
   version() { return this.browser.version(); }
   isConnected() { return this.browser.isConnected(); }
   on(event: "disconnected", handler: () => void) { this.browser.on(event, handler); }
+  endpoint() { return this.server.wsEndpoint(); }
 }
 
 async function resolveAddresses(hostname: string): Promise<string[]> {

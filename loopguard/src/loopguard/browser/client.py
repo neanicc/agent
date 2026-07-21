@@ -47,6 +47,8 @@ class BrokerConnection(Protocol):
 
     async def close(self) -> None: ...
 
+    def playwright_environment(self, session_id: str) -> dict[str, str]: ...
+
 
 class BrokerFactory(Protocol):
     async def start(self, capability: str) -> BrokerConnection: ...
@@ -153,6 +155,44 @@ class BrowserBrokerClient:
             },
             timeout_seconds=timeout_seconds,
         )
+
+    async def acquire_browser_endpoint(
+        self,
+        *,
+        session_id: str,
+        browser: str,
+        timeout_seconds: float = 15,
+    ) -> BrowserResult:
+        return await self._call(
+            "browser.connect",
+            {"sessionId": session_id, "browser": browser},
+            timeout_seconds=timeout_seconds,
+        )
+
+    async def release_browser_endpoint(
+        self,
+        lease_id: str,
+        *,
+        session_id: str,
+        timeout_seconds: float = 5,
+    ) -> BrowserResult:
+        return await self._call(
+            "browser.release",
+            {"sessionId": session_id, "leaseId": lease_id},
+            timeout_seconds=timeout_seconds,
+        )
+
+    async def playwright_environment(self, session_id: str) -> dict[str, str]:
+        """Return ephemeral child-process variables for the opt-in Playwright fixture."""
+
+        if (
+            not session_id
+            or len(session_id) > 192
+            or any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._:-" for character in session_id)
+        ):
+            raise ValueError("Playwright broker session ID is invalid")
+        connection = await self._ensure_connection()
+        return connection.playwright_environment(session_id)
 
     async def close(self) -> None:
         self._closed = True
@@ -319,6 +359,8 @@ class LocalBrokerFactory:
                     reader=reader,
                     writer=writer,
                     process=process,
+                    endpoint=endpoint,
+                    capability=capability,
                 )
             except (ConnectionError, FileNotFoundError, OSError) as exc:
                 last_error = exc
@@ -334,10 +376,14 @@ class FramedBrokerConnection:
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
         process: asyncio.subprocess.Process,
+        endpoint: str,
+        capability: str,
     ) -> None:
         self.reader = reader
         self.writer = writer
         self.process = process
+        self.endpoint = endpoint
+        self._capability = capability
         self._closed = False
 
     def is_alive(self) -> bool:
@@ -375,6 +421,13 @@ class FramedBrokerConnection:
         with contextlib.suppress(Exception):
             await self.writer.wait_closed()
         await _terminate_process(self.process)
+
+    def playwright_environment(self, session_id: str) -> dict[str, str]:
+        return {
+            "LOOPGUARD_BROWSER_SOCKET": self.endpoint,
+            "LOOPGUARD_BROWSER_CAPABILITY": self._capability,
+            "LOOPGUARD_BROWSER_SESSION": session_id,
+        }
 
 
 def _parse_handshake(value: Mapping[str, Any]) -> None:

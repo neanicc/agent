@@ -76,7 +76,7 @@ export class BrowserBrokerServer {
               return;
             }
             const command = parseCommand(value);
-            if (command.method === "context.create") {
+            if (command.method === "context.create" || command.method === "browser.connect") {
               sessionIds.add(command.params.sessionId);
             }
             this.#write(socket, await this.#execute(command));
@@ -125,6 +125,21 @@ export class BrowserBrokerServer {
               command.params.actions,
             ),
           };
+        case "browser.connect":
+          return {
+            id: command.id,
+            ok: true,
+            result: await this.#broker.acquireEndpoint(
+              command.params.sessionId,
+              command.params.browser,
+            ),
+          };
+        case "browser.release":
+          await this.#broker.releaseEndpoint(
+            command.params.leaseId,
+            command.params.sessionId,
+          );
+          return { id: command.id, ok: true, result: {} };
       }
     } catch (error) {
       return {
@@ -156,6 +171,8 @@ function safeMessage(error: unknown): string {
     "navigation host did not resolve",
     "artifact name is unsafe",
     "page action limit exceeded",
+    "unknown browser endpoint capability",
+    "browser endpoint session mismatch",
   ]);
   return allowed.has(message) ? message : "broker request failed";
 }

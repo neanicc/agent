@@ -120,7 +120,8 @@ test("server requires the daemon capability before all broker methods", { skip: 
       id: "handshake", ok: true, result: { protocolVersion: 1 },
     });
     assert.deepEqual(health, {
-      id: "health-1", ok: true, result: { activeContexts: 0, browsers: {} },
+      id: "health-1", ok: true,
+      result: { activeContexts: 0, activeEndpointLeases: 0, browsers: {} },
     });
     client.destroy();
   } finally {

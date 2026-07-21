@@ -4,6 +4,7 @@ import os
 import socket
 import sqlite3
 import stat
+from pathlib import Path
 from urllib.parse import quote
 
 from .errors import ErrorEnvelope, error_for
@@ -16,7 +17,10 @@ def build_doctor_report(
     paths: ControlPaths,
     *,
     platform_name: str | None = None,
+    repository: str | Path | None = None,
 ) -> dict[str, object]:
+    from loopguard.browser.execution import playwright_adapter_status
+
     active_platform = platform_name or os.name
     errors: list[ErrorEnvelope] = []
     state_permissions = _state_permissions(paths, errors)
@@ -39,6 +43,7 @@ def build_doctor_report(
         "store": store,
         "state_permissions": state_permissions,
         "integration": integration,
+        "browser_acceleration": playwright_adapter_status(repository or Path.cwd()),
         "errors": [error.to_dict() for error in errors],
     }
     return report

@@ -133,6 +133,23 @@ def test_doctor_names_platform_capability_unavailable(tmp_path):
     assert "LGD-CAP-005" in {error["code"] for error in report["errors"]}
 
 
+def test_doctor_reports_playwright_adapter_activation(tmp_path):
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    (repository / "playwright.config.ts").write_text(
+        'import { defineLoopGuardConfig } from "@loopguard/playwright/config";\n'
+    )
+    (repository / "smoke.spec.ts").write_text(
+        'import { test } from "@loopguard/playwright";\n'
+    )
+
+    report = build_doctor_report(
+        ControlPaths.from_home(tmp_path / "home"), repository=repository
+    )
+
+    assert report["browser_acceleration"]["enabled"] is True
+
+
 def _requirement_name(requirement: str) -> str:
     head = requirement.split(";", 1)[0].strip()
     for separator in ("[", "<", ">", "=", "!", "~"):

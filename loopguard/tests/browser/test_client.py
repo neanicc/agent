@@ -56,6 +56,13 @@ class FakeConnection:
     def exit(self) -> None:
         self.alive = False
 
+    def playwright_environment(self, session_id: str) -> dict[str, str]:
+        return {
+            "LOOPGUARD_BROWSER_SOCKET": "/safe/browser.sock",
+            "LOOPGUARD_BROWSER_CAPABILITY": "c" * 64,
+            "LOOPGUARD_BROWSER_SESSION": session_id,
+        }
+
 
 class FakeBrokerFactory:
     def __init__(self) -> None:
@@ -123,6 +130,22 @@ def test_response_correlation_failure_closes_untrusted_connection() -> None:
         assert not result.ok
         assert result.code == "protocol_error"
         assert factory.current.closed
+
+    run(scenario())
+
+
+def test_playwright_environment_is_ephemeral_and_session_scoped() -> None:
+    async def scenario() -> None:
+        client = BrowserBrokerClient(factory=FakeBrokerFactory())
+        environment = await client.playwright_environment("repo:session-1")
+        assert environment == {
+            "LOOPGUARD_BROWSER_SOCKET": "/safe/browser.sock",
+            "LOOPGUARD_BROWSER_CAPABILITY": "c" * 64,
+            "LOOPGUARD_BROWSER_SESSION": "repo:session-1",
+        }
+        with pytest.raises(ValueError):
+            await client.playwright_environment("bad session")
+        await client.close()
 
     run(scenario())
 
@@ -217,7 +240,11 @@ def test_local_factory_supervises_real_pinned_broker() -> None:
             client = BrowserBrokerClient(factory=LocalBrokerFactory(home=home))
             result = await client.health()
             assert result.ok
-            assert result.result == {"activeContexts": 0, "browsers": {}}
+            assert result.result == {
+                "activeContexts": 0,
+                "activeEndpointLeases": 0,
+                "browsers": {},
+            }
             await client.close()
             assert list((home / "browser").glob("*.sock")) == []
 

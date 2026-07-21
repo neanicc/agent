@@ -88,11 +88,21 @@ const runPageParams = z.strictObject({
   actions: z.array(pageAction).max(MAX_ACTIONS),
   timeoutMs: z.number().int().min(1).max(120_000),
 });
+const connectBrowserParams = z.strictObject({
+  sessionId: identifier,
+  browser: z.enum(["chromium", "firefox", "webkit"]),
+});
+const releaseBrowserParams = z.strictObject({
+  sessionId: identifier,
+  leaseId: contextId,
+});
 
 const commandSchema = z.discriminatedUnion("method", [
   z.strictObject({ id: requestId, method: z.literal("context.create"), params: createContextParams }),
   z.strictObject({ id: requestId, method: z.literal("context.close"), params: closeContextParams }),
   z.strictObject({ id: requestId, method: z.literal("page.run"), params: runPageParams }),
+  z.strictObject({ id: requestId, method: z.literal("browser.connect"), params: connectBrowserParams }),
+  z.strictObject({ id: requestId, method: z.literal("browser.release"), params: releaseBrowserParams }),
   z.strictObject({ id: requestId, method: z.literal("health"), params: z.strictObject({}) }),
 ]);
 

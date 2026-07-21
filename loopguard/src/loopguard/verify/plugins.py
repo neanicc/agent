@@ -6,9 +6,12 @@ import posixpath
 import re
 from enum import StrEnum
 from pathlib import Path, PurePosixPath
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+if TYPE_CHECKING:
+    from loopguard.browser.manifest import PlaywrightManifest
 
 
 _EXCLUDED_PARTS = {
@@ -202,6 +205,66 @@ class TypeScriptImpactPlugin:
                     candidates.setdefault(candidate, []).append(
                         f"convention:{change.path}"
                     )
+        return ImpactContribution(
+            plugin=self.name,
+            edges=_unique_edges(edges),
+            candidates=candidates,
+        )
+
+
+class PlaywrightImpactPlugin:
+    """Contributes offline Playwright coverage to the shared impact graph."""
+
+    name = "playwright"
+
+    def __init__(
+        self,
+        manifest: PlaywrightManifest,
+        *,
+        dependency_edges: dict[str, list[str]] | None = None,
+    ) -> None:
+        from loopguard.browser.manifest import PlaywrightManifest
+        from loopguard.browser.selection import PlaywrightSelector
+
+        self.manifest = PlaywrightManifest.model_validate(manifest)
+        self.selector = PlaywrightSelector(
+            self.manifest, dependency_edges=dependency_edges
+        )
+
+    def analyze(self, repo: Path, changes: list[ChangeRecord]) -> ImpactContribution:
+        _repository_root(repo)
+        selection = self.selector.select([change.path for change in changes])
+        candidates = {
+            path: reasons
+            for path, reasons in selection.explanations.items()
+            if not path.startswith("project:")
+        }
+        if selection.confidence == "fallback":
+            fallback_reasons = sorted(
+                {
+                    reason
+                    for key, reasons in selection.explanations.items()
+                    if key.startswith("project:")
+                    for reason in reasons
+                }
+            )
+            for test in self.manifest.tests:
+                candidates.setdefault(
+                    test.file,
+                    [f"smoke-fallback:{reason}" for reason in fallback_reasons]
+                    or ["smoke-fallback:unknown-impact"],
+                )
+
+        edges: list[ImpactEdge] = []
+        for test in self.manifest.tests:
+            for target in [*test.imports, *test.components, *test.dependencies]:
+                edges.append(
+                    ImpactEdge(
+                        source_path=test.file,
+                        target_path=target,
+                        kind=ImpactEdgeKind.COVERS,
+                    )
+                )
         return ImpactContribution(
             plugin=self.name,
             edges=_unique_edges(edges),

@@ -47,6 +47,22 @@ test("accepts every strict broker command", () => {
     "page.run",
   );
   assert.equal(parseCommand({ id: "4", method: "health", params: {} }).method, "health");
+  assert.equal(
+    parseCommand({
+      id: "5",
+      method: "browser.connect",
+      params: { sessionId: "s1", browser: "chromium" },
+    }).method,
+    "browser.connect",
+  );
+  assert.equal(
+    parseCommand({
+      id: "6",
+      method: "browser.release",
+      params: { sessionId: "s1", leaseId: contextCapability },
+    }).method,
+    "browser.release",
+  );
 });
 
 test("rejects unknown fields, browser names, and unbounded action values", () => {

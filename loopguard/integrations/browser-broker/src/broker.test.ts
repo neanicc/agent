@@ -44,6 +44,24 @@ test("reuses browser but never context storage", async () => {
   await broker.close();
 });
 
+test("leases one supported browser endpoint across isolated test workers", async () => {
+  const { broker, launcher } = await setup();
+  const first = await broker.acquireEndpoint("worker-a", "chromium");
+  const second = await broker.acquireEndpoint("worker-b", "chromium");
+  assert.equal(first.endpoint, "ws://fake.invalid/playwright");
+  assert.equal(second.endpoint, first.endpoint);
+  assert.notEqual(first.leaseId, second.leaseId);
+  assert.equal(launcher.starts, 1);
+  await assert.rejects(
+    () => broker.releaseEndpoint(first.leaseId, "worker-b"),
+    /session mismatch/,
+  );
+  await broker.releaseEndpoint(first.leaseId, "worker-a");
+  await broker.closeSession("worker-b");
+  assert.equal(broker.health().activeEndpointLeases, 0);
+  await broker.close();
+});
+
 test("closing a session destroys every page, context, and capability", async () => {
   const { broker } = await setup();
   const session = await broker.createContext({

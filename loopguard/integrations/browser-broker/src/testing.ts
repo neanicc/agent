@@ -104,6 +104,10 @@ export class FakeBrowser implements BrowserProcess {
     if (event === "disconnected") this.disconnected = handler;
   }
 
+  endpoint() {
+    return "ws://fake.invalid/playwright";
+  }
+
   crash() {
     this.connected = false;
     this.disconnected?.();
