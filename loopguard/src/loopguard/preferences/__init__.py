@@ -11,13 +11,19 @@ from .models import (
     RuleSource,
 )
 from .evaluators import PreferenceArtifact, PreferenceEvaluator, evaluate_artifacts
+from .learning import PreferenceLearner, PreferenceLearningError
+from .store import PreferenceActor, PreferenceScope
 
 __all__ = [
     "PreferenceEvidence",
     "PreferenceArtifact",
+    "PreferenceActor",
     "PreferenceEvaluator",
+    "PreferenceLearner",
+    "PreferenceLearningError",
     "PreferenceProfile",
     "PreferenceRule",
+    "PreferenceScope",
     "PreferenceSourceManifest",
     "PreferenceStatus",
     "PreferenceVerdict",
