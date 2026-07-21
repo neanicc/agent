@@ -5,6 +5,12 @@ Every non-success response uses `application/problem+json` and includes a stable
 `current_state` fields add safe corrective context. Include the request ID—not credentials,
 request bodies, or tokens—when contacting support.
 
+## LGAPI-ACTION-CONFLICT
+
+- Meaning: the requested action transition conflicts with its durable lifecycle (`409`).
+- Fix: fetch the action by ID and reconcile its current state before taking another step.
+- Retry: do not create or re-sign a replacement until the existing action is reconciled.
+
 ## LGAPI-BODY-TOO-LARGE
 
 - Meaning: the declared or streamed request body exceeded the endpoint limit (`413`).
@@ -17,6 +23,12 @@ request bodies, or tokens—when contacting support.
   (`403`).
 - Fix: refresh the same-origin browser session and retry through the supported BFF.
 - Retry: safe after obtaining a new CSRF token; do not replay a stale form automatically.
+
+## LGAPI-DEVICE-PROOF-REQUIRED
+
+- Meaning: the action lacks proof from a current, non-revoked registered device (`401`).
+- Fix: repeat review with the registered device and sign the returned canonical challenge.
+- Retry: use a fresh challenge; never reuse or silently substitute a device signature.
 
 ## LGAPI-FORBIDDEN
 

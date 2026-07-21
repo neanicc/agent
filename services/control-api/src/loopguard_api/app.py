@@ -11,7 +11,7 @@ from http.cookies import SimpleCookie
 from typing import Any
 from urllib.parse import urlsplit
 
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -20,13 +20,16 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .auth import AuthService, CachedOidcJwksProvider, DatabaseMembershipStore
-from .authorization import Principal, current_principal, require_controller
+from .action_signing import Ed25519ActionSigner
+from .actions import ActionService
+from .authorization import Principal, current_principal
 from .db import create_database_engine, tenant_session_factory
 from .errors import ApiProblem, problem_response
 from .hook_ingest import HookService
 from .pairing import PairingService
 from .routes.hooks import router as hooks_router
 from .routes.hosts import router as hosts_router
+from .routes.actions import router as actions_router
 from .routes.sessions import router as sessions_router
 from .settings import PublicBuild, Settings
 from .stream_tickets import StreamTicketService
@@ -48,6 +51,7 @@ def create_app(
     auth_service: AuthService | None = None,
     stream_ticket_service: StreamTicketService | None = None,
     subscription_service: SessionSubscriptionService | None = None,
+    action_service: ActionService | None = None,
 ) -> FastAPI:
     active = settings or Settings()
     app = FastAPI(title="LoopGuard Control API", version="0.1.0")
@@ -71,6 +75,13 @@ def create_app(
     app.state.hook_service = HookService(maximum_body_bytes=active.max_request_bytes)
     app.state.stream_ticket_service = stream_ticket_service or StreamTicketService()
     app.state.subscription_service = subscription_service or SessionSubscriptionService()
+    if action_service is None:
+        if active.environment in {"staging", "production"}:
+            raise ValueError("hosted deployments require an external action signer adapter")
+        action_service = ActionService(
+            signer=Ed25519ActionSigner.generate(active.action_signing_active_key_id)
+        )
+    app.state.action_service = action_service
 
     @app.exception_handler(ApiProblem)
     async def api_problem(request: Request, exc: ApiProblem):
@@ -120,13 +131,6 @@ def create_app(
             "permissions": sorted(principal.permissions),
         }
 
-    @app.post("/v1/actions", status_code=status.HTTP_202_ACCEPTED)
-    async def authorize_action(
-        _principal: Principal = Depends(require_controller),
-    ) -> dict[str, str]:
-        # CLOUD-T06 replaces this authorization seam with signed action persistence.
-        return {"status": "authorization_verified"}
-
     if active.environment == "test":
         @app.post("/_test/validate", include_in_schema=False)
         async def validate_fixture(body: ValidationFixture) -> dict[str, int]:
@@ -139,6 +143,7 @@ def create_app(
     app.include_router(hosts_router)
     app.include_router(hooks_router)
     app.include_router(sessions_router)
+    app.include_router(actions_router)
 
     app.add_middleware(
         CORSMiddleware,

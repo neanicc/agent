@@ -18,8 +18,10 @@ class ErrorDefinition:
 
 
 ERROR_CATALOG: dict[str, ErrorDefinition] = {
+    "LGAPI-ACTION-CONFLICT": ErrorDefinition(409, "Action state conflict", "The action cannot transition from its current state."),
     "LGAPI-BODY-TOO-LARGE": ErrorDefinition(413, "Request body too large", "The request exceeds the documented size limit."),
     "LGAPI-CSRF-REQUIRED": ErrorDefinition(403, "CSRF proof required", "Cookie-authenticated changes require an allowed origin and matching CSRF proof."),
+    "LGAPI-DEVICE-PROOF-REQUIRED": ErrorDefinition(401, "Device proof required", "A current registered device signature is required for this action."),
     "LGAPI-FORBIDDEN": ErrorDefinition(403, "Operation forbidden", "The authenticated principal is not allowed to perform this operation."),
     "LGAPI-HOST-UNTRUSTED": ErrorDefinition(400, "Untrusted host", "The HTTP host is not in the deployment allowlist."),
     "LGAPI-HOOK-BINDING": ErrorDefinition(403, "Hook repository denied", "The hook credential is not bound to the requested repository."),

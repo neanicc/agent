@@ -187,13 +187,20 @@ def test_viewer_cannot_create_action(client: TestClient, token_factory):
 
 def test_operator_permission_is_accepted(client: TestClient, token_factory):
     response = client.post(
-        "/v1/actions",
+        "/v1/actions/challenge",
         headers=bearer(token_factory()),
         json={
-            "target": {"kind": "session", "target_id": str(uuid.uuid4())},
+            "target": {
+                "kind": "session",
+                "target_id": str(uuid.uuid4()),
+                "host_id": str(uuid.uuid4()),
+            },
+            "device_id": str(uuid.uuid4()),
             "kind": "interrupt",
+            "expected_state_version": 1,
+            "expected_state_hash": "sha256:state",
         },
     )
 
-    assert response.status_code == 202
-    assert response.json()["status"] == "authorization_verified"
+    assert response.status_code == 201
+    assert response.json()["state"] == "reviewed"
