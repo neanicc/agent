@@ -27,7 +27,10 @@ from .hook_ingest import HookService
 from .pairing import PairingService
 from .routes.hooks import router as hooks_router
 from .routes.hosts import router as hosts_router
+from .routes.sessions import router as sessions_router
 from .settings import PublicBuild, Settings
+from .stream_tickets import StreamTicketService
+from .subscriptions import SessionSubscriptionService
 
 
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
@@ -43,6 +46,8 @@ def create_app(
     settings: Settings | None = None,
     *,
     auth_service: AuthService | None = None,
+    stream_ticket_service: StreamTicketService | None = None,
+    subscription_service: SessionSubscriptionService | None = None,
 ) -> FastAPI:
     active = settings or Settings()
     app = FastAPI(title="LoopGuard Control API", version="0.1.0")
@@ -64,6 +69,8 @@ def create_app(
     app.state.auth_service = auth_service
     app.state.pairing_service = PairingService()
     app.state.hook_service = HookService(maximum_body_bytes=active.max_request_bytes)
+    app.state.stream_ticket_service = stream_ticket_service or StreamTicketService()
+    app.state.subscription_service = subscription_service or SessionSubscriptionService()
 
     @app.exception_handler(ApiProblem)
     async def api_problem(request: Request, exc: ApiProblem):
@@ -131,6 +138,7 @@ def create_app(
 
     app.include_router(hosts_router)
     app.include_router(hooks_router)
+    app.include_router(sessions_router)
 
     app.add_middleware(
         CORSMiddleware,
