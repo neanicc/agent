@@ -52,11 +52,24 @@ const screenshotAction = z.strictObject({
   name: z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/),
   fullPage: z.boolean().optional(),
 });
+const artifactName = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/);
+const uploadAction = z.strictObject({
+  type: z.literal("upload"),
+  selector: boundedText.min(1),
+  artifactName,
+});
+const downloadAction = z.strictObject({
+  type: z.literal("download"),
+  selector: boundedText.min(1),
+  name: artifactName,
+});
 const pageAction = z.discriminatedUnion("type", [
   gotoAction,
   clickAction,
   fillAction,
   screenshotAction,
+  uploadAction,
+  downloadAction,
 ]);
 
 const createContextParams = z.strictObject({

@@ -72,6 +72,17 @@ test("rejects unknown fields, browser names, and unbounded action values", () =>
       },
     }),
   );
+  assert.throws(() =>
+    parseCommand({
+      id: "3",
+      method: "page.run",
+      params: {
+        contextId: "x".repeat(64),
+        timeoutMs: 1_000,
+        actions: [{ type: "upload", selector: "input", artifactName: "../secret" }],
+      },
+    }),
+  );
 });
 
 test("requires the exact protocol version and a high-entropy connection capability", () => {
