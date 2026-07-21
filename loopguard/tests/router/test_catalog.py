@@ -26,6 +26,7 @@ def test_catalog_filters_by_surface_capability_and_budget(catalog_models) -> Non
         effort="low",
         capabilities={"tools"},
         max_output_cost_per_million=Decimal("5"),
+        at=NOW,
     )
 
     assert [model.id for model in result] == ["fast"]
@@ -35,9 +36,12 @@ def test_unknown_prices_are_never_treated_as_zero(catalog_models) -> None:
     catalog = ModelCatalog(catalog_models)
 
     budgeted = catalog.eligible(
-        surface="attached", effort="low", max_output_cost_per_million=Decimal("5")
+        surface="attached",
+        effort="low",
+        max_output_cost_per_million=Decimal("5"),
+        at=NOW,
     )
-    unbudgeted = catalog.eligible(surface="attached", effort="low")
+    unbudgeted = catalog.eligible(surface="attached", effort="low", at=NOW)
 
     assert budgeted == []
     assert [model.id for model in unbudgeted] == ["unknown-price"]
