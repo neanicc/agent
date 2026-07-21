@@ -6,6 +6,8 @@ import signal
 from collections.abc import Callable
 
 from loopguard.configuration import ControlConfiguration
+from loopguard.browser.client import BrowserBrokerClient
+from loopguard.browser.service import BrowserService
 from loopguard.context.capability import ContextMCPLauncher
 from loopguard.context.digest import DigestBuilder
 from loopguard.context.handoff import HandoffStore
@@ -54,6 +56,7 @@ async def run_foreground_daemon(
     daemon: LoopGuardDaemon | None = None
     preference_learner: PreferenceLearner | None = None
     preference_service: PreferenceService | None = None
+    browser_service: BrowserService | None = None
     stop = stop_event or asyncio.Event()
     loop = asyncio.get_running_loop()
     installed_signals: list[signal.Signals] = []
@@ -72,6 +75,11 @@ async def run_foreground_daemon(
             compiler=preference_compiler,
             learner=preference_learner,
         )
+        browser_client = BrowserBrokerClient.local(paths.home)
+        browser_service = BrowserService(
+            paths.home / "browser-leases.json",
+            client=browser_client,
+        )
         services = DaemonServices(
             change_journal=journal,
             change_watcher=ChangeReconciler,
@@ -87,6 +95,8 @@ async def run_foreground_daemon(
             preference_learner=preference_learner,
             preference_evaluators=evaluate_artifacts,
             visual_critic=None,
+            browser_client=browser_client,
+            browser_service=browser_service,
             attached_collision_policy=configuration.daemon.attached_collision_policy,
         )
         settings = configuration.daemon
@@ -118,6 +128,8 @@ async def run_foreground_daemon(
             loop.remove_signal_handler(candidate)
         if daemon is not None:
             await daemon.close()
+        if browser_service is not None:
+            await browser_service.close()
         if mcp_launcher is not None:
             mcp_launcher.close()
         if worktree_manager is not None:

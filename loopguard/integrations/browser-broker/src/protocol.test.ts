@@ -29,7 +29,7 @@ test("accepts every strict broker command", () => {
     parseCommand({
       id: "2",
       method: "context.close",
-      params: { contextId: contextCapability },
+      params: { contextId: contextCapability, sessionId: "s1" },
     }).method,
     "context.close",
   );
@@ -39,6 +39,7 @@ test("accepts every strict broker command", () => {
       method: "page.run",
       params: {
         contextId: contextCapability,
+        sessionId: "s1",
         timeoutMs: 1_000,
         actions: [{ type: "goto", url: "https://example.test" }],
       },
@@ -67,6 +68,7 @@ test("rejects unknown fields, browser names, and unbounded action values", () =>
       method: "page.run",
       params: {
         contextId: "ctx",
+        sessionId: "s1",
         timeoutMs: 1_000,
         actions: [{ type: "fill", selector: "#password", value: "x".repeat(70_000) }],
       },
@@ -78,6 +80,7 @@ test("rejects unknown fields, browser names, and unbounded action values", () =>
       method: "page.run",
       params: {
         contextId: "x".repeat(64),
+        sessionId: "s1",
         timeoutMs: 1_000,
         actions: [{ type: "upload", selector: "input", artifactName: "../secret" }],
       },

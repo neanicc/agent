@@ -93,6 +93,8 @@ class DaemonServices:
     preference_learner: object | None = None
     preference_evaluators: object | None = None
     visual_critic: object | None = None
+    browser_client: object | None = None
+    browser_service: object | None = None
     attached_collision_policy: str = "warn"
 
     @classmethod
@@ -145,6 +147,7 @@ class DaemonServices:
         event: ControlEvent,
         core_decision: PolicyDecision,
     ) -> PolicyDecision:
+        await self._observe_browser_session(event)
         attachment_failed = self._observe_attached_session(event)
         workflow = self.verification_workflow
         if (
@@ -197,6 +200,19 @@ class DaemonServices:
             return core_decision
         decision = self.completion_enforcement.policy_decision(event, core_decision)
         return self._validate(event, core_decision, decision)
+
+    async def _observe_browser_session(self, event: ControlEvent) -> None:
+        service = self.browser_service
+        if service is None:
+            return
+        try:
+            if event.kind is EventKind.SESSION_STARTED:
+                await service.session_started(event.session.session_id)
+            elif event.kind is EventKind.SESSION_STOPPED:
+                await service.session_stopped(event.session.session_id)
+        except Exception:
+            # Browser acceleration is optional and cannot weaken the core guard path.
+            return
 
     def _observe_attached_session(self, event: ControlEvent) -> bool:
         manager = self.worktree_manager

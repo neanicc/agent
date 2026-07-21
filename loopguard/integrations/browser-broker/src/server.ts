@@ -42,7 +42,7 @@ export class BrowserBrokerServer {
     this.#connections.add(socket);
     const decoder = new FrameDecoder();
     let authenticated = false;
-    let sessionId: string | undefined;
+    const sessionIds = new Set<string>();
     let pending = 0;
     let chain = Promise.resolve();
 
@@ -77,12 +77,9 @@ export class BrowserBrokerServer {
             }
             const command = parseCommand(value);
             if (command.method === "context.create") {
-              if (sessionId !== undefined && sessionId !== command.params.sessionId) {
-                throw new Error("connection session mismatch");
-              }
-              sessionId = command.params.sessionId;
+              sessionIds.add(command.params.sessionId);
             }
-            this.#write(socket, await this.#execute(command, sessionId));
+            this.#write(socket, await this.#execute(command));
           })
           .catch(() => {
             socket.destroy();
@@ -94,12 +91,12 @@ export class BrowserBrokerServer {
     });
     socket.once("close", () => {
       this.#connections.delete(socket);
-      if (sessionId !== undefined) this.#broker.clientDisconnected(sessionId);
+      for (const sessionId of sessionIds) this.#broker.clientDisconnected(sessionId);
     });
     socket.once("error", () => undefined);
   }
 
-  async #execute(command: BrokerCommand, sessionId: string | undefined): Promise<unknown> {
+  async #execute(command: BrokerCommand): Promise<unknown> {
     try {
       switch (command.method) {
         case "health":
@@ -113,17 +110,18 @@ export class BrowserBrokerServer {
           };
         }
         case "context.close":
-          if (sessionId === undefined) throw new Error("connection has no session");
-          await this.#broker.closeContext(command.params.contextId, sessionId);
+          await this.#broker.closeContext(
+            command.params.contextId,
+            command.params.sessionId,
+          );
           return { id: command.id, ok: true, result: {} };
         case "page.run":
-          if (sessionId === undefined) throw new Error("connection has no session");
           return {
             id: command.id,
             ok: true,
             result: await this.#broker.runPage(
               command.params.contextId,
-              sessionId,
+              command.params.sessionId,
               command.params.actions,
             ),
           };

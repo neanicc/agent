@@ -81,9 +81,10 @@ const createContextParams = z.strictObject({
   timezoneId: z.string().min(1).max(128).optional(),
   serviceWorkers: z.enum(["allow", "block"]).default("block"),
 });
-const closeContextParams = z.strictObject({ contextId });
+const closeContextParams = z.strictObject({ contextId, sessionId: identifier });
 const runPageParams = z.strictObject({
   contextId,
+  sessionId: identifier,
   actions: z.array(pageAction).max(MAX_ACTIONS),
   timeoutMs: z.number().int().min(1).max(120_000),
 });
