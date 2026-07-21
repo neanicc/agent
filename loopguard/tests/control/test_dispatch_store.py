@@ -67,6 +67,7 @@ def test_version_one_store_migrates_without_losing_encrypted_events(tmp_path):
         store.append(tool_event("evt-before-migration"))
 
     connection = sqlite3.connect(path)
+    connection.execute("DROP TABLE relay_checkpoints")
     connection.execute("DROP TABLE handler_dispatch")
     connection.execute("DROP TABLE core_dispatch")
     connection.execute("PRAGMA user_version = 1")

@@ -319,6 +319,60 @@ class EventStore:
             )
             return _require_integer(row[0], "events count")
 
+    def relay_checkpoint(self, repository_handle: str) -> int:
+        handle = _bounded_identifier(repository_handle, "repository handle")
+        with self._lock:
+            row = self._with_busy_retry(
+                lambda: self._require_connection().execute(
+                    "SELECT through_local_log_seq FROM relay_checkpoints "
+                    "WHERE repository_handle = ?",
+                    (handle,),
+                ).fetchone()
+            )
+            return 0 if row is None else _require_integer(row[0], "relay checkpoint")
+
+    def advance_relay_checkpoint(
+        self, repository_handle: str, through_local_log_seq: int
+    ) -> int:
+        handle = _bounded_identifier(repository_handle, "repository handle")
+        if through_local_log_seq < 0:
+            raise ValueError("relay checkpoint must be non-negative")
+
+        def operation() -> int:
+            connection = self._require_connection()
+            maximum = _require_integer(
+                connection.execute(
+                    "SELECT COALESCE(MAX(local_log_seq), 0) FROM events"
+                ).fetchone()[0],
+                "maximum local cursor",
+            )
+            if through_local_log_seq > maximum:
+                raise ValueError("relay acknowledgement exceeds durable local events")
+            connection.execute(
+                """
+                INSERT INTO relay_checkpoints(
+                    repository_handle, through_local_log_seq, updated_at
+                ) VALUES (?, ?, ?)
+                ON CONFLICT(repository_handle) DO UPDATE SET
+                    through_local_log_seq = MAX(
+                        relay_checkpoints.through_local_log_seq,
+                        excluded.through_local_log_seq
+                    ),
+                    updated_at = excluded.updated_at
+                """,
+                (handle, through_local_log_seq, _utc_now()),
+            )
+            row = connection.execute(
+                "SELECT through_local_log_seq FROM relay_checkpoints "
+                "WHERE repository_handle = ?",
+                (handle,),
+            ).fetchone()
+            return _require_integer(row[0], "relay checkpoint")
+
+        with self._lock:
+            self._require_open()
+            return self._with_busy_retry(operation)
+
     def get_event(self, local_log_seq: int) -> StoredEvent | None:
         if local_log_seq <= 0:
             return None
@@ -1240,6 +1294,15 @@ def _require_text(value: object, field: str) -> str:
     if not isinstance(value, str):
         raise IntegrityError(f"{field} must be stored as TEXT")
     return value
+
+
+def _bounded_identifier(value: str, field: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{field} must be text")
+    normalized = value.strip()
+    if not normalized or len(normalized) > 256 or "\x00" in normalized:
+        raise ValueError(f"{field} must be bounded and non-empty")
+    return normalized
 
 
 def _require_blob(value: object, field: str) -> bytes:

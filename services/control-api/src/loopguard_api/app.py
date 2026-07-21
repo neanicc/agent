@@ -23,6 +23,10 @@ from .auth import AuthService, CachedOidcJwksProvider, DatabaseMembershipStore
 from .authorization import Principal, current_principal, require_controller
 from .db import create_database_engine, tenant_session_factory
 from .errors import ApiProblem, problem_response
+from .hook_ingest import HookService
+from .pairing import PairingService
+from .routes.hooks import router as hooks_router
+from .routes.hosts import router as hosts_router
 from .settings import PublicBuild, Settings
 
 
@@ -58,6 +62,8 @@ def create_app(
             allowed_algorithms=active.oidc_allowed_algorithms,
         )
     app.state.auth_service = auth_service
+    app.state.pairing_service = PairingService()
+    app.state.hook_service = HookService(maximum_body_bytes=active.max_request_bytes)
 
     @app.exception_handler(ApiProblem)
     async def api_problem(request: Request, exc: ApiProblem):
@@ -122,6 +128,9 @@ def create_app(
         @app.get("/_test/fail", include_in_schema=False)
         async def fail_fixture() -> None:
             raise RuntimeError("database-password must never escape")
+
+    app.include_router(hosts_router)
+    app.include_router(hooks_router)
 
     app.add_middleware(
         CORSMiddleware,

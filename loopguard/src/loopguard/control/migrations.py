@@ -4,7 +4,7 @@ import re
 import sqlite3
 
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 _EXPECTED_TABLE_XINFO = {
     "store_metadata": (
@@ -43,6 +43,11 @@ _EXPECTED_TABLE_XINFO = {
         ("status", "TEXT", 1, None, 0, 0),
         ("attempts", "INTEGER", 1, None, 0, 0),
         ("last_error_code", "TEXT", 0, None, 0, 0),
+        ("updated_at", "TEXT", 1, None, 0, 0),
+    ),
+    "relay_checkpoints": (
+        ("repository_handle", "TEXT", 0, None, 1, 0),
+        ("through_local_log_seq", "INTEGER", 1, None, 0, 0),
         ("updated_at", "TEXT", 1, None, 0, 0),
     ),
 }
@@ -117,6 +122,14 @@ CREATE INDEX handler_dispatch_pending
 ON handler_dispatch(handler_name, status, local_log_seq);
 """
 
+_MIGRATION_3 = """
+CREATE TABLE relay_checkpoints (
+    repository_handle TEXT PRIMARY KEY,
+    through_local_log_seq INTEGER NOT NULL CHECK (through_local_log_seq >= 0),
+    updated_at TEXT NOT NULL
+);
+"""
+
 
 def migrate(connection: sqlite3.Connection) -> None:
     row = connection.execute("PRAGMA user_version").fetchone()
@@ -138,6 +151,9 @@ def migrate(connection: sqlite3.Connection) -> None:
         if version == 1:
             _execute_script(connection, _MIGRATION_2)
             version = 2
+        if version == 2:
+            _execute_script(connection, _MIGRATION_3)
+            version = 3
         connection.execute(f"PRAGMA user_version = {version}")
         connection.execute("COMMIT")
         _validate_schema(connection)
@@ -267,6 +283,15 @@ def _validate_schema(connection: sqlite3.Connection) -> None:
     handler_sql = _normalize_owned_schema_sql(handler_row[0] if handler_row is not None else "")
     if "check(attempts>=0)" not in handler_sql or "check(statusin(,,,))" not in handler_sql:
         raise MigrationError("schema does not match version 2: handler checks differ")
+
+    checkpoint_row = connection.execute(
+        "SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = 'relay_checkpoints'"
+    ).fetchone()
+    checkpoint_sql = _normalize_owned_schema_sql(
+        checkpoint_row[0] if checkpoint_row is not None else ""
+    )
+    if "check(through_local_log_seq>=0)" not in checkpoint_sql:
+        raise MigrationError("schema does not match version 3: relay checkpoint check differs")
 
 
 def _execute_script(connection: sqlite3.Connection, script: str) -> None:

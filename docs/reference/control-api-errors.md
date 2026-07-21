@@ -30,6 +30,24 @@ request bodies, or tokens—when contacting support.
 - Fix: use the configured API hostname or correct the ingress host rewrite.
 - Retry: not retryable until routing is corrected.
 
+## LGAPI-HOOK-BINDING
+
+- Meaning: the signed hook named a repository outside its credential binding (`403`).
+- Fix: install or rotate a credential specifically issued for that repository handle.
+- Retry: not retryable with the rejected credential and repository combination.
+
+## LGAPI-HOOK-INVALID
+
+- Meaning: the hook key, timestamp, signature, body hash, or lifecycle state was invalid (`401`).
+- Fix: refresh the secret configuration and sign the exact canonical request bytes.
+- Retry: safe only as a newly signed request with a fresh nonce and valid credential.
+
+## LGAPI-HOOK-REPLAY
+
+- Meaning: the signed hook nonce was already consumed during its validity window (`409`).
+- Fix: reconcile the original event ID; use a fresh nonce only for a genuinely new request.
+- Retry: do not blindly retry the same signed request.
+
 ## LGAPI-INTERNAL
 
 - Meaning: the service could not safely complete the request (`500`).
@@ -53,6 +71,18 @@ request bodies, or tokens—when contacting support.
 - Meaning: a browser request supplied an origin outside the exact CORS allowlist (`403`).
 - Fix: use an approved web application origin; wildcard subdomains are intentionally unsupported.
 - Retry: not retryable from the denied origin.
+
+## LGAPI-PAIRING-CONFLICT
+
+- Meaning: the host pairing code is unknown or was already consumed (`409`).
+- Fix: create a fresh one-time code from an authenticated owner/admin session.
+- Retry: not retryable with the same code.
+
+## LGAPI-PAIRING-EXPIRED
+
+- Meaning: the five-minute host pairing window elapsed (`410`).
+- Fix: create a fresh one-time pairing code and repeat local proof-of-possession.
+- Retry: not retryable with the expired code.
 
 ## LGAPI-PROXY-UNTRUSTED
 
