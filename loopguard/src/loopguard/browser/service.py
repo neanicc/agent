@@ -14,6 +14,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from loopguard.control.paths import ensure_private_home
 
 from .client import BrowserBrokerClient
+from .auth import (
+    AuthStateReference,
+    BrowserAuthStore,
+    PlaintextAuthLease,
+    normalize_origins,
+)
 
 
 class BrowserLeaseStatus(StrEnum):
@@ -35,10 +41,17 @@ class BrowserLease(BaseModel):
 
 
 class BrowserService:
-    def __init__(self, path: str | Path, *, client: BrowserBrokerClient) -> None:
+    def __init__(
+        self,
+        path: str | Path,
+        *,
+        client: BrowserBrokerClient,
+        auth_store: BrowserAuthStore | None = None,
+    ) -> None:
         self.path = Path(path).expanduser().absolute()
         ensure_private_home(self.path.parent)
         self.client = client
+        self.auth_store = auth_store
         self._lock = threading.RLock()
         self._leases = self._load()
         changed = False
@@ -75,7 +88,7 @@ class BrowserService:
         *,
         browser: Literal["chromium", "firefox", "webkit"],
         allowed_origins: list[str],
-        storage_state_path: str | None = None,
+        auth_reference: AuthStateReference | None = None,
     ) -> BrowserLease:
         normalized = _session_id(session_id)
         with self._lock:
@@ -84,12 +97,26 @@ class BrowserService:
             existing = await self.session_started(normalized)
         if existing.status is BrowserLeaseStatus.ACTIVE:
             raise ValueError("browser session already has an active context")
-        result = await self.client.create_context(
-            session_id=normalized,
-            browser=browser,
-            allowed_origins=allowed_origins,
-            storage_state_path=storage_state_path,
-        )
+        plaintext: PlaintextAuthLease | None = None
+        try:
+            if auth_reference is not None:
+                if self.auth_store is None:
+                    raise ValueError("browser authentication store is not configured")
+                if normalize_origins(allowed_origins) != auth_reference.scope.allowed_origins:
+                    raise ValueError("browser authentication origin scope does not match")
+                ready = await self.client.health()
+                if not ready.ok:
+                    raise RuntimeError(f"browser broker startup failed: {ready.code}")
+                plaintext = self.auth_store.materialize(auth_reference)
+            result = await self.client.create_context(
+                session_id=normalized,
+                browser=browser,
+                allowed_origins=allowed_origins,
+                storage_state_path=None if plaintext is None else str(plaintext.path),
+            )
+        finally:
+            if plaintext is not None and self.auth_store is not None:
+                self.auth_store.release(plaintext)
         if not result.ok:
             raise RuntimeError(f"browser context creation failed: {result.code}")
         context_id = result.result.get("contextId")
@@ -175,6 +202,8 @@ class BrowserService:
                     )
             self._persist()
         await self.client.close()
+        if self.auth_store is not None:
+            self.auth_store.close()
 
     def _load(self) -> dict[str, BrowserLease]:
         if self.path.is_symlink():

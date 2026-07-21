@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, chmod, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -119,5 +119,23 @@ test("idle cleanup and browser crash invalidate stale capabilities", async () =>
     serviceWorkers: "block",
   });
   assert.equal(launcher.starts, 2);
+  await broker.close();
+});
+
+test("context creation consumes storage state without retaining plaintext", async () => {
+  const { broker, launcher, root } = await setup();
+  const plaintextRoot = join(root, "auth-plaintext");
+  const state = join(plaintextRoot, "lease.json");
+  await writeFile(state, "cookie-secret", { mode: 0o600 });
+  await chmod(state, 0o600);
+  await broker.createContext({
+    sessionId: "auth",
+    browser: "chromium",
+    storageStatePath: state,
+    allowedOrigins: ["https://example.test"],
+    serviceWorkers: "block",
+  });
+  assert.equal(launcher.current?.storageStateObserved, "cookie-secret");
+  await assert.rejects(() => access(state));
   await broker.close();
 });

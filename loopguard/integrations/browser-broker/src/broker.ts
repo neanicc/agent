@@ -6,6 +6,7 @@ import { basename, join, resolve } from "node:path";
 import ipaddr from "ipaddr.js";
 import type { Browser, BrowserContext, BrowserType } from "playwright";
 import type { CreateContextParams, PageAction } from "./protocol.js";
+import { PlaintextStorageLeaseManager } from "./storage.js";
 
 export type BrowserName = "chromium" | "firefox" | "webkit";
 
@@ -50,6 +51,7 @@ type BrokerOptions = {
   idleTtlMs?: number;
   now?: () => number;
   allowPrivateNetworks?: boolean;
+  storageManager?: PlaintextStorageLeaseManager;
 };
 
 type ContextLease = {
@@ -75,6 +77,7 @@ export class BrowserBroker {
   readonly #idleTtlMs: number;
   readonly #now: () => number;
   readonly #allowPrivateNetworks: boolean;
+  readonly #storageManager: PlaintextStorageLeaseManager;
   readonly #browsers = new Map<BrowserName, BrowserProcess>();
   readonly #contexts = new Map<string, ContextLease>();
   readonly #sessionContexts = new Map<string, string>();
@@ -82,9 +85,10 @@ export class BrowserBroker {
   readonly #idleTimer: NodeJS.Timeout;
   #closed = false;
 
-  private constructor(options: Required<Omit<BrokerOptions, "launcher" | "resolveHost">> & {
+  private constructor(options: Required<Omit<BrokerOptions, "launcher" | "resolveHost" | "storageManager">> & {
     launcher: BrowserLauncher;
     resolveHost: ResolveHost;
+    storageManager: PlaintextStorageLeaseManager;
   }) {
     this.stateDirectory = options.stateDirectory;
     this.artifactRoot = join(options.stateDirectory, "artifacts");
@@ -93,6 +97,7 @@ export class BrowserBroker {
     this.#idleTtlMs = options.idleTtlMs;
     this.#now = options.now;
     this.#allowPrivateNetworks = options.allowPrivateNetworks;
+    this.#storageManager = options.storageManager;
     this.#idleTimer = setInterval(
       () => void this.sweepIdle(),
       Math.max(1_000, Math.min(Math.floor(options.idleTtlMs / 2), 60_000)),
@@ -104,6 +109,9 @@ export class BrowserBroker {
     const stateDirectory = resolve(options.stateDirectory);
     await ensureOwnerDirectory(stateDirectory);
     await ensureOwnerDirectory(join(stateDirectory, "artifacts"));
+    const storageManager =
+      options.storageManager ??
+      (await PlaintextStorageLeaseManager.open(join(stateDirectory, "auth-plaintext")));
     return new BrowserBroker({
       stateDirectory,
       launcher: options.launcher ?? new PlaywrightLauncher(),
@@ -111,6 +119,7 @@ export class BrowserBroker {
       idleTtlMs: options.idleTtlMs ?? 15 * 60_000,
       now: options.now ?? Date.now,
       allowPrivateNetworks: options.allowPrivateNetworks ?? false,
+      storageManager,
     });
   }
 
@@ -136,7 +145,14 @@ export class BrowserBroker {
       acceptDownloads: true,
     };
     if (params.storageStatePath !== null) options.storageState = params.storageStatePath;
-    const context = await browser.newContext(options);
+    const context =
+      params.storageStatePath === null
+        ? await browser.newContext(options)
+        : await this.#storageManager.consume(
+            params.storageStatePath,
+            async (safePath) =>
+              browser.newContext({ ...options, storageState: safePath }),
+          );
     try {
       await context.route("**/*", async (candidate) => {
         const route = candidate as {
@@ -281,6 +297,7 @@ export class BrowserBroker {
     for (const lease of [...this.#contexts.values()]) await this.#destroy(lease);
     for (const browser of this.#browsers.values()) await browser.close().catch(() => undefined);
     this.#browsers.clear();
+    await this.#storageManager.cleanup();
   }
 
   async #browser(name: BrowserName): Promise<BrowserProcess> {

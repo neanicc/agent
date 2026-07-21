@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import type { BrowserContextHandle, BrowserProcess } from "./broker.js";
 
 export class FakeContext implements BrowserContextHandle {
@@ -81,8 +81,12 @@ export class FakeBrowser implements BrowserProcess {
   readonly contexts: FakeContext[] = [];
   connected = true;
   disconnected?: () => void;
+  storageStateObserved?: string;
 
   async newContext(options: Record<string, unknown>) {
+    if (typeof options.storageState === "string") {
+      this.storageStateObserved = await readFile(options.storageState, "utf8");
+    }
     const context = new FakeContext(options);
     this.contexts.push(context);
     return context;
