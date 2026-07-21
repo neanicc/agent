@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -198,12 +199,31 @@ class PreferenceVerdict(PreferenceModel):
     evidence_ids: list[Identifier] = Field(default_factory=list, max_length=1_024)
     summary: NonEmptyText = Field(max_length=16_384)
     confidence: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    model_id: NonEmptyText | None = Field(default=None, max_length=256)
+    prompt_version: Identifier | None = None
+    cost_usd: Decimal = Field(default=Decimal("0"), ge=0)
+    input_artifact_hashes: list[Sha256] = Field(default_factory=list, max_length=16)
+    budget_reservation_id: Identifier | None = None
 
     @field_validator("evidence_ids")
     @classmethod
     def unique_evidence_ids(cls, value: list[str]) -> list[str]:
         if len(value) != len(set(value)):
             raise ValueError("verdict evidence IDs must be unique")
+        return value
+
+    @field_validator("cost_usd")
+    @classmethod
+    def finite_cost(cls, value: Decimal) -> Decimal:
+        if not value.is_finite():
+            raise ValueError("verdict cost must be finite")
+        return value
+
+    @field_validator("input_artifact_hashes")
+    @classmethod
+    def unique_artifact_hashes(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("verdict artifact hashes must be unique")
         return value
 
 

@@ -13,6 +13,7 @@ from .models import (
 from .evaluators import PreferenceArtifact, PreferenceEvaluator, evaluate_artifacts
 from .learning import PreferenceLearner, PreferenceLearningError
 from .store import PreferenceActor, PreferenceScope
+from .visual_critic import VisualCritic, VisualCriticRequest, VisualImage
 
 __all__ = [
     "PreferenceEvidence",
@@ -29,5 +30,8 @@ __all__ = [
     "PreferenceVerdict",
     "RuleSeverity",
     "RuleSource",
+    "VisualCritic",
+    "VisualCriticRequest",
+    "VisualImage",
     "evaluate_artifacts",
 ]
