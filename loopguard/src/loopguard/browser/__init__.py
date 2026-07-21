@@ -2,6 +2,8 @@
 
 from .auth import AuthStateReference, BrowserAuthStore, PlaintextAuthLease
 from .client import BrowserBrokerClient, BrowserResult, LocalBrokerFactory
+from .manifest import PlaywrightManifest, PlaywrightTestFile
+from .selection import PlaywrightSelection, PlaywrightSelector
 from .service import BrowserLease, BrowserService
 
 __all__ = [
@@ -13,4 +15,8 @@ __all__ = [
     "AuthStateReference",
     "LocalBrokerFactory",
     "PlaintextAuthLease",
+    "PlaywrightManifest",
+    "PlaywrightSelection",
+    "PlaywrightSelector",
+    "PlaywrightTestFile",
 ]
