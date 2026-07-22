@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { BrowserControlClient } from "./browser-client";
 import { ControlProblem } from "./errors";
@@ -26,6 +26,8 @@ const problem = (status: number, code: string) =>
   );
 
 describe("control API clients", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   test("server proxy sends bearer token and request ID upstream", async () => {
     const fetcher = vi.fn().mockResolvedValue(ok({ items: [], next_cursor: null }));
     const client = new ServerControlClient({
@@ -56,6 +58,19 @@ describe("control API clients", () => {
     expect(request[0]).toBe("/api/control/v1/sessions");
     expect(headers.Authorization).toBeUndefined();
     expect(headers["X-CSRF-Token"]).toBeUndefined();
+  });
+
+  test("default browser fetch is called without changing its receiver", async () => {
+    const browserFetch = vi.fn(function (this: unknown) {
+      if (this !== undefined && this !== globalThis) throw new TypeError("Illegal invocation");
+      return Promise.resolve(ok({ items: [], next_cursor: null }));
+    });
+    vi.stubGlobal("fetch", browserFetch);
+    const client = new BrowserControlClient({ csrfToken: () => "csrf" });
+
+    await client.sessions();
+
+    expect(browserFetch).toHaveBeenCalledOnce();
   });
 
   test("browser state changes send CSRF but no authorization header", async () => {

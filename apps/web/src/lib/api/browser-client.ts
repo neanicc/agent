@@ -21,7 +21,7 @@ export class BrowserControlClient {
   readonly #csrfToken: BrowserClientOptions["csrfToken"];
 
   constructor(options: BrowserClientOptions) {
-    this.#fetcher = options.fetcher ?? fetch;
+    this.#fetcher = options.fetcher ?? ((input, init) => fetch(input, init));
     this.#csrfToken = options.csrfToken;
   }
 

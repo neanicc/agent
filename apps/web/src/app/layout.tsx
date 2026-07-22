@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
@@ -9,6 +10,7 @@ import "@fontsource/space-grotesk/600.css";
 import "@fontsource/space-grotesk/700.css";
 import "@/styles/tokens.css";
 import "@/styles/globals.css";
+import { Providers } from "./providers";
 
 
 export const metadata: Metadata = {
@@ -23,10 +25,16 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const csrfToken = (await cookies()).get("loopguard_csrf")?.value ?? "";
   return (
     <html lang="en">
-      <body>{children}</body>
+      <head>
+        <meta content={csrfToken} name="csrf-token" />
+      </head>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
