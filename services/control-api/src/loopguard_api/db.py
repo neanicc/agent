@@ -21,7 +21,9 @@ from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.sql import visitors
 from sqlalchemy.sql.schema import Table
 
+from .audit import ImmutableRecordError
 from .models import (
+    AuditEntry,
     CLOUD_INGEST_SEQUENCE,
     Event,
     RelayOutbox,
@@ -87,6 +89,8 @@ def _scope_orm_query(execute_state: Any) -> None:
 @event.listens_for(TenantSession, "before_flush")
 def _scope_writes(session: TenantSession, _flush_context: Any, _instances: Any) -> None:
     tenant_id = session.tenant_context.tenant_id
+    if any(isinstance(item, AuditEntry) for item in {*session.dirty, *session.deleted}):
+        raise ImmutableRecordError("audit entries are append-only")
     for item in {*session.new, *session.dirty, *session.deleted}:
         if isinstance(item, TenantOwnedMixin) and item.tenant_id != tenant_id:
             raise ValueError("tenant context mismatch")
