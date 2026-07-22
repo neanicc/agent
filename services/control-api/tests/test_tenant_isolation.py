@@ -217,19 +217,20 @@ def test_sequence_domains_are_never_conflated(tmp_path: Path) -> None:
     run(scenario())
 
 
-def test_initial_migration_enables_and_forces_rls_for_tenant_tables() -> None:
-    migration = (
-        Path(__file__).resolve().parents[1] / "alembic/versions/0001_initial.py"
-    ).read_text()
+def test_migrations_enable_and_force_rls_for_tenant_tables() -> None:
+    versions = Path(__file__).resolve().parents[1] / "alembic/versions"
+    migrations = "\n".join(
+        path.read_text() for path in sorted(versions.glob("*.py"))
+    )
 
     for table in Base.metadata.tables.values():
         if "tenant_id" not in table.columns:
             continue
-        assert repr(table.name) in migration
-    assert "ENABLE ROW LEVEL SECURITY" in migration
-    assert "FORCE ROW LEVEL SECURITY" in migration
-    assert "CREATE POLICY tenant_isolation" in migration
-    assert "current_setting('app.tenant_id', true)" in migration
+        assert repr(table.name) in migrations or f'"{table.name}"' in migrations
+    assert "ENABLE ROW LEVEL SECURITY" in migrations
+    assert "FORCE ROW LEVEL SECURITY" in migrations
+    assert "CREATE POLICY tenant_isolation" in migrations
+    assert "current_setting('app.tenant_id', true)" in migrations
 
 
 async def database(tmp_path: Path):

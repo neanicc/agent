@@ -189,6 +189,12 @@ class ArtifactService:
             )
             return self.objects.presign_download(record.object_key, expires_in=60)
 
+    def metadata(
+        self, *, tenant_id: uuid.UUID, artifact_id: uuid.UUID
+    ) -> ArtifactRecord:
+        with self._lock:
+            return self._tenant_record(tenant_id, artifact_id)
+
     def set_legal_hold(self, artifact_id: uuid.UUID, *, enabled: bool, actor: str) -> None:
         with self._lock:
             record = self._records[artifact_id]

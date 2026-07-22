@@ -21,6 +21,30 @@ class StreamTicketRequest(BaseModel):
     after_session_seq: int = Field(default=0, ge=0)
 
 
+@router.get("/sessions")
+async def list_sessions(
+    request: Request,
+    principal: Annotated[Principal, Depends(require_viewer)],
+) -> dict[str, object]:
+    service = request.app.state.control_queries
+    return {"items": service.resources("sessions", principal.tenant_id), "next_cursor": None}
+
+
+@router.get("/sessions/{session_id}")
+async def read_session(
+    request: Request,
+    session_id: uuid.UUID,
+    principal: Annotated[Principal, Depends(require_viewer)],
+) -> dict[str, object]:
+    service = request.app.state.control_queries
+    value = service.resource("sessions", principal.tenant_id, session_id)
+    if value is None:
+        from ..errors import ApiProblem
+
+        raise ApiProblem("LGAPI-NOT-FOUND")
+    return value
+
+
 @router.post("/stream-tickets", status_code=201)
 async def create_stream_ticket(
     request: Request,

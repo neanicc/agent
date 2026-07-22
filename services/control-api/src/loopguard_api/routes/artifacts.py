@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Request, status
@@ -82,11 +81,35 @@ async def complete_artifact(
 
 
 @router.get("/{artifact_id}")
+async def read_artifact(
+    request: Request,
+    artifact_id: uuid.UUID,
+    principal: Annotated[Principal, Depends(require_viewer)],
+) -> dict[str, object]:
+    service: ArtifactService = request.app.state.artifact_service
+    try:
+        artifact = service.metadata(
+            tenant_id=principal.tenant_id, artifact_id=artifact_id
+        )
+    except ArtifactNotFound as exc:
+        raise ApiProblem("LGAPI-NOT-FOUND") from exc
+    return {
+        "artifact_id": str(artifact.id),
+        "sha256": artifact.sha256,
+        "byte_count": artifact.byte_count,
+        "media_type": artifact.media_type,
+        "retention_class": artifact.retention_class,
+        "expires_at": artifact.expires_at,
+        "state": artifact.state,
+    }
+
+
+@router.get("/{artifact_id}/download")
 async def download_artifact(
     request: Request,
     artifact_id: uuid.UUID,
     principal: Annotated[Principal, Depends(require_viewer)],
-) -> dict[str, str | datetime]:
+) -> dict[str, str]:
     service: ArtifactService = request.app.state.artifact_service
     try:
         url = service.download(

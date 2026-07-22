@@ -36,6 +36,12 @@ request bodies, or tokens—when contacting support.
 - Fix: repeat review with the registered device and sign the returned canonical challenge.
 - Retry: use a fresh challenge; never reuse or silently substitute a device signature.
 
+## LGAPI-DEVICE-PAIRING-CONFLICT
+
+- Meaning: the one-use device pairing challenge is unavailable or consumed (`409`).
+- Fix: start a fresh pairing flow while authenticated as the same tenant user.
+- Retry: never replay the same signed pairing completion.
+
 ## LGAPI-FORBIDDEN
 
 - Meaning: the authenticated principal lacks the required tenant permission (`403`).
@@ -77,6 +83,12 @@ request bodies, or tokens—when contacting support.
 - Meaning: the resource does not implement that HTTP method (`405`).
 - Fix: use the method documented in the endpoint contract.
 - Retry: not retryable without changing the method.
+
+## LGAPI-MANAGED-RULE-WEAKENED
+
+- Meaning: a preference update would remove or lower a tenant-managed safety rule (`422`).
+- Fix: preserve at least the managed severity shown by the current preference profile.
+- Retry: submit a corrected profile; do not repeatedly send the rejected rules.
 
 ## LGAPI-NOT-FOUND
 

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from ..authorization import Principal, require_device_manager
+from ..authorization import Principal, require_device_manager, require_viewer
 from ..errors import ApiProblem
 from ..pairing import PairingConflict, PairingExpired, PairingService
 
@@ -26,6 +27,14 @@ class HostPairingRequest(BaseModel):
     name: str = Field(min_length=1, max_length=256)
     public_key: str = Field(min_length=1, max_length=4096)
     algorithm: str
+
+
+@router.get("")
+async def list_hosts(
+    request: Request,
+    principal: Annotated[Principal, Depends(require_viewer)],
+) -> dict[str, object]:
+    return {"items": request.app.state.control_queries.hosts(principal.tenant_id)}
 
 
 @router.post("/pairing-codes", response_model=PairingCodeResponse)
@@ -60,3 +69,15 @@ async def pair_host(request: Request, body: HostPairingRequest) -> dict[str, Any
         "name": host.name,
         "algorithm": host.algorithm,
     }
+
+
+@router.get("/{host_id}")
+async def read_host(
+    request: Request,
+    host_id: uuid.UUID,
+    principal: Annotated[Principal, Depends(require_viewer)],
+) -> dict[str, Any]:
+    host = request.app.state.control_queries.host(principal.tenant_id, host_id)
+    if host is None:
+        raise ApiProblem("LGAPI-NOT-FOUND")
+    return host

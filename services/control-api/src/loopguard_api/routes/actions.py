@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..actions import ActionConflict, ActionService, DeviceProofRequired
-from ..authorization import Principal, require_controller
+from ..authorization import Principal, require_controller, require_viewer
 from ..errors import ApiProblem
 
 
@@ -42,6 +42,32 @@ class SignedActionAcceptance(BaseModel):
     device_signature: str = Field(min_length=1, max_length=4096)
 
 
+def _action_view(value: Any) -> dict[str, Any]:
+    challenge = getattr(value, "challenge", value)
+    return {
+        "action_id": challenge.action_id,
+        "target": {"kind": challenge.target_kind, "target_id": challenge.target_id},
+        "kind": challenge.kind,
+        "state": value.state,
+        "issued_at": challenge.issued_at.isoformat(),
+        "expires_at": challenge.expires_at.isoformat(),
+        "executed_at": (
+            value.executed_at.isoformat()
+            if getattr(value, "executed_at", None) is not None
+            else None
+        ),
+    }
+
+
+@router.get("")
+async def list_actions(
+    request: Request,
+    principal: Annotated[Principal, Depends(require_viewer)],
+) -> dict[str, Any]:
+    service: ActionService = request.app.state.action_service
+    return {"items": [_action_view(item) for item in service.list(principal.tenant_id)], "next_cursor": None}
+
+
 @router.post("/challenge", status_code=status.HTTP_201_CREATED)
 async def create_action_challenge(
     request: Request,
@@ -71,6 +97,20 @@ async def create_action_challenge(
             challenge.canonical_bytes
         ).decode(),
     }
+
+
+@router.get("/{action_id}")
+async def read_action(
+    request: Request,
+    action_id: str,
+    principal: Annotated[Principal, Depends(require_viewer)],
+) -> dict[str, Any]:
+    service: ActionService = request.app.state.action_service
+    value = service.read(action_id)
+    challenge = getattr(value, "challenge", value)
+    if value is None or challenge.tenant_id != principal.tenant_id:
+        raise ApiProblem("LGAPI-NOT-FOUND")
+    return _action_view(value)
 
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED)

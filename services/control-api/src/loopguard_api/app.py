@@ -24,7 +24,9 @@ from .action_signing import Ed25519ActionSigner
 from .actions import ActionService
 from .artifacts import ArtifactService, MemoryKms, MemoryObjectStore
 from .authorization import Principal, current_principal
+from .client_queries import ControlQueryService
 from .db import create_database_engine, tenant_session_factory
+from .device_pairing import DevicePairingService
 from .errors import ApiProblem, problem_response
 from .hook_ingest import HookService
 from .pairing import PairingService
@@ -32,7 +34,15 @@ from .routes.hooks import router as hooks_router
 from .routes.hosts import router as hosts_router
 from .routes.actions import router as actions_router
 from .routes.artifacts import router as artifacts_router
+from .routes.audit import router as audit_router
+from .routes.capabilities import router as capabilities_router
+from .routes.changes import router as changes_router
+from .routes.costs import router as costs_router
+from .routes.devices import router as devices_router
 from .routes.sessions import router as sessions_router
+from .routes.preferences import router as preferences_router
+from .routes.repairs import router as repairs_router
+from .routes.verifications import router as verifications_router
 from .settings import PublicBuild, Settings
 from .stream_tickets import StreamTicketService
 from .subscriptions import SessionSubscriptionService
@@ -55,6 +65,8 @@ def create_app(
     subscription_service: SessionSubscriptionService | None = None,
     action_service: ActionService | None = None,
     artifact_service: ArtifactService | None = None,
+    control_queries: ControlQueryService | None = None,
+    device_pairing_service: DevicePairingService | None = None,
 ) -> FastAPI:
     active = settings or Settings()
     app = FastAPI(title="LoopGuard Control API", version="0.1.0")
@@ -90,6 +102,16 @@ def create_app(
             raise ValueError("hosted deployments require object-store and KMS adapters")
         artifact_service = ArtifactService(objects=MemoryObjectStore(), kms=MemoryKms())
     app.state.artifact_service = artifact_service
+    if control_queries is None:
+        if active.environment in {"staging", "production"}:
+            raise ValueError("hosted deployments require a durable control-query adapter")
+        control_queries = ControlQueryService()
+    if device_pairing_service is None:
+        if active.environment in {"staging", "production"}:
+            raise ValueError("hosted deployments require a durable device-pairing adapter")
+        device_pairing_service = DevicePairingService()
+    app.state.control_queries = control_queries
+    app.state.device_pairing_service = device_pairing_service
 
     @app.exception_handler(ApiProblem)
     async def api_problem(request: Request, exc: ApiProblem):
@@ -153,6 +175,14 @@ def create_app(
     app.include_router(sessions_router)
     app.include_router(actions_router)
     app.include_router(artifacts_router)
+    app.include_router(audit_router)
+    app.include_router(capabilities_router)
+    app.include_router(changes_router)
+    app.include_router(costs_router)
+    app.include_router(devices_router)
+    app.include_router(preferences_router)
+    app.include_router(repairs_router)
+    app.include_router(verifications_router)
 
     app.add_middleware(
         CORSMiddleware,

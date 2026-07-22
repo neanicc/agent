@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     JSON,
     LargeBinary,
+    Numeric,
     Sequence,
     String,
     Text,
@@ -315,3 +316,28 @@ class RelayOutbox(IdentifierMixin, TenantOwnedMixin, Base):
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+class PreferenceProfile(IdentifierMixin, TenantOwnedMixin, Base):
+    __tablename__ = "preference_profiles"
+    __table_args__ = (UniqueConstraint("tenant_id"),)
+
+    profile_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_manifest_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    rules: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    updated_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+
+class UsageRecord(IdentifierMixin, TenantOwnedMixin, Base):
+    __tablename__ = "usage_records"
+    __table_args__ = (UniqueConstraint("tenant_id", "usage_id"),)
+
+    usage_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    amount: Mapped[Any] = mapped_column(Numeric(20, 8), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    provider: Mapped[str] = mapped_column(String(128), nullable=False)
+    session_id: Mapped[UUID | None] = mapped_column(ForeignKey("sessions.id"))
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )

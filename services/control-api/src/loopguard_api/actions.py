@@ -267,6 +267,15 @@ class ActionService:
     def read(self, action_id: str) -> ActionRecord | ActionChallenge | None:
         return self._records.get(action_id) or self._challenges.get(action_id)
 
+    def list(self, tenant_id: uuid.UUID) -> list[ActionRecord | ActionChallenge]:
+        values: list[ActionRecord | ActionChallenge] = []
+        for challenge in self._challenges.values():
+            if challenge.tenant_id != tenant_id:
+                continue
+            values.append(self._records.get(challenge.action_id, challenge))
+        values.sort(key=lambda item: item.challenge.issued_at if isinstance(item, ActionRecord) else item.issued_at, reverse=True)
+        return values
+
 
 def _timestamp(value: datetime) -> str:
     return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
