@@ -1,0 +1,1899 @@
+{
+  "components": {
+    "schemas": {
+      "ActionChallengeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "expected_state_hash": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Expected State Hash",
+            "type": "string"
+          },
+          "expected_state_version": {
+            "minimum": 0.0,
+            "title": "Expected State Version",
+            "type": "integer"
+          },
+          "expires_in": {
+            "default": 30,
+            "maximum": 300.0,
+            "minimum": 1.0,
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "interrupt",
+              "approve",
+              "continue_once",
+              "inject",
+              "publish_repair"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "title": "Parameters",
+            "type": "object"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ActionTargetRequest"
+          }
+        },
+        "required": [
+          "target",
+          "device_id",
+          "kind",
+          "expected_state_version",
+          "expected_state_hash"
+        ],
+        "title": "ActionChallengeRequest",
+        "type": "object"
+      },
+      "ActionTargetRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "host_id": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Host Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "session",
+              "repair",
+              "host",
+              "verification",
+              "repository"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "target_id": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Target Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "target_id",
+          "host_id"
+        ],
+        "title": "ActionTargetRequest",
+        "type": "object"
+      },
+      "ArtifactCompletion": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence_manifest": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Evidence Manifest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidence_manifest"
+        ],
+        "title": "ArtifactCompletion",
+        "type": "object"
+      },
+      "ArtifactInitiation": {
+        "additionalProperties": false,
+        "properties": {
+          "byte_count": {
+            "maximum": 5368709120.0,
+            "minimum": 1.0,
+            "title": "Byte Count",
+            "type": "integer"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "media_type": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Media Type",
+            "type": "string"
+          },
+          "retention_class": {
+            "enum": [
+              "source",
+              "log",
+              "proof",
+              "repair"
+            ],
+            "title": "Retention Class",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha256",
+          "byte_count",
+          "media_type",
+          "retention_class"
+        ],
+        "title": "ArtifactInitiation",
+        "type": "object"
+      },
+      "DevicePairingCompletion": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "pairing_id": {
+            "maxLength": 256,
+            "minLength": 16,
+            "title": "Pairing Id",
+            "type": "string"
+          },
+          "public_key": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Public Key",
+            "type": "string"
+          },
+          "public_key_alg": {
+            "enum": [
+              "Ed25519",
+              "P-256"
+            ],
+            "title": "Public Key Alg",
+            "type": "string"
+          },
+          "signature": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Signature",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pairing_id",
+          "public_key_alg",
+          "public_key",
+          "signature",
+          "name"
+        ],
+        "title": "DevicePairingCompletion",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HostPairingRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "algorithm": {
+            "title": "Algorithm",
+            "type": "string"
+          },
+          "code": {
+            "maxLength": 256,
+            "minLength": 20,
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "public_key": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Public Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "public_key",
+          "algorithm"
+        ],
+        "title": "HostPairingRequest",
+        "type": "object"
+      },
+      "PairingCodeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "expires_at"
+        ],
+        "title": "PairingCodeResponse",
+        "type": "object"
+      },
+      "PreferenceUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "rules": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "maxItems": 500,
+            "title": "Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rules"
+        ],
+        "title": "PreferenceUpdate",
+        "type": "object"
+      },
+      "PublicBuild": {
+        "additionalProperties": false,
+        "properties": {
+          "build_sha": {
+            "title": "Build Sha",
+            "type": "string"
+          },
+          "environment": {
+            "enum": [
+              "development",
+              "test",
+              "staging",
+              "production"
+            ],
+            "title": "Environment",
+            "type": "string"
+          },
+          "service": {
+            "const": "loopguard-control-api",
+            "default": "loopguard-control-api",
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "build_sha",
+          "environment"
+        ],
+        "title": "PublicBuild",
+        "type": "object"
+      },
+      "SignedActionAcceptance": {
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Action Id",
+            "type": "string"
+          },
+          "device_algorithm": {
+            "const": "Ed25519",
+            "title": "Device Algorithm",
+            "type": "string"
+          },
+          "device_id": {
+            "format": "uuid",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "device_key_id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Device Key Id",
+            "type": "string"
+          },
+          "device_signature": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Device Signature",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "device_id",
+          "device_key_id",
+          "device_algorithm",
+          "device_signature"
+        ],
+        "title": "SignedActionAcceptance",
+        "type": "object"
+      },
+      "StreamTicketRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "after_session_seq": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "After Session Seq",
+            "type": "integer"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "StreamTicketRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "Versioned LoopGuard control-plane contract for web and native clients.",
+    "title": "LoopGuard Control API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicBuild"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/v1/actions": {
+      "get": {
+        "operationId": "list_actions_v1_actions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Actions V1 Actions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Actions",
+        "tags": [
+          "actions"
+        ]
+      },
+      "post": {
+        "operationId": "accept_signed_action_v1_actions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignedActionAcceptance"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Accept Signed Action V1 Actions Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Accept Signed Action",
+        "tags": [
+          "actions"
+        ]
+      }
+    },
+    "/v1/actions/challenge": {
+      "post": {
+        "operationId": "create_action_challenge_v1_actions_challenge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionChallengeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Action Challenge V1 Actions Challenge Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Action Challenge",
+        "tags": [
+          "actions"
+        ]
+      }
+    },
+    "/v1/actions/{action_id}": {
+      "get": {
+        "operationId": "read_action_v1_actions__action_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "action_id",
+            "required": true,
+            "schema": {
+              "title": "Action Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Action V1 Actions  Action Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Action",
+        "tags": [
+          "actions"
+        ]
+      }
+    },
+    "/v1/artifacts": {
+      "post": {
+        "operationId": "initiate_artifact_v1_artifacts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArtifactInitiation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Initiate Artifact V1 Artifacts Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Initiate Artifact",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/v1/artifacts/{artifact_id}": {
+      "get": {
+        "operationId": "read_artifact_v1_artifacts__artifact_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Artifact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Artifact V1 Artifacts  Artifact Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Artifact",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/v1/artifacts/{artifact_id}/complete": {
+      "post": {
+        "operationId": "complete_artifact_v1_artifacts__artifact_id__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Artifact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArtifactCompletion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Complete Artifact V1 Artifacts  Artifact Id  Complete Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Complete Artifact",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/v1/artifacts/{artifact_id}/download": {
+      "get": {
+        "operationId": "download_artifact_v1_artifacts__artifact_id__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Artifact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Download Artifact V1 Artifacts  Artifact Id  Download Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Download Artifact",
+        "tags": [
+          "artifacts"
+        ]
+      }
+    },
+    "/v1/audit": {
+      "get": {
+        "operationId": "list_audit_v1_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page_cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Page Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Audit V1 Audit Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Audit",
+        "tags": [
+          "audit"
+        ]
+      }
+    },
+    "/v1/capabilities": {
+      "get": {
+        "operationId": "effective_capabilities_v1_capabilities_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "host_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Host Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Effective Capabilities V1 Capabilities Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Effective Capabilities",
+        "tags": [
+          "capabilities"
+        ]
+      }
+    },
+    "/v1/changes": {
+      "get": {
+        "operationId": "list_changes_v1_changes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Changes V1 Changes Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Changes",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
+    "/v1/changes/{change_id}": {
+      "get": {
+        "operationId": "read_change_v1_changes__change_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Change V1 Changes  Change Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Change",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
+    "/v1/costs": {
+      "get": {
+        "operationId": "read_costs_v1_costs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "30d",
+              "enum": [
+                "24h",
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "title": "Window",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Costs V1 Costs Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Costs",
+        "tags": [
+          "costs"
+        ]
+      }
+    },
+    "/v1/devices": {
+      "get": {
+        "operationId": "list_devices_v1_devices_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Devices V1 Devices Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Devices",
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/v1/devices/pairing/complete": {
+      "post": {
+        "operationId": "complete_device_pairing_v1_devices_pairing_complete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicePairingCompletion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": "Response Complete Device Pairing V1 Devices Pairing Complete Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Complete Device Pairing",
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/v1/devices/pairing/start": {
+      "post": {
+        "operationId": "start_device_pairing_v1_devices_pairing_start_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Start Device Pairing V1 Devices Pairing Start Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Device Pairing",
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/v1/devices/{device_id}": {
+      "delete": {
+        "operationId": "revoke_device_v1_devices__device_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Device",
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/v1/hook-events": {
+      "post": {
+        "operationId": "ingest_hook_event_v1_hook_events_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-loopguard-key-id",
+            "required": true,
+            "schema": {
+              "title": "X-Loopguard-Key-Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-loopguard-timestamp",
+            "required": true,
+            "schema": {
+              "title": "X-Loopguard-Timestamp",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-loopguard-nonce",
+            "required": true,
+            "schema": {
+              "title": "X-Loopguard-Nonce",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-loopguard-repository",
+            "required": true,
+            "schema": {
+              "title": "X-Loopguard-Repository",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-loopguard-signature",
+            "required": true,
+            "schema": {
+              "title": "X-Loopguard-Signature",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Ingest Hook Event V1 Hook Events Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingest Hook Event",
+        "tags": [
+          "hooks"
+        ]
+      }
+    },
+    "/v1/hosts": {
+      "get": {
+        "operationId": "list_hosts_v1_hosts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Hosts V1 Hosts Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Hosts",
+        "tags": [
+          "hosts"
+        ]
+      }
+    },
+    "/v1/hosts/pair": {
+      "post": {
+        "operationId": "pair_host_v1_hosts_pair_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HostPairingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pair Host V1 Hosts Pair Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pair Host",
+        "tags": [
+          "hosts"
+        ]
+      }
+    },
+    "/v1/hosts/pairing-codes": {
+      "post": {
+        "operationId": "create_pairing_code_v1_hosts_pairing_codes_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingCodeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Pairing Code",
+        "tags": [
+          "hosts"
+        ]
+      }
+    },
+    "/v1/hosts/{host_id}": {
+      "get": {
+        "operationId": "read_host_v1_hosts__host_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "host_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Host Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Host V1 Hosts  Host Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Host",
+        "tags": [
+          "hosts"
+        ]
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "operationId": "me_v1_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Me V1 Me Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Me"
+      }
+    },
+    "/v1/preferences": {
+      "get": {
+        "operationId": "read_preferences_v1_preferences_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Preferences V1 Preferences Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Preferences",
+        "tags": [
+          "preferences"
+        ]
+      },
+      "put": {
+        "operationId": "write_preferences_v1_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferenceUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Write Preferences V1 Preferences Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Write Preferences",
+        "tags": [
+          "preferences"
+        ]
+      }
+    },
+    "/v1/repairs": {
+      "get": {
+        "operationId": "list_repairs_v1_repairs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Repairs V1 Repairs Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Repairs",
+        "tags": [
+          "repairs"
+        ]
+      }
+    },
+    "/v1/repairs/{repair_id}": {
+      "get": {
+        "operationId": "read_repair_v1_repairs__repair_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repair_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repair Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Repair V1 Repairs  Repair Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Repair",
+        "tags": [
+          "repairs"
+        ]
+      }
+    },
+    "/v1/sessions": {
+      "get": {
+        "operationId": "list_sessions_v1_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Sessions V1 Sessions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Sessions",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/v1/sessions/{session_id}": {
+      "get": {
+        "operationId": "read_session_v1_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Session V1 Sessions  Session Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Session",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/v1/stream-tickets": {
+      "post": {
+        "operationId": "create_stream_ticket_v1_stream_tickets_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StreamTicketRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Create Stream Ticket V1 Stream Tickets Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Stream Ticket",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/v1/verifications": {
+      "get": {
+        "operationId": "list_verifications_v1_verifications_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Verifications V1 Verifications Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Verifications",
+        "tags": [
+          "verifications"
+        ]
+      }
+    },
+    "/v1/verifications/{verification_id}": {
+      "get": {
+        "operationId": "read_verification_v1_verifications__verification_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "verification_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Verification Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Verification V1 Verifications  Verification Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Verification",
+        "tags": [
+          "verifications"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "description": "Hosted API",
+      "url": "https://api.loopguard.example"
+    }
+  ],
+  "x-loopguard-build-sha": "contract-test",
+  "x-loopguard-contract-version": "1.0.0"
+}

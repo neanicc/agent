@@ -1,0 +1,26 @@
+[
+  {
+    "schema_version":1,
+    "host_id":"018f0000-0000-7000-8000-000000000201",
+    "status":"ready",
+    "observed_at":"2026-07-22T12:00:00Z",
+    "ttl_seconds":60,
+    "features":{
+      "remote_actions":{"status":"ready","available":true,"reason":"ready"},
+      "session_stream":{"status":"ready","available":true,"reason":"ready"},
+      "repair":{"status":"disabled","available":false,"reason":"feature_flag_disabled"}
+    }
+  },
+  {
+    "schema_version":1,
+    "host_id":"018f0000-0000-7000-8000-000000000202",
+    "status":"ready",
+    "observed_at":"2026-07-22T12:00:00Z",
+    "ttl_seconds":60,
+    "features":{
+      "remote_actions":{"status":"ready","available":true,"reason":"ready"},
+      "session_stream":{"status":"ready","available":true,"reason":"ready"},
+      "repair":{"status":"ready","available":true,"reason":"workflow_registered"}
+    }
+  }
+]

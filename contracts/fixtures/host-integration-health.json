@@ -1,0 +1,10 @@
+[
+  {"host_id":null,"state":"pending_pairing","severity":"warn","summary":"Finish pairing this host","local_command":"loopguard setup"},
+  {"host_id":null,"state":"expired_pairing","severity":"block","summary":"Pairing code expired","local_command":"loopguard setup"},
+  {"host_id":"018f0000-0000-7000-8000-000000000201","state":"offline","severity":"block","summary":"Daemon is offline","local_command":"loopguard doctor"},
+  {"host_id":"018f0000-0000-7000-8000-000000000201","state":"stale","severity":"block","summary":"Daemon health is stale","observed_at":"2026-07-22T11:50:00Z","ttl_seconds":60,"local_command":"loopguard doctor"},
+  {"host_id":"018f0000-0000-7000-8000-000000000201","state":"unregistered_repository","severity":"block","summary":"Register this repository locally","local_command":"loopguard setup"},
+  {"host_id":"018f0000-0000-7000-8000-000000000201","state":"partial_hook_coverage","severity":"warn","summary":"Claude fallback hook is missing","integration":"claude","source":"fallback","local_command":"loopguard doctor"},
+  {"host_id":"018f0000-0000-7000-8000-000000000201","state":"outdated_adapter","severity":"warn","summary":"Codex adapter update is available","integration":"codex","adapter_version":"0.9.0","required_version":"1.0.0","local_command":"loopguard doctor"},
+  {"host_id":"018f0000-0000-7000-8000-000000000201","state":"ready","severity":"inform","summary":"Host and integrations are current","integration_sources":{"codex":"plugin","claude":"fallback"},"observed_at":"2026-07-22T12:00:00Z","ttl_seconds":60}
+]
