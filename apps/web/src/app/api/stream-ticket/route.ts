@@ -3,6 +3,15 @@ import { timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 
+import {
+  refreshBrowserSession,
+  sealSession,
+  secureCookieOptions,
+  SESSION_COOKIE,
+  unsealSession,
+  webSessionTTLSeconds,
+} from "@/auth";
+
 
 const MAX_REQUEST_BYTES = 8_192;
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -14,9 +23,28 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest): Promise<Response> {
   const cookieStore = await cookies();
-  const bearer = cookieStore.get("__Host-loopguard_session")?.value;
-  if (!bearer) {
+  let session;
+  try {
+    session = await unsealSession(cookieStore.get(SESSION_COOKIE)?.value);
+  } catch {
+    return problem(503, "session_unconfigured", "The encrypted web session is not configured.");
+  }
+  if (!session) {
     return problem(401, "authentication_required", "Sign in before opening a session stream.");
+  }
+  try {
+    const refreshed = await refreshBrowserSession(session);
+    if (refreshed.accessToken !== session.accessToken) {
+      session = refreshed;
+      cookieStore.set(
+        SESSION_COOKIE,
+        await sealSession(refreshed),
+        secureCookieOptions(webSessionTTLSeconds()),
+      );
+    }
+  } catch {
+    cookieStore.delete(SESSION_COOKIE);
+    return problem(401, "authentication_required", "Your session expired. Sign in again.");
   }
 
   if (!equalSecret(request.headers.get("x-csrf-token"), cookieStore.get("loopguard_csrf")?.value)) {
@@ -51,7 +79,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       cache: "no-store",
       headers: {
         Accept: "application/json, application/problem+json",
-        Authorization: `Bearer ${bearer}`,
+        Authorization: `Bearer ${session.accessToken}`,
         "Content-Type": "application/json",
         Origin: request.nextUrl.origin,
         "X-Request-ID": requestId,

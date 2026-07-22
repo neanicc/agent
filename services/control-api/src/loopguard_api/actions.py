@@ -11,7 +11,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ec import (
+    ECDSA,
+    EllipticCurvePublicKey,
+)
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.hashes import SHA256
 
 from .action_signing import Ed25519ActionSigner
 from .authorization import Principal
@@ -69,7 +74,7 @@ class _Device:
     user_id: uuid.UUID
     key_id: str
     algorithm: str
-    public_key: Ed25519PublicKey
+    public_key: Ed25519PublicKey | EllipticCurvePublicKey
     revoked: bool = False
 
 
@@ -95,10 +100,14 @@ class ActionService:
         device_id: uuid.UUID,
         key_id: str,
         algorithm: str,
-        public_key: Ed25519PublicKey,
+        public_key: Ed25519PublicKey | EllipticCurvePublicKey,
     ) -> None:
-        if algorithm != "Ed25519":
+        if algorithm not in {"Ed25519", "P-256"}:
             raise ValueError("unsupported device algorithm")
+        if algorithm == "Ed25519" and not isinstance(public_key, Ed25519PublicKey):
+            raise ValueError("device public key does not match algorithm")
+        if algorithm == "P-256" and not isinstance(public_key, EllipticCurvePublicKey):
+            raise ValueError("device public key does not match algorithm")
         self._devices[device_id] = _Device(
             tenant_id, user_id, key_id, algorithm, public_key
         )
@@ -213,7 +222,14 @@ class ActionService:
                 signature = base64.b64decode(
                     device_signature, altchars=b"-_", validate=True
                 )
-                device.public_key.verify(signature, challenge.canonical_bytes)
+                if device.algorithm == "P-256":
+                    assert isinstance(device.public_key, EllipticCurvePublicKey)
+                    device.public_key.verify(
+                        signature, challenge.canonical_bytes, ECDSA(SHA256())
+                    )
+                else:
+                    assert isinstance(device.public_key, Ed25519PublicKey)
+                    device.public_key.verify(signature, challenge.canonical_bytes)
             except (ValueError, InvalidSignature) as exc:
                 raise DeviceProofRequired("current registered device proof is required") from exc
             record = ActionRecord(

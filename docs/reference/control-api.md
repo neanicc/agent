@@ -121,13 +121,13 @@ The challenge response supplies canonical bytes. A registered device signs those
 {
   "action_id": "act_01JEXAMPLE",
   "device_id": "018f0000-0000-7000-8000-000000000001",
-  "device_key_id": "device-key-01",
-  "device_algorithm": "Ed25519",
+  "device_key_id": "secure-enclave-key-01",
+  "device_algorithm": "P-256",
   "device_signature": "<base64url-signature>"
 }
 ```
 
-A stale state version, changed canonical hash, expired challenge, revoked device, replay, or invalid signature fails closed. Clients must fetch a fresh challenge and repeat explicit review.
+P-256 device signatures use DER-encoded ECDSA with SHA-256; the encrypted software fallback uses Ed25519. A stale state version, changed canonical hash, expired challenge, revoked device, replay, or invalid signature fails closed. Clients must fetch a fresh challenge and repeat explicit review.
 
 ## Hook-signature example
 

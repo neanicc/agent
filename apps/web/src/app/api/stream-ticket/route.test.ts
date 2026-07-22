@@ -4,7 +4,19 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 const cookieGet = vi.fn();
 
 vi.mock("next/headers", () => ({
-  cookies: async () => ({ get: cookieGet }),
+  cookies: async () => ({ get: cookieGet, set: vi.fn(), delete: vi.fn() }),
+}));
+
+vi.mock("@/auth", () => ({
+  SESSION_COOKIE: "__Host-loopguard_session",
+  refreshBrowserSession: async (session: unknown) => session,
+  unsealSession: async (value: string | undefined) =>
+    value === "sealed-session"
+      ? { accessToken: "secret-bearer", expiresAt: 2_000_000_000, issuer: "issuer", subject: "user" }
+      : null,
+  sealSession: vi.fn(),
+  secureCookieOptions: vi.fn(),
+  webSessionTTLSeconds: () => 28_800,
 }));
 
 import { POST } from "./route";
@@ -12,7 +24,7 @@ import { POST } from "./route";
 describe("stream ticket BFF", () => {
   beforeEach(() => {
     cookieGet.mockImplementation((name: string) => {
-      if (name === "__Host-loopguard_session") return { value: "secret-bearer" };
+      if (name === "__Host-loopguard_session") return { value: "sealed-session" };
       if (name === "loopguard_csrf") return { value: "csrf-value" };
       return undefined;
     });

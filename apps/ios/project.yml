@@ -22,14 +22,17 @@ targets:
       - path: LoopGuard
     settings:
       base:
+        CURRENT_PROJECT_VERSION: 1
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: LoopGuard/Info.plist
+        LOOPGUARD_OIDC_AUTHORIZATION_ENDPOINT: https://identity.loopguard.invalid/authorize
+        LOOPGUARD_OIDC_CLIENT_ID: loopguard-ios
+        LOOPGUARD_OIDC_ISSUER: https://identity.loopguard.invalid
+        LOOPGUARD_OIDC_JWKS_ENDPOINT: https://identity.loopguard.invalid/.well-known/jwks.json
+        LOOPGUARD_OIDC_TOKEN_ENDPOINT: https://identity.loopguard.invalid/token
+        MARKETING_VERSION: 0.1.0
         PRODUCT_BUNDLE_IDENTIFIER: dev.loopguard.ios
         PRODUCT_NAME: LoopGuard
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: LoopGuard
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         SUPPORTS_MACCATALYST: NO
         TARGETED_DEVICE_FAMILY: "1,2"
   LoopGuardTests:

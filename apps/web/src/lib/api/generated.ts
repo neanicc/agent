@@ -674,9 +674,9 @@ export interface components {
             action_id: string;
             /**
              * Device Algorithm
-             * @constant
+             * @enum {string}
              */
-            device_algorithm: "Ed25519";
+            device_algorithm: "Ed25519" | "P-256";
             /**
              * Device Id
              * Format: uuid

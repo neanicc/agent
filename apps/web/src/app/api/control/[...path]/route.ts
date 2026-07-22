@@ -3,6 +3,15 @@ import { timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 
+import {
+  refreshBrowserSession,
+  sealSession,
+  secureCookieOptions,
+  SESSION_COOKIE,
+  unsealSession,
+  webSessionTTLSeconds,
+} from "@/auth";
+
 
 const MAX_BROWSER_BODY_BYTES = 1_048_576;
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -40,9 +49,28 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
   }
 
   const cookieStore = await cookies();
-  const bearer = cookieStore.get("__Host-loopguard_session")?.value;
-  if (!bearer) {
+  let session;
+  try {
+    session = await unsealSession(cookieStore.get(SESSION_COOKIE)?.value);
+  } catch {
+    return localProblem(503, "session_unconfigured", "The encrypted web session is not configured.");
+  }
+  if (!session) {
     return localProblem(401, "authentication_required", "Sign in before calling the control API.");
+  }
+  try {
+    const refreshed = await refreshBrowserSession(session);
+    if (refreshed.accessToken !== session.accessToken) {
+      session = refreshed;
+      cookieStore.set(
+        SESSION_COOKIE,
+        await sealSession(refreshed),
+        secureCookieOptions(webSessionTTLSeconds()),
+      );
+    }
+  } catch {
+    cookieStore.delete(SESSION_COOKIE);
+    return localProblem(401, "authentication_required", "Your session expired. Sign in again.");
   }
 
   if (!SAFE_METHODS.has(method)) {
@@ -71,7 +99,7 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
 
   const headers = new Headers({
     Accept: "application/json, application/problem+json",
-    Authorization: `Bearer ${bearer}`,
+    Authorization: `Bearer ${session.accessToken}`,
   });
   copyHeader(request.headers, headers, "content-type");
   copyHeader(request.headers, headers, "idempotency-key");

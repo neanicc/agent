@@ -38,7 +38,7 @@ class SignedActionAcceptance(BaseModel):
     action_id: str = Field(min_length=1, max_length=256)
     device_id: uuid.UUID
     device_key_id: str = Field(min_length=1, max_length=256)
-    device_algorithm: Literal["Ed25519"]
+    device_algorithm: Literal["Ed25519", "P-256"]
     device_signature: str = Field(min_length=1, max_length=4096)
 
 

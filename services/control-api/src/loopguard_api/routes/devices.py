@@ -4,6 +4,8 @@ import base64
 import uuid
 from typing import Annotated, Literal
 
+from cryptography.hazmat.primitives.asymmetric.ec import SECP256R1, EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -84,6 +86,20 @@ async def complete_device_pairing(
             else "LGAPI-DEVICE-PROOF-REQUIRED"
         )
         raise ApiProblem(code) from exc
+    key_bytes = base64.b64decode(device.public_key, altchars=b"-_", validate=True)
+    public_key = (
+        Ed25519PublicKey.from_public_bytes(key_bytes)
+        if device.algorithm == "Ed25519"
+        else EllipticCurvePublicKey.from_encoded_point(SECP256R1(), key_bytes)
+    )
+    request.app.state.action_service.register_device(
+        tenant_id=device.tenant_id,
+        user_id=device.user_id,
+        device_id=device.id,
+        key_id=device.key_id,
+        algorithm=device.algorithm,
+        public_key=public_key,
+    )
     return _device(device)
 
 

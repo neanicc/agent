@@ -5,6 +5,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ec import ECDSA, SECP256R1, generate_private_key
+from cryptography.hazmat.primitives.hashes import SHA256
 
 from loopguard_api.action_signing import Ed25519ActionSigner
 from loopguard_api.actions import ActionService, DeviceProofRequired
@@ -97,6 +99,49 @@ def test_api_acceptance_is_queued_not_execution():
     resolved = service.resolve_from_host(action.action_id, status="executed")
     assert resolved.state == "executed"
     assert resolved.executed_at == NOW
+
+
+def test_p256_secure_enclave_device_can_sign_exact_action_challenge():
+    principal = _principal()
+    device_id = uuid.uuid4()
+    device_key = generate_private_key(SECP256R1())
+    service = ActionService(
+        signer=Ed25519ActionSigner.generate("cloud-key-1"), clock=lambda: NOW
+    )
+    service.register_device(
+        tenant_id=principal.tenant_id,
+        user_id=principal.user_id,
+        device_id=device_id,
+        key_id="secure-enclave-key-1",
+        algorithm="P-256",
+        public_key=device_key.public_key(),
+    )
+    action = service.create_challenge(
+        principal=principal,
+        requested_by_device_id=device_id,
+        target_kind="session",
+        target_id="session_1",
+        host_id="host_1",
+        kind="interrupt",
+        parameters={"reason": "loop detected"},
+        expected_state_version=5,
+        expected_state_hash="sha256:state5",
+        expires_in=30,
+    )
+    signature = base64.urlsafe_b64encode(
+        device_key.sign(action.canonical_bytes, ECDSA(SHA256()))
+    ).decode()
+
+    queued = service.accept_signed(
+        action.action_id,
+        device_id=device_id,
+        device_key_id="secure-enclave-key-1",
+        device_algorithm="P-256",
+        device_signature=signature,
+    )
+
+    assert queued.state == "queued"
+    assert queued.device_algorithm == "P-256"
 
 
 def test_expiry_and_device_revocation_during_review_fail():

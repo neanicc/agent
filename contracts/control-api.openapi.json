@@ -340,7 +340,10 @@
             "type": "string"
           },
           "device_algorithm": {
-            "const": "Ed25519",
+            "enum": [
+              "Ed25519",
+              "P-256"
+            ],
             "title": "Device Algorithm",
             "type": "string"
           },

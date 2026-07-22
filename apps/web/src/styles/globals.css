@@ -94,6 +94,64 @@
 }
 
 @layer components {
+  .auth-layout {
+    display: grid;
+    min-block-size: 100dvh;
+    place-items: center;
+    padding: max(var(--space-lg), env(safe-area-inset-top)) max(var(--space-md), env(safe-area-inset-right))
+      max(var(--space-lg), env(safe-area-inset-bottom)) max(var(--space-md), env(safe-area-inset-left));
+  }
+
+  .auth-panel {
+    display: grid;
+    inline-size: min(100%, 64rem);
+    gap: var(--space-2xl);
+    border-block-start: 3px solid var(--color-accent);
+    border-block-end: var(--rule-hairline) solid var(--color-rule-strong);
+    padding-block: var(--space-xl);
+  }
+
+  .auth-panel h1 {
+    max-inline-size: 17ch;
+    margin-block: var(--space-xs) var(--space-md);
+    font-size: clamp(var(--text-xl), 7vw, 3.5rem);
+  }
+
+  .auth-panel__lede {
+    max-inline-size: 55ch;
+    color: var(--color-ink-2);
+    font-size: var(--text-md);
+  }
+
+  .auth-panel__action {
+    display: grid;
+    align-content: start;
+    gap: var(--space-md);
+    max-inline-size: 30rem;
+  }
+
+  .auth-panel__action .button {
+    justify-self: start;
+  }
+
+  .auth-panel__action > p {
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+
+  .auth-panel__action .auth-error {
+    border-inline-start: 3px solid var(--color-danger);
+    padding-inline-start: var(--space-sm);
+    color: var(--color-danger);
+  }
+
+  @media (min-width: 48rem) {
+    .auth-panel {
+      grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.65fr);
+      align-items: end;
+    }
+  }
+
   .visually-hidden {
     position: absolute;
     overflow: hidden;
