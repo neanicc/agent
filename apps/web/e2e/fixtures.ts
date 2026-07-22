@@ -7,7 +7,11 @@ export const ids = {
   host: "c2d6438e-1bcd-43fe-b8c3-2adee13f7f0c",
 } as const;
 
-type MockOptions = { emptyHosts?: boolean; onRequest?: (route: Route) => void };
+type MockOptions = {
+  emptyHosts?: boolean;
+  sessionOverride?: Record<string, unknown>;
+  onRequest?: (route: Route) => void;
+};
 
 export async function mockControlApi(page: Page, options: MockOptions = {}) {
   await page.route(/\/api\/control\/v1\/.*/, async (route) => {
@@ -36,6 +40,7 @@ function responseFor(path: string, options: MockOptions): unknown {
     severity: "blocking",
     verification: { verdict: "failed", command: "npm test", artifact_id: "proof_42" },
     events: [event(4, "e4", "verification_started")],
+    ...options.sessionOverride,
   };
   const change = {
     id: ids.change,

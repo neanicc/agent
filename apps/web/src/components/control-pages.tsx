@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { controlClient, useControlQuery } from "@/lib/api/use-control-query";
+import { ActionSheet, type ActionReviewRequest } from "./action-sheet";
 import { AsyncState } from "./async-state";
 import { SessionTimeline } from "./session-timeline";
 import { StatusLabel } from "./status-label";
+import { VerificationProof } from "./verification-proof";
 
 
 type Collection = { items?: Array<Record<string, unknown>>; next_cursor?: string | null };
@@ -185,8 +187,12 @@ export function RunDetail({ id }: { id: string }) {
               <Fact label="Observed cost" value={text(data.cost, "Not reported")} mono />
             </dl>
           </section>
-          <VerificationSummary proof={proof} />
-          <ActionSummary action={action} />
+          <VerificationProof proof={proof} />
+          {Object.keys(action).length ? (
+            <ActionSheet request={toActionReview(action, id)} />
+          ) : (
+            <ActionSummary />
+          )}
           <SessionTimeline initialEvents={events} sessionId={id} />
           <RawEvidence value={data} />
         </>
@@ -225,7 +231,7 @@ export function ChangeDetail({ id }: { id: string }) {
               <Fact label="Observed" value={formatDate(text(data.created_at ?? data.observed_at, ""))} />
             </dl>
           </section>
-          <VerificationSummary proof={proof} />
+          <VerificationProof proof={proof} />
           <section aria-labelledby="diff-heading" className="evidence-section">
             <h2 id="diff-heading">Diff evidence</h2>
             {typeof data.diff === "string" && data.diff ? (
@@ -397,48 +403,42 @@ function ResourceTable({ items, detailBase }: { items: Array<Record<string, unkn
   );
 }
 
-function VerificationSummary({ proof }: { proof: Record<string, unknown> }) {
-  return (
-    <section aria-labelledby="proof-heading" className="evidence-section">
-      <div className="section-heading">
-        <div>
-          <h2 id="proof-heading">Verification proof</h2>
-          <p>Deterministic result and provenance before raw output.</p>
-        </div>
-        <StatusLabel state={text(proof.verdict ?? proof.status, "inconclusive")} />
-      </div>
-      {Object.keys(proof).length ? (
-        <dl className="fact-grid">
-          <Fact label="Verdict" value={text(proof.verdict ?? proof.status, "Inconclusive")} />
-          <Fact label="Command" value={text(proof.command, "Not reported")} mono />
-          <Fact label="Artifact" value={text(proof.artifact_id, "Not attached")} mono />
-          <Fact label="Observed" value={formatDate(text(proof.observed_at ?? proof.completed_at, ""))} />
-        </dl>
-      ) : (
-        <p className="missing-evidence">No verification proof is attached to this item.</p>
-      )}
-    </section>
-  );
-}
-
-function ActionSummary({ action }: { action: Record<string, unknown> }) {
+function ActionSummary() {
   return (
     <section aria-labelledby="action-heading" className="action-summary">
       <div>
         <h2 id="action-heading">Safe action</h2>
-        <p>
-          {Object.keys(action).length
-            ? text(action.effect, "Review the exact target and effect before approval.")
-            : "No action currently requires review."}
-        </p>
+        <p>No action currently requires review.</p>
       </div>
-      {Object.keys(action).length ? (
-        <StatusLabel state={text(action.state, "reviewed")} />
-      ) : (
-        <StatusLabel label="No action" state="neutral" />
-      )}
+      <StatusLabel label="No action" state="neutral" />
     </section>
   );
+}
+
+function toActionReview(action: Record<string, unknown>, sessionId: string): ActionReviewRequest {
+  const target = record(action.target);
+  const state = text(action.state, "reviewed");
+  const hostState = text(action.host_state ?? action.host_status, "ready");
+  const targetId = text(target.target_id ?? action.target_id, sessionId);
+  return {
+    actionId: text(action.action_id ?? action.id, `action-${sessionId}`),
+    state,
+    target: {
+      kind: text(target.kind ?? action.target_kind, "session"),
+      id: targetId,
+      label: text(action.target_label, `Session ${targetId}`),
+    },
+    effect: text(action.effect, "Review the exact action effect before approval."),
+    risk: text(action.risk, "Risk not reported — refresh before approval"),
+    parametersHash: text(action.parameters_hash ?? action.content_hash, "Not reported"),
+    expectedState: text(
+      action.expected_state ?? action.expected_state_hash,
+      "Expected state not reported — refresh before approval",
+    ),
+    expiresAt: text(action.expires_at),
+    approveLabel: text(action.approve_label, "Approve action"),
+    hostAvailable: !/offline|stale|revoked/.test(hostState.toLowerCase()),
+  };
 }
 
 function CopyCommand({ command }: { command: string }) {
