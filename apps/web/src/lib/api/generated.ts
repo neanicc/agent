@@ -294,6 +294,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/devices/{device_id}/push-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Register Push Destination */
+        put: operations["register_push_destination_v1_devices__device_id__push_token_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/hook-events": {
         parameters: {
             query?: never;
@@ -537,6 +554,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionAcceptanceView */
+        ActionAcceptanceView: {
+            /** Action Id */
+            action_id: string;
+            /** Executed At */
+            executed_at: string | null;
+            /** State */
+            state: string;
+        };
         /** ActionChallengeRequest */
         ActionChallengeRequest: {
             /**
@@ -564,6 +590,34 @@ export interface components {
             };
             target: components["schemas"]["ActionTargetRequest"];
         };
+        /** ActionChallengeView */
+        ActionChallengeView: {
+            /** Action Id */
+            action_id: string;
+            /** Canonical Payload */
+            canonical_payload: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+            /** Nonce */
+            nonce: string;
+            /** State */
+            state: string;
+        };
+        /** ActionCollection */
+        ActionCollection: {
+            /** Items */
+            items: components["schemas"]["ActionView"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
         /** ActionTargetRequest */
         ActionTargetRequest: {
             /** Host Id */
@@ -575,6 +629,62 @@ export interface components {
             kind: "session" | "repair" | "host" | "verification" | "repository";
             /** Target Id */
             target_id: string;
+        };
+        /** ActionTargetView */
+        ActionTargetView: {
+            /** Kind */
+            kind: string;
+            /** Target Id */
+            target_id: string;
+        };
+        /** ActionView */
+        ActionView: {
+            /** Action Id */
+            action_id: string;
+            /** Canonical Payload */
+            canonical_payload: string;
+            /** Effect */
+            effect: string;
+            /** Executed At */
+            executed_at: string | null;
+            /** Expected State */
+            expected_state: string;
+            /** Expected State Hash */
+            expected_state_hash: string;
+            /** Expected State Version */
+            expected_state_version: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Host Available */
+            host_available: boolean;
+            /** Host Id */
+            host_id: string;
+            /**
+             * Issued At
+             * Format: date-time
+             */
+            issued_at: string;
+            /** Kind */
+            kind: string;
+            /** Nonce */
+            nonce: string;
+            /** Parameters Hash */
+            parameters_hash: string;
+            /** Requires Biometric */
+            requires_biometric: boolean;
+            /**
+             * Risk
+             * @enum {string}
+             */
+            risk: "medium" | "high";
+            /** State */
+            state: string;
+            target: components["schemas"]["ActionTargetView"];
+            /** Target Label */
+            target_label: string;
         };
         /** ArtifactCompletion */
         ArtifactCompletion: {
@@ -668,6 +778,21 @@ export interface components {
              */
             status: "ok";
         };
+        /** PushDestinationRegistration */
+        PushDestinationRegistration: {
+            /**
+             * Environment
+             * @enum {string}
+             */
+            environment: "sandbox" | "production";
+            /** Token */
+            token: string;
+        };
+        /** PushDestinationRegistrationResponse */
+        PushDestinationRegistrationResponse: {
+            /** Registered */
+            registered: boolean;
+        };
         /** SignedActionAcceptance */
         SignedActionAcceptance: {
             /** Action Id */
@@ -757,9 +882,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ActionCollection"];
                 };
             };
         };
@@ -783,9 +906,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ActionAcceptanceView"];
                 };
             };
             /** @description Validation Error */
@@ -818,9 +939,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ActionChallengeView"];
                 };
             };
             /** @description Validation Error */
@@ -851,9 +970,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ActionView"];
                 };
             };
             /** @description Validation Error */
@@ -1256,6 +1373,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_push_destination_v1_devices__device_id__push_token_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushDestinationRegistration"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushDestinationRegistrationResponse"];
+                };
             };
             /** @description Validation Error */
             422: {

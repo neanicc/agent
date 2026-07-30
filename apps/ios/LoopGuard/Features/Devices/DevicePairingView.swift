@@ -56,7 +56,7 @@ actor DevicePairingCoordinator {
         }
         let capability = try keyStore.prepare()
         let signature = try keyStore.sign(challenge.challenge)
-        return try await api.complete(
+        let device = try await api.complete(
             PairingCompletionRequest(
                 pairingID: challenge.id,
                 keyID: capability.keyID,
@@ -66,6 +66,8 @@ actor DevicePairingCoordinator {
                 name: String(name.prefix(256))
             )
         )
+        try keyStore.register(deviceID: device.id)
+        return device
     }
 }
 

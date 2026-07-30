@@ -78,7 +78,7 @@ private actor RecordingPairingAPI: DevicePairingAPI {
     func complete(_ request: PairingCompletionRequest) async throws -> PairedDevice {
         completions += 1
         return PairedDevice(
-            id: "device-1",
+            id: "00000000-0000-0000-0000-000000000001",
             keyID: request.keyID,
             algorithm: request.algorithm,
             name: request.name

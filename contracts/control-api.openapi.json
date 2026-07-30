@@ -1,6 +1,37 @@
 {
   "components": {
     "schemas": {
+      "ActionAcceptanceView": {
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "executed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Executed At"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "state",
+          "executed_at"
+        ],
+        "title": "ActionAcceptanceView",
+        "type": "object"
+      },
       "ActionChallengeRequest": {
         "additionalProperties": false,
         "properties": {
@@ -57,6 +88,74 @@
         "title": "ActionChallengeRequest",
         "type": "object"
       },
+      "ActionChallengeView": {
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "canonical_payload": {
+            "title": "Canonical Payload",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "issued_at": {
+            "format": "date-time",
+            "title": "Issued At",
+            "type": "string"
+          },
+          "nonce": {
+            "title": "Nonce",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "state",
+          "nonce",
+          "issued_at",
+          "expires_at",
+          "canonical_payload"
+        ],
+        "title": "ActionChallengeView",
+        "type": "object"
+      },
+      "ActionCollection": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActionView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "ActionCollection",
+        "type": "object"
+      },
       "ActionTargetRequest": {
         "additionalProperties": false,
         "properties": {
@@ -90,6 +189,140 @@
           "host_id"
         ],
         "title": "ActionTargetRequest",
+        "type": "object"
+      },
+      "ActionTargetView": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "target_id"
+        ],
+        "title": "ActionTargetView",
+        "type": "object"
+      },
+      "ActionView": {
+        "properties": {
+          "action_id": {
+            "title": "Action Id",
+            "type": "string"
+          },
+          "canonical_payload": {
+            "title": "Canonical Payload",
+            "type": "string"
+          },
+          "effect": {
+            "title": "Effect",
+            "type": "string"
+          },
+          "executed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Executed At"
+          },
+          "expected_state": {
+            "title": "Expected State",
+            "type": "string"
+          },
+          "expected_state_hash": {
+            "title": "Expected State Hash",
+            "type": "string"
+          },
+          "expected_state_version": {
+            "title": "Expected State Version",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "host_available": {
+            "title": "Host Available",
+            "type": "boolean"
+          },
+          "host_id": {
+            "title": "Host Id",
+            "type": "string"
+          },
+          "issued_at": {
+            "format": "date-time",
+            "title": "Issued At",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "nonce": {
+            "title": "Nonce",
+            "type": "string"
+          },
+          "parameters_hash": {
+            "title": "Parameters Hash",
+            "type": "string"
+          },
+          "requires_biometric": {
+            "title": "Requires Biometric",
+            "type": "boolean"
+          },
+          "risk": {
+            "enum": [
+              "medium",
+              "high"
+            ],
+            "title": "Risk",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ActionTargetView"
+          },
+          "target_label": {
+            "title": "Target Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "target",
+          "target_label",
+          "host_id",
+          "kind",
+          "state",
+          "effect",
+          "risk",
+          "requires_biometric",
+          "parameters_hash",
+          "expected_state",
+          "expected_state_version",
+          "expected_state_hash",
+          "nonce",
+          "canonical_payload",
+          "host_available",
+          "issued_at",
+          "expires_at",
+          "executed_at"
+        ],
+        "title": "ActionView",
         "type": "object"
       },
       "ArtifactCompletion": {
@@ -330,6 +563,43 @@
         "title": "PublicBuild",
         "type": "object"
       },
+      "PushDestinationRegistration": {
+        "additionalProperties": false,
+        "properties": {
+          "environment": {
+            "enum": [
+              "sandbox",
+              "production"
+            ],
+            "title": "Environment",
+            "type": "string"
+          },
+          "token": {
+            "pattern": "^[0-9a-f]{64,200}$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "environment"
+        ],
+        "title": "PushDestinationRegistration",
+        "type": "object"
+      },
+      "PushDestinationRegistrationResponse": {
+        "properties": {
+          "registered": {
+            "title": "Registered",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "registered"
+        ],
+        "title": "PushDestinationRegistrationResponse",
+        "type": "object"
+      },
       "SignedActionAcceptance": {
         "additionalProperties": false,
         "properties": {
@@ -477,9 +747,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response List Actions V1 Actions Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ActionCollection"
                 }
               }
             },
@@ -513,9 +781,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Accept Signed Action V1 Actions Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ActionAcceptanceView"
                 }
               }
             },
@@ -561,9 +827,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Action Challenge V1 Actions Challenge Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ActionChallengeView"
                 }
               }
             },
@@ -610,9 +874,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Read Action V1 Actions  Action Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ActionView"
                 }
               }
             },
@@ -1255,6 +1517,64 @@
           }
         ],
         "summary": "Revoke Device",
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/v1/devices/{device_id}/push-token": {
+      "put": {
+        "operationId": "register_push_destination_v1_devices__device_id__push_token_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushDestinationRegistration"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushDestinationRegistrationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Register Push Destination",
         "tags": [
           "devices"
         ]

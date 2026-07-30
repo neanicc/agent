@@ -12,6 +12,7 @@ class NotificationService:
         self.fail_first_attempt = False
         self._attempts: dict[str, int] = {}
         self._accepted: dict[str, None] = {}
+        self._payloads: list[dict[str, object]] = []
 
     def deliver_action(self, *, action_id: str, idempotency_key: str) -> None:
         if not action_id or idempotency_key != f"notify-action:{action_id}":
@@ -23,7 +24,22 @@ class NotificationService:
         if self.fail_first_attempt and attempts == 1:
             raise NotificationDeliveryError("injected transient delivery failure")
         self._accepted[action_id] = None
+        self._payloads.append(
+            {
+                "aps": {
+                    "alert": "LoopGuard needs your attention",
+                    "sound": "default",
+                },
+                "type": "action",
+                "action_id": action_id,
+                "event_id": idempotency_key,
+            }
+        )
 
     @property
     def accepted_ids(self) -> list[str]:
         return list(self._accepted)
+
+    @property
+    def payloads(self) -> list[dict[str, object]]:
+        return [dict(payload) for payload in self._payloads]

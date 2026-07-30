@@ -37,6 +37,8 @@ class DeviceRecord:
     key_id: str
     created_at: datetime
     revoked_at: datetime | None = None
+    push_environment: str | None = None
+    push_token: str | None = None
 
 
 @dataclass(slots=True)
@@ -49,7 +51,9 @@ class _Pending:
 
 
 class DevicePairingService:
-    def __init__(self, *, clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc)) -> None:
+    def __init__(
+        self, *, clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
+    ) -> None:
         self._clock = clock
         self._pending: dict[bytes, _Pending] = {}
         self._devices: dict[uuid.UUID, DeviceRecord] = {}
@@ -62,7 +66,17 @@ class DevicePairingService:
         self._pending[_digest(pairing_id)] = _Pending(tenant_id, user_id, challenge, expires_at)
         return DevicePairingChallenge(pairing_id, challenge, expires_at)
 
-    def complete(self, *, tenant_id: uuid.UUID, user_id: uuid.UUID, pairing_id: str, public_key_alg: str, public_key: str, signature: str, name: str) -> DeviceRecord:
+    def complete(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        user_id: uuid.UUID,
+        pairing_id: str,
+        public_key_alg: str,
+        public_key: str,
+        signature: str,
+        name: str,
+    ) -> DeviceRecord:
         now = self._clock()
         with self._lock:
             pending = self._pending.get(_digest(pairing_id))
@@ -76,15 +90,28 @@ class DevicePairingService:
                 key_bytes = base64.b64decode(public_key, altchars=b"-_", validate=True)
                 signature_bytes = base64.b64decode(signature, altchars=b"-_", validate=True)
                 if public_key_alg == "Ed25519":
-                    Ed25519PublicKey.from_public_bytes(key_bytes).verify(signature_bytes, pending.challenge)
+                    Ed25519PublicKey.from_public_bytes(key_bytes).verify(
+                        signature_bytes, pending.challenge
+                    )
                 elif public_key_alg == "P-256":
-                    EllipticCurvePublicKey.from_encoded_point(SECP256R1(), key_bytes).verify(signature_bytes, pending.challenge, ECDSA(SHA256()))
+                    EllipticCurvePublicKey.from_encoded_point(SECP256R1(), key_bytes).verify(
+                        signature_bytes, pending.challenge, ECDSA(SHA256())
+                    )
                 else:
                     raise DevicePairingRejected("device key algorithm is not allowed")
             except (ValueError, InvalidSignature) as exc:
                 raise DevicePairingRejected("device proof of possession is invalid") from exc
             pending.consumed_at = now
-            device = DeviceRecord(uuid.uuid4(), tenant_id, user_id, name.strip(), public_key_alg, public_key, f"dk_{hashlib.sha256(key_bytes).hexdigest()[:32]}", now)
+            device = DeviceRecord(
+                uuid.uuid4(),
+                tenant_id,
+                user_id,
+                name.strip(),
+                public_key_alg,
+                public_key,
+                f"dk_{hashlib.sha256(key_bytes).hexdigest()[:32]}",
+                now,
+            )
             self._devices[device.id] = device
             return device
 
@@ -99,8 +126,58 @@ class DevicePairingService:
         self._devices[device_id] = revoked
         return revoked
 
-    def seed_device(self, *, tenant_id: uuid.UUID, user_id: uuid.UUID, name: str, algorithm: str, public_key: str) -> DeviceRecord:
-        device = DeviceRecord(uuid.uuid4(), tenant_id, user_id, name, algorithm, public_key, f"seed_{uuid.uuid4().hex}", self._clock())
+    def register_push_destination(
+        self,
+        tenant_id: uuid.UUID,
+        device_id: uuid.UUID,
+        *,
+        environment: str,
+        token: str,
+    ) -> DeviceRecord | None:
+        device = self._devices.get(device_id)
+        if device is None or device.tenant_id != tenant_id or device.revoked_at is not None:
+            return None
+        updated = replace(
+            device,
+            push_environment=environment,
+            push_token=token,
+        )
+        self._devices[device_id] = updated
+        return updated
+
+    def push_destination(
+        self, tenant_id: uuid.UUID, device_id: uuid.UUID
+    ) -> tuple[str, str] | None:
+        device = self._devices.get(device_id)
+        if (
+            device is None
+            or device.tenant_id != tenant_id
+            or device.revoked_at is not None
+            or device.push_environment is None
+            or device.push_token is None
+        ):
+            return None
+        return device.push_environment, device.push_token
+
+    def seed_device(
+        self,
+        *,
+        tenant_id: uuid.UUID,
+        user_id: uuid.UUID,
+        name: str,
+        algorithm: str,
+        public_key: str,
+    ) -> DeviceRecord:
+        device = DeviceRecord(
+            uuid.uuid4(),
+            tenant_id,
+            user_id,
+            name,
+            algorithm,
+            public_key,
+            f"seed_{uuid.uuid4().hex}",
+            self._clock(),
+        )
         self._devices[device.id] = device
         return device
 

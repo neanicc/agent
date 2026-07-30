@@ -9,12 +9,16 @@ final class AppModel {
     private(set) var changes: AsyncViewState<[ChangeSummary]> = .idle
     private(set) var hosts: AsyncViewState<[HostSummary]> = .idle
     private(set) var devices: AsyncViewState<[DeviceSummary]> = .idle
+    private(set) var pendingAction: ActionViewModel?
+    private(set) var routedSessionID: String?
     let auth: AuthSession
     let pairing: DevicePairingCoordinator
+    let notifications: NotificationManager
     let fixtureMode: Bool
     private let fixtureScenario: String?
     private let api: ControlAPI
     private let deviceKeyStore: DeviceKeyStore
+    private var registeredPushToken: String?
 
     var subject: String {
         if fixtureMode { return "developer@loopguard.dev" }
@@ -26,6 +30,7 @@ final class AppModel {
         api: ControlAPI,
         auth: AuthSession,
         pairing: DevicePairingCoordinator,
+        notifications: NotificationManager,
         deviceKeyStore: DeviceKeyStore,
         fixtureMode: Bool = false,
         fixtureScenario: String? = nil
@@ -33,6 +38,7 @@ final class AppModel {
         self.api = api
         self.auth = auth
         self.pairing = pairing
+        self.notifications = notifications
         self.deviceKeyStore = deviceKeyStore
         self.fixtureMode = fixtureMode
         self.fixtureScenario = fixtureScenario
@@ -91,6 +97,69 @@ final class AppModel {
         changes = .idle
         hosts = .idle
         devices = .idle
+        pendingAction = nil
+        routedSessionID = nil
+    }
+
+    func handleNotificationRoute(_ route: NotificationRoute) async {
+        defer { notifications.clearRoute() }
+        switch route {
+        case .session(let id):
+            if sessions.value == nil {
+                await loadDashboard()
+            }
+            guard sessions.value?.contains(where: { $0.id == id }) == true else {
+                sessions = .failed(
+                    message: "The linked run is unavailable or outside your current access.",
+                    requestID: nil
+                )
+                return
+            }
+            routedSessionID = id
+        case .action(let id):
+            do {
+                let request = try await ControlActionAPI(api: api).review(actionID: id)
+                pendingAction = ActionViewModel(
+                    request: request,
+                    api: ControlActionAPI(api: api),
+                    signer: DeviceActionSigner(keyStore: deviceKeyStore),
+                    authorizer: LocalActionAuthorizer()
+                )
+                addActionToInbox(request)
+            } catch {
+                pendingAction = nil
+                inbox = .failed(
+                    message: "The linked action could not be refreshed. No approval was enabled.",
+                    requestID: nil
+                )
+            }
+        }
+    }
+
+    func setRoutedSession(_ id: String?) {
+        routedSessionID = id
+    }
+
+    func registerPushToken(_ token: String) async {
+        guard token != registeredPushToken else { return }
+        do {
+            let deviceID = try deviceKeyStore.pairedDeviceID()
+            let payload = PushTokenRegistration(
+                token: token,
+                environment: PushTokenRegistration.currentEnvironment
+            )
+            let body = try JSONEncoder().encode(payload)
+            let response: PushTokenRegistrationResponse = try await api.request(
+                path: "v1/devices/\(deviceID)/push-token",
+                method: "PUT",
+                body: body
+            )
+            guard response.registered else { throw ControlAPIError.invalidResponse }
+            registeredPushToken = token
+            notifications.recordRegistration(success: true)
+        } catch {
+            notifications.recordRegistration(success: false)
+        }
     }
 
     private func loadCollection<Item: Decodable & Sendable>(
@@ -167,6 +236,21 @@ final class AppModel {
         case .verificationFailed: "Required verification did not pass."
         case .completed: "All required verification passed."
         }
+    }
+
+    private func addActionToInbox(_ request: ActionReviewRequest) {
+        let action = InboxItem(
+            id: "action-\(request.actionID)",
+            sessionID: request.target.id,
+            kind: .approval,
+            title: request.effect,
+            summary: "Review expires in \(max(0, Int(request.expiresAt.timeIntervalSinceNow))) seconds.",
+            updatedAt: Date(),
+            requiresAttention: !request.initialState.isTerminal
+        )
+        let existing = inbox.value ?? []
+        let merged = [action] + existing.filter { $0.id != action.id }
+        inbox = .loaded(InboxItem.sort(merged))
     }
 
     private func loadFixtures(scenario: String?) {
@@ -253,6 +337,31 @@ final class AppModel {
         )
         sessions = .loaded([run, quietRun])
         inbox = .loaded(InboxItem.sort([.regression, .loop, .completed]))
+        if scenario == "action" {
+            let request = ActionReviewRequest.fixture(
+                expiresAt: Date().addingTimeInterval(300),
+                risk: .medium
+            )
+            pendingAction = ActionViewModel(
+                request: request,
+                api: FixtureActionAPI(),
+                signer: FixtureActionSigner(),
+                now: Date.init
+            )
+            inbox = .loaded(InboxItem.sort([
+                InboxItem(
+                    id: "approval",
+                    sessionID: "run-auth-migration",
+                    kind: .approval,
+                    title: "Continue once needs approval",
+                    summary: "Review the immutable target, expected state, and device signature before queuing.",
+                    updatedAt: Date(),
+                    requiresAttention: true
+                ),
+                .regression,
+                .completed,
+            ]))
+        }
         changes = .loaded([
             ChangeSummary(
                 id: "change-auth-refresh",
@@ -326,5 +435,48 @@ final class AppModel {
             hosts = .stale(hosts.value ?? [])
             devices = .stale(devices.value ?? [])
         }
+    }
+}
+
+private struct PushTokenRegistration: Encodable {
+    let token: String
+    let environment: String
+
+    static var currentEnvironment: String {
+        #if DEBUG
+        "sandbox"
+        #else
+        "production"
+        #endif
+    }
+}
+
+private struct PushTokenRegistrationResponse: Decodable, Sendable {
+    let registered: Bool
+}
+
+private actor FixtureActionAPI: ActionAPI {
+    func submit(_ submission: SignedActionSubmission) async throws -> ActionSnapshot {
+        ActionSnapshot(
+            actionID: submission.actionID,
+            state: .queued,
+            executedAt: nil,
+            receiptID: nil
+        )
+    }
+
+    func read(actionID: String) async throws -> ActionSnapshot {
+        ActionSnapshot(actionID: actionID, state: .queued, executedAt: nil, receiptID: nil)
+    }
+}
+
+private actor FixtureActionSigner: ActionSigning {
+    func sign(_ payload: Data) async throws -> DeviceActionProof {
+        DeviceActionProof(
+            deviceID: "00000000-0000-0000-0000-000000000001",
+            keyID: "dk_fixture",
+            algorithm: "Ed25519",
+            signature: Data(payload.prefix(16))
+        )
     }
 }

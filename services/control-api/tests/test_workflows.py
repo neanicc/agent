@@ -15,6 +15,25 @@ def test_notification_retry_does_not_duplicate_delivery():
     assert result.workflow_id == "notify-action/a1"
     assert notifications.accepted_ids == ["a1"]
     assert engine.notify_action(action_id="a1") == result
+    assert notifications.payloads == [
+        {
+            "aps": {"alert": "LoopGuard needs your attention", "sound": "default"},
+            "type": "action",
+            "action_id": "a1",
+            "event_id": "notify-action:a1",
+        }
+    ]
+    assert (
+        not {
+            "prompt",
+            "source",
+            "path",
+            "repository",
+            "parameters",
+            "diff",
+        }
+        & notifications.payloads[0].keys()
+    )
 
 
 def test_workflow_ids_and_activity_keys_are_deterministic_and_secret_free():

@@ -5,6 +5,7 @@ struct SettingsView: View {
     let devices: AsyncViewState<[DeviceSummary]>
     let hosts: AsyncViewState<[HostSummary]>
     let pairing: DevicePairingCoordinator
+    let notifications: NotificationManager
     let refresh: () -> Void
     let logout: () -> Void
 
@@ -37,6 +38,28 @@ struct SettingsView: View {
 
                 Section("Notifications") {
                     Toggle("Only items needing attention", isOn: $attentionNotifications)
+                        .onChange(of: attentionNotifications) { _, enabled in
+                            guard enabled else { return }
+                            Task {
+                                if !(await notifications.requestAuthorization()) {
+                                    attentionNotifications = false
+                                }
+                            }
+                        }
+                    if notifications.authorizationDenied {
+                        Label(
+                            "Notifications are disabled in system settings.",
+                            systemImage: "bell.slash"
+                        )
+                        .foregroundStyle(SemanticColor.secondaryText)
+                    }
+                    if notifications.registrationFailed {
+                        Label(
+                            "This device could not register for remote alerts. Try again after reconnecting.",
+                            systemImage: "exclamationmark.arrow.trianglehead.2.clockwise.rotate.90"
+                        )
+                        .foregroundStyle(SemanticColor.secondaryText)
+                    }
                 }
 
                 Section {

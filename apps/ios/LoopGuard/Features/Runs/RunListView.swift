@@ -2,8 +2,8 @@ import SwiftUI
 
 struct RunListView: View {
     let state: AsyncViewState<[SessionSummary]>
+    @Binding var selection: String?
     let refresh: () -> Void
-    @State private var selection: String?
 
     var body: some View {
         NavigationSplitView {

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import base64
+import json
 import uuid
+from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Request, status
@@ -42,13 +44,84 @@ class SignedActionAcceptance(BaseModel):
     device_signature: str = Field(min_length=1, max_length=4096)
 
 
+class ActionTargetView(BaseModel):
+    kind: str
+    target_id: str
+
+
+class ActionView(BaseModel):
+    action_id: str
+    target: ActionTargetView
+    target_label: str
+    host_id: str
+    kind: str
+    state: str
+    effect: str
+    risk: Literal["medium", "high"]
+    requires_biometric: bool
+    parameters_hash: str
+    expected_state: str
+    expected_state_version: int
+    expected_state_hash: str
+    nonce: str
+    canonical_payload: str
+    host_available: bool
+    issued_at: datetime
+    expires_at: datetime
+    executed_at: datetime | None
+
+
+class ActionCollection(BaseModel):
+    items: list[ActionView]
+    next_cursor: str | None
+
+
+class ActionChallengeView(BaseModel):
+    action_id: str
+    state: str
+    nonce: str
+    issued_at: datetime
+    expires_at: datetime
+    canonical_payload: str
+
+
+class ActionAcceptanceView(BaseModel):
+    action_id: str
+    state: str
+    executed_at: datetime | None
+
+
 def _action_view(value: Any) -> dict[str, Any]:
     challenge = getattr(value, "challenge", value)
+    canonical = json.loads(challenge.canonical_bytes)
+    risk = "high" if challenge.kind in {"inject", "publish_repair"} else "medium"
+    effects = {
+        "interrupt": "Interrupt this run at its next safe host checkpoint.",
+        "approve": "Approve the pending bounded host operation.",
+        "continue_once": "Continue this paused run once from its verified state.",
+        "inject": "Inject a bounded intervention into the selected run.",
+        "publish_repair": "Publish the selected repair candidate as a draft change.",
+    }
     return {
         "action_id": challenge.action_id,
         "target": {"kind": challenge.target_kind, "target_id": challenge.target_id},
+        "target_label": f"{challenge.target_kind.capitalize()} {challenge.target_id}",
+        "host_id": challenge.host_id,
         "kind": challenge.kind,
         "state": value.state,
+        "effect": effects[challenge.kind],
+        "risk": risk,
+        "requires_biometric": risk == "high",
+        "parameters_hash": canonical["parameters_hash"],
+        "expected_state": (
+            f"State version {challenge.expected_state_version} must still match "
+            f"{challenge.expected_state_hash}."
+        ),
+        "expected_state_version": challenge.expected_state_version,
+        "expected_state_hash": challenge.expected_state_hash,
+        "nonce": challenge.nonce,
+        "canonical_payload": base64.urlsafe_b64encode(challenge.canonical_bytes).decode(),
+        "host_available": value.state not in {"host_offline", "revoked", "expired"},
         "issued_at": challenge.issued_at.isoformat(),
         "expires_at": challenge.expires_at.isoformat(),
         "executed_at": (
@@ -59,16 +132,23 @@ def _action_view(value: Any) -> dict[str, Any]:
     }
 
 
-@router.get("")
+@router.get("", response_model=ActionCollection)
 async def list_actions(
     request: Request,
     principal: Annotated[Principal, Depends(require_viewer)],
 ) -> dict[str, Any]:
     service: ActionService = request.app.state.action_service
-    return {"items": [_action_view(item) for item in service.list(principal.tenant_id)], "next_cursor": None}
+    return {
+        "items": [_action_view(item) for item in service.list(principal.tenant_id)],
+        "next_cursor": None,
+    }
 
 
-@router.post("/challenge", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/challenge",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ActionChallengeView,
+)
 async def create_action_challenge(
     request: Request,
     body: ActionChallengeRequest,
@@ -93,13 +173,11 @@ async def create_action_challenge(
         "nonce": challenge.nonce,
         "issued_at": challenge.issued_at.isoformat(),
         "expires_at": challenge.expires_at.isoformat(),
-        "canonical_payload": base64.urlsafe_b64encode(
-            challenge.canonical_bytes
-        ).decode(),
+        "canonical_payload": base64.urlsafe_b64encode(challenge.canonical_bytes).decode(),
     }
 
 
-@router.get("/{action_id}")
+@router.get("/{action_id}", response_model=ActionView)
 async def read_action(
     request: Request,
     action_id: str,
@@ -113,7 +191,11 @@ async def read_action(
     return _action_view(value)
 
 
-@router.post("", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=ActionAcceptanceView,
+)
 async def accept_signed_action(
     request: Request,
     body: SignedActionAcceptance,

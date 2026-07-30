@@ -26,6 +26,16 @@ class DevicePairingCompletion(BaseModel):
     name: str = Field(min_length=1, max_length=256)
 
 
+class PushDestinationRegistration(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(pattern=r"^[0-9a-f]{64,200}$")
+    environment: Literal["sandbox", "production"]
+
+
+class PushDestinationRegistrationResponse(BaseModel):
+    registered: bool
+
+
 def _device(device: DeviceRecord) -> dict[str, str | None]:
     return {
         "id": str(device.id),
@@ -52,9 +62,7 @@ async def start_device_pairing(
     principal: Annotated[Principal, Depends(require_device_manager)],
 ) -> dict[str, str]:
     service: DevicePairingService = request.app.state.device_pairing_service
-    challenge = service.start(
-        tenant_id=principal.tenant_id, user_id=principal.user_id
-    )
+    challenge = service.start(tenant_id=principal.tenant_id, user_id=principal.user_id)
     return {
         "pairing_id": challenge.pairing_id,
         "challenge": base64.urlsafe_b64encode(challenge.challenge).decode(),
@@ -115,3 +123,25 @@ async def revoke_device(
         raise ApiProblem("LGAPI-NOT-FOUND")
     request.app.state.action_service.revoke_device(device_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/{device_id}/push-token",
+    response_model=PushDestinationRegistrationResponse,
+)
+async def register_push_destination(
+    request: Request,
+    device_id: uuid.UUID,
+    body: PushDestinationRegistration,
+    principal: Annotated[Principal, Depends(require_device_manager)],
+) -> dict[str, bool]:
+    service: DevicePairingService = request.app.state.device_pairing_service
+    device = service.register_push_destination(
+        principal.tenant_id,
+        device_id,
+        environment=body.environment,
+        token=body.token,
+    )
+    if device is None:
+        raise ApiProblem("LGAPI-NOT-FOUND")
+    return {"registered": True}

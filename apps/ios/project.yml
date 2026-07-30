@@ -20,8 +20,14 @@ targets:
     platform: iOS
     sources:
       - path: LoopGuard
+      - path: LoopGuardShared
+    dependencies:
+      - target: LoopGuardWidgets
+        embed: true
     settings:
       base:
+        CODE_SIGN_ENTITLEMENTS: LoopGuard/LoopGuard.entitlements
+        APS_ENVIRONMENT: development
         CURRENT_PROJECT_VERSION: 1
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: LoopGuard/Info.plist
@@ -34,6 +40,34 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.loopguard.ios
         PRODUCT_NAME: LoopGuard
         SUPPORTS_MACCATALYST: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+      configs:
+        Release:
+          APS_ENVIRONMENT: production
+  LoopGuardWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: LoopGuardWidgets
+      - path: LoopGuardShared
+    info:
+      path: LoopGuardWidgets/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDisplayName: LoopGuard
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        NSSupportsLiveActivities: true
+    settings:
+      base:
+        APPLICATION_EXTENSION_API_ONLY: YES
+        CODE_SIGN_ENTITLEMENTS: LoopGuardWidgets/LoopGuardWidgets.entitlements
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 0.1.0
+        PRODUCT_BUNDLE_IDENTIFIER: dev.loopguard.ios.widgets
+        PRODUCT_NAME: LoopGuardWidgets
+        SKIP_INSTALL: YES
         TARGETED_DEVICE_FAMILY: "1,2"
   LoopGuardTests:
     type: bundle.unit-test
@@ -62,6 +96,7 @@ schemes:
     build:
       targets:
         LoopGuard: all
+        LoopGuardWidgets: all
         LoopGuardTests: [test]
         LoopGuardUITests: [test]
     test:

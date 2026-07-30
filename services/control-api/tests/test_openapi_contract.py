@@ -30,6 +30,7 @@ REQUIRED_PATHS = {
     "/v1/preferences",
     "/v1/devices/pairing/start",
     "/v1/devices/pairing/complete",
+    "/v1/devices/{device_id}/push-token",
     "/v1/stream-tickets",
     "/v1/audit",
 }
@@ -96,9 +97,9 @@ def test_compatibility_checker_rejects_breaking_minor_changes():
     ]
 
     enum_member_removed = deepcopy(baseline)
-    enum_member_removed["components"]["schemas"]["Item"]["properties"]["state"][
-        "enum"
-    ].remove("done")
+    enum_member_removed["components"]["schemas"]["Item"]["properties"]["state"]["enum"].remove(
+        "done"
+    )
     assert compatibility_breaks(baseline, enum_member_removed) == [
         "removed response enum member Item.state=done"
     ]
@@ -110,12 +111,8 @@ def test_client_fixtures_cover_replay_actions_capabilities_hosts_and_repairs():
         for line in (ROOT / "contracts/fixtures/session-stream.jsonl").read_text().splitlines()
     ]
     actions = json.loads((ROOT / "contracts/fixtures/action-states.json").read_text())
-    capabilities = json.loads(
-        (ROOT / "contracts/fixtures/effective-capabilities.json").read_text()
-    )
-    hosts = json.loads(
-        (ROOT / "contracts/fixtures/host-integration-health.json").read_text()
-    )
+    capabilities = json.loads((ROOT / "contracts/fixtures/effective-capabilities.json").read_text())
+    hosts = json.loads((ROOT / "contracts/fixtures/host-integration-health.json").read_text())
 
     assert [event["session_seq"] for event in stream] == [1, 2, 2, 4]
     assert stream[1]["event_id"] == stream[2]["event_id"]

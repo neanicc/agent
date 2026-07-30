@@ -3,6 +3,7 @@ import SwiftUI
 struct InboxView: View {
     let state: AsyncViewState<[InboxItem]>
     let sessions: [SessionSummary]
+    let actionModel: ActionViewModel?
     let refresh: () -> Void
 
     var body: some View {
@@ -32,7 +33,13 @@ struct InboxView: View {
 
     @ViewBuilder
     private func row(_ item: InboxItem) -> some View {
-        if let session = sessions.first(where: { $0.id == item.sessionID }) {
+        if item.kind == .approval, let actionModel {
+            NavigationLink {
+                ActionReviewView(model: actionModel)
+            } label: {
+                InboxRow(item: item)
+            }
+        } else if let session = sessions.first(where: { $0.id == item.sessionID }) {
             NavigationLink {
                 RunDetailView(session: session)
             } label: {

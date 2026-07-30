@@ -108,9 +108,7 @@ class ActionService:
             raise ValueError("device public key does not match algorithm")
         if algorithm == "P-256" and not isinstance(public_key, EllipticCurvePublicKey):
             raise ValueError("device public key does not match algorithm")
-        self._devices[device_id] = _Device(
-            tenant_id, user_id, key_id, algorithm, public_key
-        )
+        self._devices[device_id] = _Device(tenant_id, user_id, key_id, algorithm, public_key)
 
     def revoke_device(self, device_id: uuid.UUID) -> None:
         device = self._devices.get(device_id)
@@ -219,14 +217,10 @@ class ActionService:
             if self._clock() > challenge.expires_at:
                 raise ActionConflict("action challenge expired")
             try:
-                signature = base64.b64decode(
-                    device_signature, altchars=b"-_", validate=True
-                )
+                signature = base64.b64decode(device_signature, altchars=b"-_", validate=True)
                 if device.algorithm == "P-256":
                     assert isinstance(device.public_key, EllipticCurvePublicKey)
-                    device.public_key.verify(
-                        signature, challenge.canonical_bytes, ECDSA(SHA256())
-                    )
+                    device.public_key.verify(signature, challenge.canonical_bytes, ECDSA(SHA256()))
                 else:
                     assert isinstance(device.public_key, Ed25519PublicKey)
                     device.public_key.verify(signature, challenge.canonical_bytes)
@@ -268,7 +262,7 @@ class ActionService:
     def expire(self, action_id: str) -> ActionRecord | ActionChallenge:
         record = self._records.get(action_id)
         if record is not None:
-            if record.state in {"executed", "rejected"}:
+            if record.state in {"executed", "rejected", "expired", "revoked"}:
                 return record
             expired = replace(record, state="expired")
             self._records[action_id] = expired
@@ -281,15 +275,31 @@ class ActionService:
         return expired_challenge
 
     def read(self, action_id: str) -> ActionRecord | ActionChallenge | None:
-        return self._records.get(action_id) or self._challenges.get(action_id)
+        value = self._records.get(action_id) or self._challenges.get(action_id)
+        if value is None:
+            return None
+        challenge = value.challenge if isinstance(value, ActionRecord) else value
+        if (
+            value.state not in {"executed", "rejected", "expired", "revoked"}
+            and self._clock() > challenge.expires_at
+        ):
+            return self.expire(action_id)
+        return value
 
     def list(self, tenant_id: uuid.UUID) -> list[ActionRecord | ActionChallenge]:
         values: list[ActionRecord | ActionChallenge] = []
         for challenge in self._challenges.values():
             if challenge.tenant_id != tenant_id:
                 continue
-            values.append(self._records.get(challenge.action_id, challenge))
-        values.sort(key=lambda item: item.challenge.issued_at if isinstance(item, ActionRecord) else item.issued_at, reverse=True)
+            value = self.read(challenge.action_id)
+            if value is not None:
+                values.append(value)
+        values.sort(
+            key=lambda item: (
+                item.challenge.issued_at if isinstance(item, ActionRecord) else item.issued_at
+            ),
+            reverse=True,
+        )
         return values
 
 

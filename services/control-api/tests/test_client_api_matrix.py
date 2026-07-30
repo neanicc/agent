@@ -32,6 +32,7 @@ REQUIRED_OPERATIONS = {
     ("get", "/v1/devices"),
     ("post", "/v1/devices/pairing/start"),
     ("post", "/v1/devices/pairing/complete"),
+    ("put", "/v1/devices/{device_id}/push-token"),
     ("delete", "/v1/devices/{device_id}"),
     ("post", "/v1/stream-tickets"),
     ("get", "/v1/audit"),

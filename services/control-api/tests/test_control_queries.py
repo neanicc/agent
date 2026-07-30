@@ -26,9 +26,7 @@ class StaticAuth:
         tenant_id = TENANT_B if token == "tenant-b" else TENANT_A
         role = "viewer" if token == "viewer" else "admin"
         permissions = (
-            frozenset({Permission.VIEW_SESSION})
-            if role == "viewer"
-            else frozenset(Permission)
+            frozenset({Permission.VIEW_SESSION}) if role == "viewer" else frozenset(Permission)
         )
         return Principal(tenant_id, USER_A, f"subject-{role}", role, permissions)
 
@@ -119,9 +117,7 @@ def test_device_pairing_challenge_is_single_use():
     public_key = base64.urlsafe_b64encode(
         private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
     ).decode()
-    started = client.post(
-        "/v1/devices/pairing/start", headers=bearer("admin")
-    ).json()
+    started = client.post("/v1/devices/pairing/start", headers=bearer("admin")).json()
     payload = {
         "pairing_id": started["pairing_id"],
         "public_key_alg": "Ed25519",
@@ -132,12 +128,49 @@ def test_device_pairing_challenge_is_single_use():
         "name": "Alice iPhone",
     }
 
-    assert client.post(
-        "/v1/devices/pairing/complete", headers=bearer("admin"), json=payload
-    ).status_code == 201
-    assert client.post(
-        "/v1/devices/pairing/complete", headers=bearer("admin"), json=payload
-    ).status_code == 409
+    assert (
+        client.post(
+            "/v1/devices/pairing/complete", headers=bearer("admin"), json=payload
+        ).status_code
+        == 201
+    )
+    assert (
+        client.post(
+            "/v1/devices/pairing/complete", headers=bearer("admin"), json=payload
+        ).status_code
+        == 409
+    )
+
+
+def test_push_destination_registration_is_tenant_scoped_and_not_exposed():
+    client, _queries, devices = client_and_services()
+    device = devices.seed_device(
+        tenant_id=TENANT_A,
+        user_id=USER_A,
+        name="Alice iPhone",
+        algorithm="Ed25519",
+        public_key="key",
+    )
+    token = "ab" * 32
+
+    response = client.put(
+        f"/v1/devices/{device.id}/push-token",
+        headers=bearer("admin"),
+        json={"token": token, "environment": "sandbox"},
+    )
+
+    assert response.status_code == 200
+    assert devices.push_destination(TENANT_A, device.id) == ("sandbox", token)
+    listed = client.get("/v1/devices", headers=bearer("admin")).json()["items"]
+    assert "push_token" not in listed[0]
+    assert (
+        client.put(
+            f"/v1/devices/{device.id}/push-token",
+            headers=bearer("tenant-b"),
+            json={"token": token, "environment": "sandbox"},
+        ).status_code
+        == 404
+    )
 
 
 def test_effective_capabilities_fail_closed_for_stale_host():
@@ -151,9 +184,7 @@ def test_effective_capabilities_fail_closed_for_stale_host():
         repository_bound=True,
     )
 
-    body = client.get(
-        f"/v1/capabilities?host_id={host_id}", headers=bearer("viewer")
-    ).json()
+    body = client.get(f"/v1/capabilities?host_id={host_id}", headers=bearer("viewer")).json()
 
     assert body["status"] == "degraded"
     assert body["features"]["remote_actions"]["available"] is False

@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct LoopGuardApp: App {
+    @UIApplicationDelegateAdaptor(NotificationAppDelegate.self) private var appDelegate
     @State private var model = AppEnvironment.makeModel()
 
     var body: some Scene {
@@ -21,6 +22,12 @@ struct LoopGuardApp: App {
                             .task { await model.loadDashboard() }
                     }
                 }
+            }
+            .onOpenURL { url in
+                model.notifications.handle(url: url)
+            }
+            .task {
+                await model.notifications.synchronizeRegistration()
             }
         }
     }
@@ -53,6 +60,7 @@ private enum AppEnvironment {
                 api: ControlDevicePairingAPI(api: api),
                 keyStore: keyStore
             ),
+            notifications: .shared,
             deviceKeyStore: keyStore,
             fixtureMode: fixtureMode,
             fixtureScenario: fixtureScenario

@@ -54,6 +54,7 @@ Cross-tenant identifiers are intentionally indistinguishable from absent identif
 | `POST` | `/v1/devices/pairing/complete` | `complete_device_pairing_v1_devices_pairing_complete_post` | Bearer | 201, 422 |
 | `POST` | `/v1/devices/pairing/start` | `start_device_pairing_v1_devices_pairing_start_post` | Bearer | 200 |
 | `DELETE` | `/v1/devices/{device_id}` | `revoke_device_v1_devices__device_id__delete` | Bearer | 204, 422 |
+| `PUT` | `/v1/devices/{device_id}/push-token` | `register_push_destination_v1_devices__device_id__push_token_put` | Bearer | 200, 422 |
 | `POST` | `/v1/hook-events` | `ingest_hook_event_v1_hook_events_post` | Bearer | 202, 422 |
 | `GET` | `/v1/hosts` | `list_hosts_v1_hosts_get` | Bearer | 200 |
 | `POST` | `/v1/hosts/pair` | `pair_host_v1_hosts_pair_post` | Bearer | 201, 422 |

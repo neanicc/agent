@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives.hashes import SHA256
 from loopguard_api.action_signing import Ed25519ActionSigner
 from loopguard_api.actions import ActionService, DeviceProofRequired
 from loopguard_api.authorization import Permission, Principal
+from loopguard_api.routes.actions import _action_view
 
 
 NOW = datetime(2026, 7, 21, 12, tzinfo=timezone.utc)
@@ -27,9 +28,7 @@ def _principal() -> Principal:
 
 
 def test_cloud_rejects_action_without_current_registered_device_proof():
-    service = ActionService(
-        signer=Ed25519ActionSigner.generate("cloud-key-1"), clock=lambda: NOW
-    )
+    service = ActionService(signer=Ed25519ActionSigner.generate("cloud-key-1"), clock=lambda: NOW)
     challenge = service.create_challenge(
         principal=_principal(),
         requested_by_device_id=uuid.uuid4(),
@@ -61,9 +60,7 @@ def test_api_acceptance_is_queued_not_execution():
     principal = _principal()
     device_id = uuid.uuid4()
     device_key = Ed25519PrivateKey.generate()
-    service = ActionService(
-        signer=Ed25519ActionSigner.generate("cloud-key-1"), clock=lambda: NOW
-    )
+    service = ActionService(signer=Ed25519ActionSigner.generate("cloud-key-1"), clock=lambda: NOW)
     service.register_device(
         tenant_id=principal.tenant_id,
         user_id=principal.user_id,
@@ -101,13 +98,63 @@ def test_api_acceptance_is_queued_not_execution():
     assert resolved.executed_at == NOW
 
 
+def test_action_read_view_contains_exact_authenticated_review_material():
+    principal = _principal()
+    device_id = uuid.uuid4()
+    service = ActionService(signer=Ed25519ActionSigner.generate("cloud-key-1"), clock=lambda: NOW)
+    action = service.create_challenge(
+        principal=principal,
+        requested_by_device_id=device_id,
+        target_kind="session",
+        target_id="session_1",
+        host_id="host_1",
+        kind="inject",
+        parameters={"message": "bounded intervention"},
+        expected_state_version=7,
+        expected_state_hash="sha256:state7",
+        expires_in=30,
+    )
+
+    view = _action_view(action)
+
+    assert view["parameters_hash"].startswith("sha256:")
+    assert view["expected_state_version"] == 7
+    assert view["expected_state_hash"] == "sha256:state7"
+    assert view["nonce"] == action.nonce
+    assert base64.urlsafe_b64decode(view["canonical_payload"]) == action.canonical_bytes
+    assert view["risk"] == "high"
+    assert view["requires_biometric"] is True
+    assert "parameters" not in view
+
+
+def test_read_reconciles_expired_review_without_waiting_for_delivery():
+    current = NOW
+    service = ActionService(
+        signer=Ed25519ActionSigner.generate("cloud-key-1"),
+        clock=lambda: current,
+    )
+    action = service.create_challenge(
+        principal=_principal(),
+        requested_by_device_id=uuid.uuid4(),
+        target_kind="session",
+        target_id="session_1",
+        host_id="host_1",
+        kind="continue_once",
+        parameters={},
+        expected_state_version=7,
+        expected_state_hash="sha256:state7",
+        expires_in=30,
+    )
+    current = NOW + timedelta(seconds=31)
+
+    assert service.read(action.action_id).state == "expired"
+
+
 def test_p256_secure_enclave_device_can_sign_exact_action_challenge():
     principal = _principal()
     device_id = uuid.uuid4()
     device_key = generate_private_key(SECP256R1())
-    service = ActionService(
-        signer=Ed25519ActionSigner.generate("cloud-key-1"), clock=lambda: NOW
-    )
+    service = ActionService(signer=Ed25519ActionSigner.generate("cloud-key-1"), clock=lambda: NOW)
     service.register_device(
         tenant_id=principal.tenant_id,
         user_id=principal.user_id,

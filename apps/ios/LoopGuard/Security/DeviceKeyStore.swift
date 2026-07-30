@@ -31,6 +31,7 @@ struct DeviceKeyStore: Sendable {
     private static let secureKeyAccount = "device-signing-secure-enclave"
     private static let softwareKeyAccount = "device-signing-ed25519-encrypted"
     private static let wrappingKeyAccount = "device-signing-wrapping-key"
+    private static let deviceIDAccount = "device-signing-registration-id"
 
     let keychain: KeychainStore
     private let secureEnclaveAvailable: @Sendable () -> Bool
@@ -87,14 +88,41 @@ struct DeviceKeyStore: Sendable {
         return try softwarePrivateKey().signature(for: payload)
     }
 
+    func register(deviceID: String) throws {
+        guard UUID(uuidString: deviceID) != nil else {
+            throw DeviceKeyStoreError.invalidKeyMaterial
+        }
+        try keychain.set(Data(deviceID.lowercased().utf8), for: Self.deviceIDAccount)
+    }
+
+    func pairedDeviceID() throws -> String {
+        guard let data = try keychain.data(for: Self.deviceIDAccount),
+              let value = String(data: data, encoding: .utf8),
+              UUID(uuidString: value) != nil
+        else {
+            throw DeviceKeyStoreError.keyNotFound
+        }
+        return value
+    }
+
     func revoke() throws {
-        for account in [Self.secureKeyAccount, Self.softwareKeyAccount, Self.wrappingKeyAccount] {
+        for account in [
+            Self.secureKeyAccount,
+            Self.softwareKeyAccount,
+            Self.wrappingKeyAccount,
+            Self.deviceIDAccount,
+        ] {
             try keychain.remove(account)
         }
     }
 
     func keychainAttributes() throws -> [KeychainAttributeSummary] {
-        try [Self.secureKeyAccount, Self.softwareKeyAccount, Self.wrappingKeyAccount].compactMap { account in
+        try [
+            Self.secureKeyAccount,
+            Self.softwareKeyAccount,
+            Self.wrappingKeyAccount,
+            Self.deviceIDAccount,
+        ].compactMap { account in
             guard (try keychain.data(for: account)) != nil else { return nil }
             let attributes = try keychain.attributes(for: account)
             return KeychainAttributeSummary(

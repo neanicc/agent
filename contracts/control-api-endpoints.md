@@ -31,6 +31,7 @@ bounded and stable; cross-tenant detail IDs return the same `404` as absent IDs.
 | `GET /v1/devices` | `session:view` | Read-only | Opaque `(created_at,id)` | CLOUD-T09 |
 | `POST /v1/devices/pairing/start` | `device:manage` | New five-minute challenge | Pairing ID | CLOUD-T09 |
 | `POST /v1/devices/pairing/complete` | `device:manage` | Pairing ID, one-use | Device ID | CLOUD-T09 |
+| `PUT /v1/devices/{device_id}/push-token` | `device:manage` | Idempotent replacement; token never returned | Device ID | SURFACE-T08 |
 | `DELETE /v1/devices/{device_id}` | `device:manage` | Idempotent revocation by device ID | Device ID | CLOUD-T09 |
 | `POST /v1/stream-tickets` | `session:view` + CSRF for cookies | New 30-second one-use ticket | `session_seq` | CLOUD-T05 |
 | `GET /v1/audit` | `session:view` | Read-only append-only history | Opaque `(created_at,id)` | CLOUD-T09 |

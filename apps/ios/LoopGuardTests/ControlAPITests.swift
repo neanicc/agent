@@ -34,6 +34,70 @@ struct ControlAPITests {
             _ = try await api.sessions(after: nil)
         }
     }
+
+    @Test("server timestamps with fractional seconds decode")
+    func fractionalTimestampDecodes() async throws {
+        let transport = RecordingTransport(response: .json([
+            "items": [[
+                "id": "run_1",
+                "updated_at": "2026-07-30T12:34:56.123456Z",
+            ]],
+        ]))
+        let api = ControlAPI(
+            baseURL: URL(string: "https://api.test")!,
+            tokenProvider: { "token" },
+            transport: transport
+        )
+
+        let response = try await api.sessions(after: nil)
+
+        #expect(response.items.first?.updatedAt != nil)
+    }
+
+    @Test("authenticated action read reconstructs the exact review challenge")
+    func actionReviewDecodes() async throws {
+        let expiry = "2026-07-30T12:35:26.123456Z"
+        let canonicalObject: [String: Any] = [
+            "action_id": "act_1",
+            "kind": "continue_once",
+            "target": ["kind": "session", "target_id": "run_1"],
+            "parameters_hash": "sha256:parameters",
+            "expected_state_version": 7,
+            "expected_state_hash": "sha256:state7",
+            "nonce": "nonce_1",
+            "expires_at": expiry,
+        ]
+        let canonical = try JSONSerialization.data(withJSONObject: canonicalObject, options: [.sortedKeys])
+        let transport = RecordingTransport(response: .json([
+            "action_id": "act_1",
+            "target": ["kind": "session", "target_id": "run_1"],
+            "kind": "continue_once",
+            "state": "reviewed",
+            "target_label": "Run 1",
+            "effect": "Continue once.",
+            "risk": "medium",
+            "parameters_hash": "sha256:parameters",
+            "expected_state": "State 7 must match.",
+            "expected_state_version": 7,
+            "expected_state_hash": "sha256:state7",
+            "nonce": "nonce_1",
+            "expires_at": expiry,
+            "canonical_payload": canonical.base64URLEncodedString,
+            "host_available": true,
+            "requires_biometric": false,
+        ]))
+        let api = ControlAPI(
+            baseURL: URL(string: "https://api.test")!,
+            tokenProvider: { "token" },
+            transport: transport
+        )
+
+        let review = try await ControlActionAPI(api: api).review(actionID: "act_1")
+
+        #expect(review.canonicalPayload == canonical)
+        #expect(review.expectedStateVersion == 7)
+        #expect(review.initialState == .reviewed)
+    }
 }
 
 actor RecordingTransport: ControlTransport {
