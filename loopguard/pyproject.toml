@@ -76,3 +76,6 @@ src = ["src", "tests", "examples"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "docker: requires an explicitly configured local Docker daemon and immutable test image",
+]

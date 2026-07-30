@@ -11,6 +11,7 @@ from loopguard.heal.models import (
     RepairRun,
     RepairState,
 )
+from loopguard.heal.reproduce import ReproductionResult, ReproductionService
 
 __all__ = [
     "CandidateEvaluation",
@@ -23,6 +24,8 @@ __all__ = [
     "RepairRun",
     "RepairState",
     "ReplayFixture",
+    "ReproductionResult",
+    "ReproductionService",
     "UnsafeFixture",
     "normalize_failure",
 ]
