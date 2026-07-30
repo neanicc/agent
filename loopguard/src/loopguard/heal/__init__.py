@@ -21,9 +21,17 @@ from loopguard.heal.models import (
 )
 from loopguard.heal.reproduce import ReproductionResult, ReproductionService
 from loopguard.heal.planner import HostileEvidenceEnvelope, RepairPlanner, RepairStrategy
+from loopguard.heal.evaluate import (
+    CandidateEvaluator,
+    EvaluationCheck,
+    EvaluationPlan,
+    EvaluationRecord,
+)
+from loopguard.heal.rank import RankingResult, rank_candidates
 
 __all__ = [
     "CandidateEvaluation",
+    "CandidateEvaluator",
     "CandidateBudget",
     "CandidateArtifactStore",
     "CandidateGenerationResult",
@@ -34,9 +42,13 @@ __all__ = [
     "FailurePayloadRejected",
     "FixtureBuilder",
     "FileCandidateArtifactStore",
+    "EvaluationCheck",
+    "EvaluationPlan",
+    "EvaluationRecord",
     "HostileEvidenceEnvelope",
     "PatchPolicy",
     "PublicationRecord",
+    "RankingResult",
     "RepairRun",
     "RepairPlanner",
     "RepairState",
@@ -46,4 +58,5 @@ __all__ = [
     "ReproductionService",
     "UnsafeFixture",
     "normalize_failure",
+    "rank_candidates",
 ]

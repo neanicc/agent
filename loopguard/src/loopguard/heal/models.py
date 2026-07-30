@@ -102,6 +102,9 @@ class CandidateEvaluation(RepairModel):
     contract_delta: DataContractDelta = Field(default_factory=DataContractDelta)
     evidence_artifact_ids: tuple[str, ...] = Field(default=(), max_length=128)
     verification_duration_ms: int = Field(default=0, ge=0, le=86_400_000)
+    changed_files: int = Field(default=0, ge=0, le=64)
+    changed_lines: int = Field(default=0, ge=0, le=10_000)
+    risk_penalty: int = Field(default=0, ge=0, le=10_000)
     rejection_reason: str | None = Field(default=None, min_length=1, max_length=512)
 
     @property

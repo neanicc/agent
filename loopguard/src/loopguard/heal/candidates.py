@@ -193,6 +193,31 @@ class FileCandidateArtifactStore:
         ).encode()
         return self._put(payload, suffix=".json")
 
+    def put_blob(self, payload: bytes, *, suffix: str = ".bin") -> str:
+        if not suffix.startswith(".") or len(suffix) > 16 or not suffix[1:].isalnum():
+            raise ValueError("candidate artifact suffix is invalid")
+        return self._put(payload, suffix=suffix)
+
+    def read_patch(self, artifact_id: str, *, maximum_bytes: int = 64 * 1024 * 1024) -> bytes:
+        prefix = "sha256:"
+        digest = artifact_id.removeprefix(prefix)
+        if (
+            not artifact_id.startswith(prefix)
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+        ):
+            raise ValueError("candidate patch artifact identity is invalid")
+        path = self.root / f"{digest}.patch"
+        details = path.lstat()
+        if path.is_symlink() or not stat.S_ISREG(details.st_mode):
+            raise ValueError("candidate patch artifact is not a regular file")
+        if details.st_size > maximum_bytes:
+            raise ValueError("candidate patch artifact exceeds its read budget")
+        payload = path.read_bytes()
+        if hashlib.sha256(payload).hexdigest() != digest:
+            raise ValueError("candidate patch artifact failed integrity verification")
+        return payload
+
     def _put(self, payload: bytes, *, suffix: str) -> str:
         digest = hashlib.sha256(payload).hexdigest()
         path = self.root / f"{digest}{suffix}"
