@@ -49,3 +49,48 @@ for (const root of roots) {
 if (!patched) {
   throw new Error("The pinned Redocly js-yaml adapter was not installed");
 }
+
+// minimatch 3/5 expect brace-expansion's historical callable CommonJS export. The patched
+// brace-expansion 5 release exposes a bounded `expand` function instead. Keep the old consumers
+// on their declared minimatch versions and adapt only that import shape.
+const minimatchRoots = [
+  "node_modules/eslint-config-next/node_modules/minimatch",
+  "node_modules/@eslint/eslintrc/node_modules/minimatch",
+  "node_modules/@eslint/config-array/node_modules/minimatch",
+  "node_modules/eslint/node_modules/minimatch",
+  "node_modules/openapi-typescript/node_modules/minimatch",
+];
+let minimatchPatches = 0;
+for (const root of minimatchRoots) {
+  const packagePath = resolve(root, "package.json");
+  let metadata;
+  try {
+    metadata = JSON.parse(await readFile(packagePath, "utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT") continue;
+    throw error;
+  }
+  if (!["3.1.5", "5.1.9"].includes(metadata.version)) {
+    throw new Error(`Refusing to patch unexpected minimatch ${metadata.version}`);
+  }
+
+  const entryPath = resolve(root, "minimatch.js");
+  const source = await readFile(entryPath, "utf8");
+  const vulnerableImport = metadata.version === "3.1.5"
+    ? "var expand = require('brace-expansion')"
+    : "const expand = require('brace-expansion')";
+  const safeImport = `${vulnerableImport}.expand`;
+  if (source.includes(safeImport)) {
+    minimatchPatches += 1;
+    continue;
+  }
+  if (!source.includes(vulnerableImport)) {
+    throw new Error(`Refusing to patch an unknown minimatch ${metadata.version} entry`);
+  }
+  await writeFile(entryPath, source.replace(vulnerableImport, safeImport));
+  minimatchPatches += 1;
+}
+
+if (minimatchPatches !== minimatchRoots.length) {
+  throw new Error(`Expected ${minimatchRoots.length} minimatch compatibility patches, found ${minimatchPatches}`);
+}

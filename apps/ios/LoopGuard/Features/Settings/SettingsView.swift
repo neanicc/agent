@@ -38,6 +38,9 @@ struct SettingsView: View {
 
                 Section("Notifications") {
                     Toggle("Only items needing attention", isOn: $attentionNotifications)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Only items needing attention")
+                        .accessibilityValue(attentionNotifications ? "On" : "Off")
                         .onChange(of: attentionNotifications) { _, enabled in
                             guard enabled else { return }
                             Task {
@@ -64,6 +67,9 @@ struct SettingsView: View {
 
                 Section {
                     Toggle("Keep observations on this device", isOn: $localOnly)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Keep observations on this device")
+                        .accessibilityValue(localOnly ? "On" : "Off")
                 } header: {
                     Text("Privacy")
                 } footer: {

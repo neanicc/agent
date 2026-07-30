@@ -40,10 +40,16 @@ export function ConsoleShell({ children }: Readonly<{ children: React.ReactNode 
   }, [pathname]);
 
   const health = capabilities.data?.status ?? (hosts.isPending ? "loading" : hostId ? "unknown" : "setup");
+  const focusMainContent = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    const main = document.getElementById("main-content");
+    main?.focus();
+    window.history.replaceState(null, "", "#main-content");
+  };
 
   return (
     <div className="console-shell">
-      <a className="skip-link" href="#main-content">
+      <a className="skip-link" href="#main-content" onClick={focusMainContent}>
         Skip to main content
       </a>
       <header className="mobile-app-bar">
@@ -79,7 +85,7 @@ export function ConsoleShell({ children }: Readonly<{ children: React.ReactNode 
         </div>
         <PrimaryNavigation pathname={pathname} />
       </dialog>
-      <main id="main-content">{children}</main>
+      <main id="main-content" tabIndex={-1}>{children}</main>
     </div>
   );
 }

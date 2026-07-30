@@ -10,7 +10,9 @@ export const ids = {
 } as const;
 
 type MockOptions = {
+  delayMs?: number;
   emptyHosts?: boolean;
+  failPath?: string;
   sessionOverride?: Record<string, unknown>;
   onRequest?: (route: Route) => void;
 };
@@ -20,6 +22,23 @@ export async function mockControlApi(page: Page, options: MockOptions = {}) {
     options.onRequest?.(route);
     const url = new URL(route.request().url());
     const path = url.pathname.replace("/api/control", "");
+    if (options.delayMs) {
+      await new Promise((resolve) => setTimeout(resolve, options.delayMs));
+    }
+    if (path === options.failPath) {
+      await route.fulfill({
+        contentType: "application/problem+json",
+        json: {
+          type: "https://loopguard.dev/problems/upstream-unavailable",
+          title: "Control data unavailable",
+          status: 503,
+          detail: "The authenticated host snapshot could not be loaded.",
+          request_id: "req_accessibility_fixture",
+        },
+        status: 503,
+      });
+      return;
+    }
     const value = responseFor(path, options);
     await route.fulfill({ json: value, status: 200 });
   });
