@@ -1,0 +1,29 @@
+{
+  "eventType": "FAIL",
+  "run": {
+    "runId": "7df810be-6a39-4ea0-a745-832fe16dcf49"
+  },
+  "job": {
+    "namespace": "rh_coordinates",
+    "name": "coordinate_pipeline"
+  },
+  "producer": "https://openlineage.io/client/python",
+  "facets": {
+    "loopguard": {
+      "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "step": "normalize_coordinates",
+      "schema": {
+        "longitude": "float",
+        "latitude": "string"
+      },
+      "stackTraceArtifactId": "artifact-lineage-stack",
+      "fixtureArtifactId": "artifact-coordinate-fixture"
+    },
+    "errorMessage": {
+      "programmingLanguage": "python",
+      "type": "TypeError",
+      "message": "could not convert string to float: 'north'",
+      "stackTrace": "Traceback (most recent call last):\n  File \"/workspace/repository/src/coordinates.py\", line 44, in parse_coordinate\nTypeError: could not convert string to float: 'north'"
+    }
+  }
+}

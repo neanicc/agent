@@ -1,5 +1,6 @@
 """Safety-gated pipeline repair contracts and services."""
 
+from loopguard.heal.intake import FailurePayloadRejected, normalize_failure
 from loopguard.heal.models import (
     CandidateEvaluation,
     CandidatePatch,
@@ -15,7 +16,9 @@ __all__ = [
     "CandidatePatch",
     "DataContractDelta",
     "FailureEvent",
+    "FailurePayloadRejected",
     "PublicationRecord",
     "RepairRun",
     "RepairState",
+    "normalize_failure",
 ]

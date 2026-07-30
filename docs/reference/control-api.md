@@ -7,7 +7,7 @@ Contract build: `contract-test`
 
 ## Authentication and request integrity
 
-All `/v1` HTTP operations require `Authorization: Bearer <token>`. Tokens are validated against the configured OIDC issuer, audience, signature algorithm, expiry, tenant membership, role, and permission set. Browser code calls the same-origin web BFF and never receives the bearer token.
+User-facing `/v1` operations require `Authorization: Bearer <token>`. Tokens are validated against the configured OIDC issuer, audience, signature algorithm, expiry, tenant membership, role, and permission set. Browser code calls the same-origin web BFF and never receives the bearer token. Machine hook intake instead requires a scoped repository-bound HMAC credential, signed raw body, timestamp, and one-use nonce.
 
 Every request accepts `X-Request-ID`; the service generates a bounded opaque ID when it is missing or invalid and returns the effective value on every response. Cookie-authenticated state changes additionally require an exact allowed `Origin` and a matching `X-CSRF-Token`.
 
@@ -55,7 +55,7 @@ Cross-tenant identifiers are intentionally indistinguishable from absent identif
 | `POST` | `/v1/devices/pairing/start` | `start_device_pairing_v1_devices_pairing_start_post` | Bearer | 200 |
 | `DELETE` | `/v1/devices/{device_id}` | `revoke_device_v1_devices__device_id__delete` | Bearer | 204, 422 |
 | `PUT` | `/v1/devices/{device_id}/push-token` | `register_push_destination_v1_devices__device_id__push_token_put` | Bearer | 200, 422 |
-| `POST` | `/v1/hook-events` | `ingest_hook_event_v1_hook_events_post` | Bearer | 202, 422 |
+| `POST` | `/v1/hook-events` | `ingest_hook_event_v1_hook_events_post` | Signed hook | 202, 422 |
 | `GET` | `/v1/hosts` | `list_hosts_v1_hosts_get` | Bearer | 200 |
 | `POST` | `/v1/hosts/pair` | `pair_host_v1_hosts_pair_post` | Bearer | 201, 422 |
 | `POST` | `/v1/hosts/pairing-codes` | `create_pairing_code_v1_hosts_pairing_codes_post` | Bearer | 200 |
@@ -63,6 +63,7 @@ Cross-tenant identifiers are intentionally indistinguishable from absent identif
 | `GET` | `/v1/me` | `me_v1_me_get` | Bearer | 200 |
 | `GET` | `/v1/preferences` | `read_preferences_v1_preferences_get` | Bearer | 200 |
 | `PUT` | `/v1/preferences` | `write_preferences_v1_preferences_put` | Bearer | 200, 422 |
+| `POST` | `/v1/repair-intake` | `ingest_repair_failure_v1_repair_intake_post` | Signed hook | 202, 422 |
 | `GET` | `/v1/repairs` | `list_repairs_v1_repairs_get` | Bearer | 200 |
 | `GET` | `/v1/repairs/{repair_id}` | `read_repair_v1_repairs__repair_id__get` | Bearer | 200, 422 |
 | `GET` | `/v1/sessions` | `list_sessions_v1_sessions_get` | Bearer | 200 |
@@ -135,12 +136,14 @@ P-256 device signatures use DER-encoded ECDSA with SHA-256; the encrypted softwa
 Host hooks authenticate a bounded raw request body with a repository-bound credential, timestamp, and one-use nonce. Exact header names and canonicalization are defined by the installed adapter contract.
 
 ```text
-X-LoopGuard-Host: host_01JEXAMPLE
-X-LoopGuard-Repository: repo_01JEXAMPLE
-X-LoopGuard-Timestamp: 1783526400
+X-LoopGuard-Key-ID: hk_01JEXAMPLE
+X-LoopGuard-Repository: rh_01JEXAMPLE
+X-LoopGuard-Timestamp: 2026-07-30T12:00:00+00:00
 X-LoopGuard-Nonce: 01JEXAMPLE
-X-LoopGuard-Signature: v1=<base64url-hmac>
+X-LoopGuard-Signature: <hex-hmac-sha256>
 ```
+
+`POST /v1/repair-intake` additionally requires the credential's `repair:intake` scope. The source value inside JSON is untrusted event data and never establishes identity.
 
 ## Client fixtures
 

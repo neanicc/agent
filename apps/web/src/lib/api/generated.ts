@@ -431,6 +431,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/repair-intake": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ingest Repair Failure */
+        post: operations["ingest_repair_failure_v1_repair_intake_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/repairs": {
         parameters: {
             query?: never;
@@ -927,6 +944,24 @@ export interface components {
         PushDestinationRegistrationResponse: {
             /** Registered */
             registered: boolean;
+        };
+        /** RepairIntakeAccepted */
+        RepairIntakeAccepted: {
+            /** Duplicate */
+            duplicate: boolean;
+            /** Fingerprint */
+            fingerprint: string;
+            /**
+             * Repair Id
+             * Format: uuid
+             */
+            repair_id: string;
+            /**
+             * Status
+             * @default accepted
+             * @constant
+             */
+            status: "accepted";
         };
         /** SignedActionAcceptance */
         SignedActionAcceptance: {
@@ -1756,6 +1791,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PreferenceProfileView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingest_repair_failure_v1_repair_intake_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-loopguard-key-id": string;
+                "x-loopguard-timestamp": string;
+                "x-loopguard-nonce": string;
+                "x-loopguard-repository": string;
+                "x-loopguard-signature": string;
+                "content-encoding"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepairIntakeAccepted"];
                 };
             };
             /** @description Validation Error */

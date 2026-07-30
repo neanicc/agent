@@ -41,6 +41,8 @@ from .routes.costs import router as costs_router
 from .routes.devices import router as devices_router
 from .routes.sessions import router as sessions_router
 from .routes.preferences import router as preferences_router
+from .routes.repair_intake import RepairIntakeRegistry
+from .routes.repair_intake import router as repair_intake_router
 from .routes.repairs import router as repairs_router
 from .routes.verifications import router as verifications_router
 from .settings import PublicBuild, Settings
@@ -67,6 +69,8 @@ def create_app(
     artifact_service: ArtifactService | None = None,
     control_queries: ControlQueryService | None = None,
     device_pairing_service: DevicePairingService | None = None,
+    hook_service: HookService | None = None,
+    repair_intake_registry: RepairIntakeRegistry | None = None,
 ) -> FastAPI:
     active = settings or Settings()
     app = FastAPI(title="LoopGuard Control API", version="0.1.0")
@@ -87,7 +91,16 @@ def create_app(
         )
     app.state.auth_service = auth_service
     app.state.pairing_service = PairingService()
-    app.state.hook_service = HookService(maximum_body_bytes=active.max_request_bytes)
+    if hook_service is None:
+        if active.environment in {"staging", "production"}:
+            raise ValueError("hosted deployments require a durable hook credential adapter")
+        hook_service = HookService(maximum_body_bytes=active.max_request_bytes)
+    if repair_intake_registry is None:
+        if active.environment in {"staging", "production"}:
+            raise ValueError("hosted deployments require a durable repair intake adapter")
+        repair_intake_registry = RepairIntakeRegistry()
+    app.state.hook_service = hook_service
+    app.state.repair_intake_registry = repair_intake_registry
     app.state.stream_ticket_service = stream_ticket_service or StreamTicketService()
     app.state.subscription_service = subscription_service or SessionSubscriptionService()
     if action_service is None:
@@ -181,6 +194,7 @@ def create_app(
     app.include_router(costs_router)
     app.include_router(devices_router)
     app.include_router(preferences_router)
+    app.include_router(repair_intake_router)
     app.include_router(repairs_router)
     app.include_router(verifications_router)
 

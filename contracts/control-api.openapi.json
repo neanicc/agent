@@ -959,6 +959,38 @@
         "title": "PushDestinationRegistrationResponse",
         "type": "object"
       },
+      "RepairIntakeAccepted": {
+        "additionalProperties": false,
+        "properties": {
+          "duplicate": {
+            "title": "Duplicate",
+            "type": "boolean"
+          },
+          "fingerprint": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Fingerprint",
+            "type": "string"
+          },
+          "repair_id": {
+            "format": "uuid",
+            "title": "Repair Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "accepted",
+            "default": "accepted",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repair_id",
+          "fingerprint",
+          "duplicate"
+        ],
+        "title": "RepairIntakeAccepted",
+        "type": "object"
+      },
       "SignedActionAcceptance": {
         "additionalProperties": false,
         "properties": {
@@ -2243,6 +2275,100 @@
         "summary": "Write Preferences",
         "tags": [
           "preferences"
+        ]
+      }
+    },
+    "/v1/repair-intake": {
+      "post": {
+        "operationId": "ingest_repair_failure_v1_repair_intake_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-loopguard-key-id",
+            "required": true,
+            "schema": {
+              "title": "X-Loopguard-Key-Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-loopguard-timestamp",
+            "required": true,
+            "schema": {
+              "title": "X-Loopguard-Timestamp",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-loopguard-nonce",
+            "required": true,
+            "schema": {
+              "title": "X-Loopguard-Nonce",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-loopguard-repository",
+            "required": true,
+            "schema": {
+              "title": "X-Loopguard-Repository",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-loopguard-signature",
+            "required": true,
+            "schema": {
+              "title": "X-Loopguard-Signature",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "content-encoding",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Content-Encoding"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairIntakeAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingest Repair Failure",
+        "tags": [
+          "repair-intake"
         ]
       }
     },

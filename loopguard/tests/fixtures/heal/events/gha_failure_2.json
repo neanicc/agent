@@ -1,0 +1,28 @@
+{
+  "repository": {
+    "node_id": "rh_coordinates"
+  },
+  "workflow": {
+    "name": "coordinate_pipeline"
+  },
+  "job": {
+    "name": "normalize_coordinates"
+  },
+  "check_run": {
+    "id": 90099,
+    "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "annotations": [
+      {
+        "path": "src/coordinates.py",
+        "start_line": 44,
+        "title": "TypeError",
+        "message": "could not convert string to float: 'north'"
+      }
+    ]
+  },
+  "run_id": 120099,
+  "schema": {
+    "latitude": "string",
+    "longitude": "float"
+  }
+}

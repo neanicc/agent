@@ -21,6 +21,7 @@ class IssuedHookCredential:
     tenant_id: uuid.UUID
     host_id: uuid.UUID | None
     repository_handle: str
+    scopes: tuple[str, ...]
     expires_at: datetime
 
 
@@ -29,6 +30,7 @@ class VerifiedHook:
     tenant_id: uuid.UUID
     host_id: uuid.UUID | None
     repository_handle: str
+    scopes: frozenset[str]
 
 
 @dataclass(slots=True)
@@ -37,7 +39,9 @@ class _StoredCredential:
     tenant_id: uuid.UUID
     host_id: uuid.UUID | None
     repository_handle: str
+    scopes: frozenset[str]
     expires_at: datetime
+    rotated_at: datetime | None = None
     revoked_at: datetime | None = None
 
 
@@ -64,10 +68,12 @@ class HookService:
         tenant_id: uuid.UUID,
         host_id: uuid.UUID | None,
         repository_handle: str,
+        scopes: tuple[str, ...] = ("events:write",),
         expires_at: datetime,
     ) -> IssuedHookCredential:
         if expires_at <= self._clock():
             raise HookRejected("credential expiry must be in the future")
+        normalized_scopes = _scopes(scopes)
         key_id = f"hk_{secrets.token_urlsafe(12)}"
         secret = secrets.token_urlsafe(32)
         self._credentials[key_id] = _StoredCredential(
@@ -75,10 +81,17 @@ class HookService:
             tenant_id=tenant_id,
             host_id=host_id,
             repository_handle=repository_handle,
+            scopes=normalized_scopes,
             expires_at=expires_at,
         )
         return IssuedHookCredential(
-            key_id, secret, tenant_id, host_id, repository_handle, expires_at
+            key_id,
+            secret,
+            tenant_id,
+            host_id,
+            repository_handle,
+            tuple(sorted(normalized_scopes)),
+            expires_at,
         )
 
     def revoke(self, key_id: str) -> None:
@@ -86,6 +99,31 @@ class HookService:
         if credential is None:
             raise HookRejected("credential not found")
         credential.revoked_at = self._clock()
+
+    def rotate(
+        self,
+        key_id: str,
+        *,
+        expires_at: datetime,
+    ) -> IssuedHookCredential:
+        credential = self._credentials.get(key_id)
+        now = self._clock()
+        if credential is None:
+            raise HookRejected("credential not found")
+        if credential.revoked_at is not None or credential.rotated_at is not None:
+            raise HookRejected("credential is not active")
+        if now > credential.expires_at:
+            raise HookRejected("credential is expired")
+        replacement = self.issue(
+            tenant_id=credential.tenant_id,
+            host_id=credential.host_id,
+            repository_handle=credential.repository_handle,
+            scopes=tuple(sorted(credential.scopes)),
+            expires_at=expires_at,
+        )
+        credential.rotated_at = now
+        credential.revoked_at = now
+        return replacement
 
     def sign_for_test(
         self,
@@ -122,6 +160,7 @@ class HookService:
         nonce: str,
         repository_handle: str,
         signature: str,
+        required_scope: str | None = None,
     ) -> VerifiedHook:
         if len(body) > self.maximum_body_bytes:
             raise HookRejected("hook body is too large")
@@ -143,6 +182,8 @@ class HookService:
             raise HookRejected("hook timestamp is outside the allowed clock skew")
         if credential.repository_handle != repository_handle:
             raise HookRejected("hook repository binding does not match")
+        if required_scope is not None and required_scope not in credential.scopes:
+            raise HookRejected("hook repository binding lacks required scope")
         if not nonce or len(nonce) > 256:
             raise HookRejected("hook nonce is invalid")
         expected = hmac.new(
@@ -163,7 +204,10 @@ class HookService:
                 credential.expires_at, now + self.maximum_clock_skew
             )
         return VerifiedHook(
-            credential.tenant_id, credential.host_id, credential.repository_handle
+            credential.tenant_id,
+            credential.host_id,
+            credential.repository_handle,
+            credential.scopes,
         )
 
     def _derive(self, secret: str) -> bytes:
@@ -189,3 +233,11 @@ def _canonical(
             digest,
         )
     ).encode()
+
+
+def _scopes(values: tuple[str, ...]) -> frozenset[str]:
+    allowed = {"events:write", "repair:intake"}
+    normalized = frozenset(value.strip() for value in values)
+    if not normalized or len(normalized) > 16 or not normalized <= allowed:
+        raise HookRejected("credential scopes are invalid")
+    return normalized

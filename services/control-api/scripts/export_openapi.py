@@ -105,9 +105,11 @@ def render_reference(schema: dict[str, Any]) -> str:
         "",
         "## Authentication and request integrity",
         "",
-        "All `/v1` HTTP operations require `Authorization: Bearer <token>`. Tokens are validated "
+        "User-facing `/v1` operations require `Authorization: Bearer <token>`. Tokens are validated "
         "against the configured OIDC issuer, audience, signature algorithm, expiry, tenant membership, "
-        "role, and permission set. Browser code calls the same-origin web BFF and never receives the bearer token.",
+        "role, and permission set. Browser code calls the same-origin web BFF and never receives the bearer token. "
+        "Machine hook intake instead requires a scoped repository-bound HMAC credential, signed raw body, timestamp, "
+        "and one-use nonce.",
         "",
         "Every request accepts `X-Request-ID`; the service generates a bounded opaque ID when it is "
         "missing or invalid and returns the effective value on every response. Cookie-authenticated "
@@ -141,7 +143,10 @@ def render_reference(schema: dict[str, Any]) -> str:
     ]
     for method, path, operation in operations:
         responses = ", ".join(sorted(operation.get("responses", {})))
-        auth = "Bearer" if path.startswith("/v1") else "Public"
+        if path in {"/v1/hook-events", "/v1/repair-intake"}:
+            auth = "Signed hook"
+        else:
+            auth = "Bearer" if path.startswith("/v1") else "Public"
         lines.append(
             f"| `{method.upper()}` | `{path}` | `{operation['operationId']}` | {auth} | {responses} |"
         )
@@ -207,12 +212,15 @@ def render_reference(schema: dict[str, Any]) -> str:
         "and one-use nonce. Exact header names and canonicalization are defined by the installed adapter contract.",
         "",
         "```text",
-        "X-LoopGuard-Host: host_01JEXAMPLE",
-        "X-LoopGuard-Repository: repo_01JEXAMPLE",
-        "X-LoopGuard-Timestamp: 1783526400",
+        "X-LoopGuard-Key-ID: hk_01JEXAMPLE",
+        "X-LoopGuard-Repository: rh_01JEXAMPLE",
+        "X-LoopGuard-Timestamp: 2026-07-30T12:00:00+00:00",
         "X-LoopGuard-Nonce: 01JEXAMPLE",
-        "X-LoopGuard-Signature: v1=<base64url-hmac>",
+        "X-LoopGuard-Signature: <hex-hmac-sha256>",
         "```",
+        "",
+        "`POST /v1/repair-intake` additionally requires the credential's `repair:intake` scope. "
+        "The source value inside JSON is untrusted event data and never establishes identity.",
         "",
         "## Client fixtures",
         "",
