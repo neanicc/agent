@@ -19,6 +19,10 @@ const destinations = [
   { href: "/changes", label: "Changes", icon: "changes" },
   { href: "/verification", label: "Verification", icon: "verification" },
   { href: "/hosts", label: "Hosts & integrations", shortLabel: "Hosts", icon: "hosts" },
+  { href: "/policies", label: "Policies", icon: "policies" },
+  { href: "/costs", label: "Costs", icon: "costs" },
+  { href: "/devices", label: "Devices", icon: "devices" },
+  { href: "/audit", label: "Audit", icon: "audit" },
 ] as const;
 
 export function ConsoleShell({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -125,6 +129,10 @@ function NavigationIcon({ name }: { name: (typeof destinations)[number]["icon"] 
     changes: <path d="M6 3v10.5a2.5 2.5 0 005 0V6m-2 2l2-2 2 2M6 6H3m3 4H3" />,
     verification: <path d="M10 2.8l6 2.7v4.4c0 3.8-2.3 6.4-6 7.9-3.7-1.5-6-4.1-6-7.9V5.5l6-2.7zM7 10l2 2 4-4" />,
     hosts: <path d="M3 4h14v9H3zM7 16h6M10 13v3M5.5 7h.1M8 7h6" />,
+    policies: <path d="M4 3h12v14H4zM7 7h6M7 10h6M7 13h3" />,
+    costs: <path d="M10 2.5v15M13.5 5.5H8.3a2.3 2.3 0 000 4.6h3.4a2.3 2.3 0 010 4.6H6.5" />,
+    devices: <path d="M6 2.5h8v15H6zM8.5 5h3M9 15h2" />,
+    audit: <path d="M5 3h10v14H5zM8 7h4M8 10h4M8 13h2M3 5v10M17 5v10" />,
   };
   return (
     <svg aria-hidden="true" className="navigation-icon" viewBox="0 0 20 20">

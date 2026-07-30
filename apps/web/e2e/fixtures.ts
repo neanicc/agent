@@ -5,6 +5,8 @@ export const ids = {
   change: "f83ac878-0ec5-4ce8-bbfa-0a3e1c6522bb",
   verification: "2e559f3b-facb-49f6-a277-551f349cab22",
   host: "c2d6438e-1bcd-43fe-b8c3-2adee13f7f0c",
+  device: "1d5512ad-8a62-44bd-a192-f5e082cd9670",
+  audit: "4a71c494-7c72-4714-bcab-ef23913fb7d5",
 } as const;
 
 type MockOptions = {
@@ -88,6 +90,76 @@ function responseFor(path: string, options: MockOptions): unknown {
   if (path === `/v1/hosts/${ids.host}`) return host;
   if (path.startsWith("/v1/capabilities")) {
     return { status: "ready", features: { repairs: { available: false, status: "disabled" } } };
+  }
+  if (path === "/v1/preferences") {
+    return {
+      profile_version: 4,
+      source_manifest_hash: "sha256:managed-defaults-v4",
+      rules: [
+        {
+          id: "wcag-contrast",
+          severity: "block",
+          managed: true,
+          source: "organization",
+          precedence: "managed minimum",
+          affected_capabilities: ["verification", "repair publication"],
+        },
+        {
+          id: "loop-threshold",
+          severity: "warn",
+          managed: false,
+          source: "profile",
+          precedence: "profile override",
+          affected_capabilities: ["loop intervention"],
+        },
+      ],
+    };
+  }
+  if (path === "/v1/costs") {
+    return {
+      window: "30d",
+      currency: "USD",
+      observed: {
+        agent: "1.20",
+        judge: "0.04",
+        verification: "0.00",
+        critic: "0.01",
+        repair: "0.30",
+      },
+      estimated_avoided_cost: null,
+    };
+  }
+  if (path === "/v1/devices") {
+    return {
+      items: [
+        {
+          id: ids.device,
+          name: "Alice’s iPhone",
+          algorithm: "P-256",
+          key_id: "dk_alice",
+          created_at: "2026-07-20T13:39:00Z",
+          last_seen_at: "2026-07-22T13:39:00Z",
+          revoked_at: null,
+        },
+      ],
+    };
+  }
+  if (path === "/v1/audit") {
+    return {
+      items: [
+        {
+          id: ids.audit,
+          action: "policy_updated",
+          target_kind: "preference_profile",
+          target_id: "profile_4",
+          result: "accepted",
+          actor: "Alice",
+          request_id: "req_tenant_a",
+          created_at: "2026-07-22T13:39:00Z",
+        },
+      ],
+      next_cursor: null,
+    };
   }
   return { items: [], next_cursor: null };
 }

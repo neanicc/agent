@@ -707,6 +707,56 @@ export interface components {
             /** Sha256 */
             sha256: string;
         };
+        /** AuditCollectionView */
+        AuditCollectionView: {
+            /** Items */
+            items: components["schemas"]["AuditEntryView"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** AuditEntryView */
+        AuditEntryView: {
+            /** Action */
+            action: string;
+            /** Actor */
+            actor?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: string;
+            /** Request Id */
+            request_id?: string | null;
+            /** Result */
+            result?: string | null;
+            /** Target Id */
+            target_id: string;
+            /** Target Kind */
+            target_kind: string;
+        };
+        /** CostSummaryView */
+        CostSummaryView: {
+            /**
+             * Currency
+             * @constant
+             */
+            currency: "USD";
+            /** Estimated Avoided Cost */
+            estimated_avoided_cost: string | null;
+            observed: components["schemas"]["ObservedCostView"];
+            /**
+             * Window
+             * @enum {string}
+             */
+            window: "24h" | "7d" | "30d" | "90d";
+        };
+        /** DeviceCollectionView */
+        DeviceCollectionView: {
+            /** Items */
+            items: components["schemas"]["DeviceView"][];
+        };
         /** DevicePairingCompletion */
         DevicePairingCompletion: {
             /** Name */
@@ -722,6 +772,35 @@ export interface components {
             public_key_alg: "Ed25519" | "P-256";
             /** Signature */
             signature: string;
+        };
+        /** DeviceView */
+        DeviceView: {
+            /**
+             * Algorithm
+             * @enum {string}
+             */
+            algorithm: "Ed25519" | "P-256";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Key Id */
+            key_id: string;
+            /**
+             * Last Seen At
+             * Format: date-time
+             */
+            last_seen_at: string;
+            /** Name */
+            name: string;
+            /** Revoked At */
+            revoked_at: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -739,6 +818,19 @@ export interface components {
             /** Public Key */
             public_key: string;
         };
+        /** ObservedCostView */
+        ObservedCostView: {
+            /** Agent */
+            agent: string;
+            /** Critic */
+            critic: string;
+            /** Judge */
+            judge: string;
+            /** Repair */
+            repair: string;
+            /** Verification */
+            verification: string;
+        };
         /** PairingCodeResponse */
         PairingCodeResponse: {
             /** Code */
@@ -749,12 +841,55 @@ export interface components {
              */
             expires_at: string;
         };
+        /** PreferenceProfileView */
+        PreferenceProfileView: {
+            /** Profile Version */
+            profile_version: number;
+            /** Rules */
+            rules: components["schemas"]["PreferenceRuleView"][];
+            /** Source Manifest Hash */
+            source_manifest_hash: string;
+            /** Updated By */
+            updated_by?: string | null;
+        };
+        /** PreferenceRuleUpdate */
+        PreferenceRuleUpdate: {
+            /** Id */
+            id: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "inform" | "warn" | "block";
+        };
+        /** PreferenceRuleView */
+        PreferenceRuleView: {
+            /** Affected Capabilities */
+            affected_capabilities: string[];
+            /** Id */
+            id: string;
+            /** Managed */
+            managed: boolean;
+            /**
+             * Precedence
+             * @enum {string}
+             */
+            precedence: "managed minimum" | "profile override";
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "inform" | "warn" | "block";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "organization" | "profile";
+        };
         /** PreferenceUpdate */
         PreferenceUpdate: {
             /** Rules */
-            rules: {
-                [key: string]: unknown;
-            }[];
+            rules: components["schemas"]["PreferenceRuleUpdate"][];
         };
         /** PublicBuild */
         PublicBuild: {
@@ -1140,9 +1275,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AuditCollectionView"];
                 };
             };
             /** @description Validation Error */
@@ -1261,9 +1394,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CostSummaryView"];
                 };
             };
             /** @description Validation Error */
@@ -1292,9 +1423,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["DeviceCollectionView"];
                 };
             };
         };
@@ -1318,9 +1447,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string | null;
-                    };
+                    "application/json": components["schemas"]["DeviceView"];
                 };
             };
             /** @description Validation Error */
@@ -1604,9 +1731,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PreferenceProfileView"];
                 };
             };
         };
@@ -1630,9 +1755,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PreferenceProfileView"];
                 };
             };
             /** @description Validation Error */

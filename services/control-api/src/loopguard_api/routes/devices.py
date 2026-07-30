@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import uuid
+from datetime import datetime
 from typing import Annotated, Literal
 
 from cryptography.hazmat.primitives.asymmetric.ec import SECP256R1, EllipticCurvePublicKey
@@ -36,6 +37,20 @@ class PushDestinationRegistrationResponse(BaseModel):
     registered: bool
 
 
+class DeviceView(BaseModel):
+    id: uuid.UUID
+    name: str
+    algorithm: Literal["Ed25519", "P-256"]
+    key_id: str
+    created_at: datetime
+    last_seen_at: datetime
+    revoked_at: datetime | None
+
+
+class DeviceCollectionView(BaseModel):
+    items: list[DeviceView]
+
+
 def _device(device: DeviceRecord) -> dict[str, str | None]:
     return {
         "id": str(device.id),
@@ -43,11 +58,12 @@ def _device(device: DeviceRecord) -> dict[str, str | None]:
         "algorithm": device.algorithm,
         "key_id": device.key_id,
         "created_at": device.created_at.isoformat(),
+        "last_seen_at": device.last_seen_at.isoformat(),
         "revoked_at": device.revoked_at.isoformat() if device.revoked_at else None,
     }
 
 
-@router.get("")
+@router.get("", response_model=DeviceCollectionView)
 async def list_devices(
     request: Request,
     principal: Annotated[Principal, Depends(require_viewer)],
@@ -70,7 +86,11 @@ async def start_device_pairing(
     }
 
 
-@router.post("/pairing/complete", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/pairing/complete",
+    status_code=status.HTTP_201_CREATED,
+    response_model=DeviceView,
+)
 async def complete_device_pairing(
     request: Request,
     body: DevicePairingCompletion,

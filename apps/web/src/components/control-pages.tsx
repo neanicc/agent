@@ -466,11 +466,11 @@ function CopyCommand({ command }: { command: string }) {
   );
 }
 
-function PageFrame({ children }: Readonly<{ children: React.ReactNode }>) {
+export function PageFrame({ children }: Readonly<{ children: React.ReactNode }>) {
   return <div className="page-frame">{children}</div>;
 }
 
-function PageHeader({
+export function PageHeader({
   title,
   description,
   back,

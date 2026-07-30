@@ -393,6 +393,158 @@
         "title": "ArtifactInitiation",
         "type": "object"
       },
+      "AuditCollectionView": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "AuditCollectionView",
+        "type": "object"
+      },
+      "AuditEntryView": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_kind": {
+            "title": "Target Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "target_kind",
+          "target_id",
+          "created_at"
+        ],
+        "title": "AuditEntryView",
+        "type": "object"
+      },
+      "CostSummaryView": {
+        "properties": {
+          "currency": {
+            "const": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "estimated_avoided_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Avoided Cost"
+          },
+          "observed": {
+            "$ref": "#/components/schemas/ObservedCostView"
+          },
+          "window": {
+            "enum": [
+              "24h",
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "title": "Window",
+            "type": "string"
+          }
+        },
+        "required": [
+          "window",
+          "currency",
+          "observed",
+          "estimated_avoided_cost"
+        ],
+        "title": "CostSummaryView",
+        "type": "object"
+      },
+      "DeviceCollectionView": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceView"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DeviceCollectionView",
+        "type": "object"
+      },
       "DevicePairingCompletion": {
         "additionalProperties": false,
         "properties": {
@@ -437,6 +589,64 @@
           "name"
         ],
         "title": "DevicePairingCompletion",
+        "type": "object"
+      },
+      "DeviceView": {
+        "properties": {
+          "algorithm": {
+            "enum": [
+              "Ed25519",
+              "P-256"
+            ],
+            "title": "Algorithm",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key_id": {
+            "title": "Key Id",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "algorithm",
+          "key_id",
+          "created_at",
+          "last_seen_at",
+          "revoked_at"
+        ],
+        "title": "DeviceView",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -487,6 +697,39 @@
         "title": "HostPairingRequest",
         "type": "object"
       },
+      "ObservedCostView": {
+        "properties": {
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "critic": {
+            "title": "Critic",
+            "type": "string"
+          },
+          "judge": {
+            "title": "Judge",
+            "type": "string"
+          },
+          "repair": {
+            "title": "Repair",
+            "type": "string"
+          },
+          "verification": {
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent",
+          "judge",
+          "verification",
+          "critic",
+          "repair"
+        ],
+        "title": "ObservedCostView",
+        "type": "object"
+      },
       "PairingCodeResponse": {
         "additionalProperties": false,
         "properties": {
@@ -507,13 +750,129 @@
         "title": "PairingCodeResponse",
         "type": "object"
       },
+      "PreferenceProfileView": {
+        "properties": {
+          "profile_version": {
+            "title": "Profile Version",
+            "type": "integer"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenceRuleView"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "source_manifest_hash": {
+            "title": "Source Manifest Hash",
+            "type": "string"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "required": [
+          "profile_version",
+          "source_manifest_hash",
+          "rules"
+        ],
+        "title": "PreferenceProfileView",
+        "type": "object"
+      },
+      "PreferenceRuleUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "inform",
+              "warn",
+              "block"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "severity"
+        ],
+        "title": "PreferenceRuleUpdate",
+        "type": "object"
+      },
+      "PreferenceRuleView": {
+        "properties": {
+          "affected_capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Affected Capabilities",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "managed": {
+            "title": "Managed",
+            "type": "boolean"
+          },
+          "precedence": {
+            "enum": [
+              "managed minimum",
+              "profile override"
+            ],
+            "title": "Precedence",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "inform",
+              "warn",
+              "block"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "organization",
+              "profile"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "severity",
+          "managed",
+          "source",
+          "precedence",
+          "affected_capabilities"
+        ],
+        "title": "PreferenceRuleView",
+        "type": "object"
+      },
       "PreferenceUpdate": {
         "additionalProperties": false,
         "properties": {
           "rules": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/PreferenceRuleUpdate"
             },
             "maxItems": 500,
             "title": "Rules",
@@ -1152,9 +1511,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response List Audit V1 Audit Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/AuditCollectionView"
                 }
               }
             },
@@ -1336,9 +1693,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Read Costs V1 Costs Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CostSummaryView"
                 }
               }
             },
@@ -1374,9 +1729,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response List Devices V1 Devices Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/DeviceCollectionView"
                 }
               }
             },
@@ -1412,18 +1765,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "title": "Response Complete Device Pairing V1 Devices Pairing Complete Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/DeviceView"
                 }
               }
             },
@@ -1842,9 +2184,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Read Preferences V1 Preferences Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/PreferenceProfileView"
                 }
               }
             },
@@ -1878,9 +2218,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Write Preferences V1 Preferences Put",
-                  "type": "object"
+                  "$ref": "#/components/schemas/PreferenceProfileView"
                 }
               }
             },

@@ -36,6 +36,7 @@ class DeviceRecord:
     public_key: str
     key_id: str
     created_at: datetime
+    last_seen_at: datetime
     revoked_at: datetime | None = None
     push_environment: str | None = None
     push_token: str | None = None
@@ -111,6 +112,7 @@ class DevicePairingService:
                 public_key,
                 f"dk_{hashlib.sha256(key_bytes).hexdigest()[:32]}",
                 now,
+                now,
             )
             self._devices[device.id] = device
             return device
@@ -122,6 +124,8 @@ class DevicePairingService:
         device = self._devices.get(device_id)
         if device is None or device.tenant_id != tenant_id:
             return None
+        if device.revoked_at is not None:
+            return device
         revoked = replace(device, revoked_at=self._clock())
         self._devices[device_id] = revoked
         return revoked
@@ -139,6 +143,7 @@ class DevicePairingService:
             return None
         updated = replace(
             device,
+            last_seen_at=self._clock(),
             push_environment=environment,
             push_token=token,
         )
@@ -168,6 +173,7 @@ class DevicePairingService:
         algorithm: str,
         public_key: str,
     ) -> DeviceRecord:
+        now = self._clock()
         device = DeviceRecord(
             uuid.uuid4(),
             tenant_id,
@@ -176,7 +182,8 @@ class DevicePairingService:
             algorithm,
             public_key,
             f"seed_{uuid.uuid4().hex}",
-            self._clock(),
+            now,
+            now,
         )
         self._devices[device.id] = device
         return device

@@ -57,6 +57,15 @@ def test_preference_profile_preserves_managed_safety_rules():
 
     assert response.status_code == 422
     assert response.json()["code"] == "LGAPI-MANAGED-RULE-WEAKENED"
+    profile = client.get("/v1/preferences", headers=bearer("admin")).json()
+    assert profile["rules"][0] == {
+        "id": "wcag-contrast",
+        "severity": "block",
+        "managed": True,
+        "source": "organization",
+        "precedence": "managed minimum",
+        "affected_capabilities": ["verification", "repair publication"],
+    }
 
 
 def test_cost_summary_separates_observed_categories():
@@ -163,6 +172,7 @@ def test_push_destination_registration_is_tenant_scoped_and_not_exposed():
     assert devices.push_destination(TENANT_A, device.id) == ("sandbox", token)
     listed = client.get("/v1/devices", headers=bearer("admin")).json()["items"]
     assert "push_token" not in listed[0]
+    assert listed[0]["last_seen_at"] == NOW.isoformat().replace("+00:00", "Z")
     assert (
         client.put(
             f"/v1/devices/{device.id}/push-token",
