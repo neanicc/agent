@@ -28,6 +28,8 @@ from loopguard.heal.evaluate import (
     EvaluationRecord,
 )
 from loopguard.heal.rank import RankingResult, rank_candidates
+from loopguard.heal.github import GitHubPublisher, PublicationRequest
+from loopguard.heal.report import RepairReport, render_report
 
 __all__ = [
     "CandidateEvaluation",
@@ -41,6 +43,7 @@ __all__ = [
     "FailureEvent",
     "FailurePayloadRejected",
     "FixtureBuilder",
+    "GitHubPublisher",
     "FileCandidateArtifactStore",
     "EvaluationCheck",
     "EvaluationPlan",
@@ -48,9 +51,11 @@ __all__ = [
     "HostileEvidenceEnvelope",
     "PatchPolicy",
     "PublicationRecord",
+    "PublicationRequest",
     "RankingResult",
     "RepairRun",
     "RepairPlanner",
+    "RepairReport",
     "RepairState",
     "RepairStrategy",
     "ReplayFixture",
@@ -59,4 +64,5 @@ __all__ = [
     "UnsafeFixture",
     "normalize_failure",
     "rank_candidates",
+    "render_report",
 ]
