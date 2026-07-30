@@ -46,15 +46,30 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.loopguard.ios.tests
         GENERATE_INFOPLIST_FILE: YES
+  LoopGuardUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: LoopGuardUITests
+    dependencies:
+      - target: LoopGuard
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.loopguard.ios.ui-tests
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   LoopGuard:
     build:
       targets:
         LoopGuard: all
         LoopGuardTests: [test]
+        LoopGuardUITests: [test]
     test:
       gatherCoverageData: true
       targets:
         - name: LoopGuardTests
+          parallelizable: false
+        - name: LoopGuardUITests
+          parallelizable: false
       environmentVariables:
         LOOPGUARD_TEST_MODE: "1"

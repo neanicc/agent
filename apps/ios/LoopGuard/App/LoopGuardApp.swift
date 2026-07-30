@@ -7,33 +7,19 @@ struct LoopGuardApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                switch model.auth.state {
-                case .signedOut, .signingIn, .failed:
-                    SignInView(authSession: model.auth) {
-                        await model.loadSessions()
-                    }
-                case .signedIn:
-                    NavigationStack {
-                        AsyncStateView(
-                            state: model.sessions,
-                            emptyTitle: "No runs observed",
-                            retry: { Task { await model.loadSessions() } }
-                        ) { sessions in
-                            List(sessions) { session in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(session.name ?? "Run \(session.id.prefix(8))")
-                                        .font(.headline)
-                                    Text(session.repository ?? "Repository not reported")
-                                        .font(LoopGuardTypography.secondary)
-                                        .foregroundStyle(SemanticColor.secondaryText)
-                                }
-                                .accessibilityElement(children: .combine)
-                            }
+                if model.fixtureMode {
+                    MainTabView(model: model)
+                        .task { await model.loadDashboard() }
+                } else {
+                    switch model.auth.state {
+                    case .signedOut, .signingIn, .failed:
+                        SignInView(authSession: model.auth) {
+                            await model.loadDashboard()
                         }
-                        .navigationTitle("LoopGuard")
-                        .background(SemanticColor.canvas)
+                    case .signedIn:
+                        MainTabView(model: model)
+                            .task { await model.loadDashboard() }
                     }
-                    .task { await model.loadSessions() }
                 }
             }
         }
@@ -43,7 +29,10 @@ struct LoopGuardApp: App {
 @MainActor
 private enum AppEnvironment {
     static func makeModel() -> AppModel {
-        let configured = ProcessInfo.processInfo.environment["LOOPGUARD_API_URL"]
+        let environment = ProcessInfo.processInfo.environment
+        let configured = environment["LOOPGUARD_API_URL"]
+        let fixtureMode = environment["LOOPGUARD_UI_TEST_MODE"] == "1"
+        let fixtureScenario = environment["LOOPGUARD_UI_TEST_STATE"]
         let baseURL = configured.flatMap(URL.init(string:)) ?? URL(string: "https://api.loopguard.invalid")!
         let keychain = KeychainStore(service: "dev.loopguard.ios.session")
         let auth = AuthSession(
@@ -64,7 +53,9 @@ private enum AppEnvironment {
                 api: ControlDevicePairingAPI(api: api),
                 keyStore: keyStore
             ),
-            deviceKeyStore: keyStore
+            deviceKeyStore: keyStore,
+            fixtureMode: fixtureMode,
+            fixtureScenario: fixtureScenario
         )
     }
 
