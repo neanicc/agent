@@ -49,6 +49,7 @@ from .routes.verifications import router as verifications_router
 from .settings import PublicBuild, Settings
 from .stream_tickets import StreamTicketService
 from .subscriptions import SessionSubscriptionService
+from .telemetry import ControlApiTelemetry, bounded_route
 
 
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
@@ -73,10 +74,12 @@ def create_app(
     hook_service: HookService | None = None,
     repair_intake_registry: RepairIntakeRegistry | None = None,
     repair_workflow_service: RepairWorkflowService | None = None,
+    telemetry: ControlApiTelemetry | None = None,
 ) -> FastAPI:
     active = settings or Settings()
     app = FastAPI(title="LoopGuard Control API", version="0.1.0")
     app.state.settings = active
+    app.state.telemetry = telemetry or ControlApiTelemetry(enabled=False)
     if auth_service is None:
         engine = create_database_engine(active.database_url)
         app.state.database_engine = engine
@@ -220,14 +223,25 @@ def create_app(
         allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-CSRF-Token", "X-Request-ID"],
     )
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(active.trusted_hosts))
-    app.add_middleware(SecurityBoundaryMiddleware, settings=active)
+    app.add_middleware(
+        SecurityBoundaryMiddleware,
+        settings=active,
+        telemetry=app.state.telemetry,
+    )
     return app
 
 
 class SecurityBoundaryMiddleware:
-    def __init__(self, app: ASGIApp, *, settings: Settings) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        settings: Settings,
+        telemetry: ControlApiTelemetry,
+    ) -> None:
         self.app = app
         self.settings = settings
+        self.telemetry = telemetry
         self.proxy_networks = tuple(
             ipaddress.ip_network(value) for value in settings.trusted_proxy_cidrs
         )
@@ -258,13 +272,16 @@ class SecurityBoundaryMiddleware:
 
         if self._untrusted_forwarding(scope, headers):
             await reject("LGAPI-PROXY-UNTRUSTED")
+            self._record_completion(scope, request_id, status_code, started)
             return
         if self._untrusted_host(headers):
             await reject("LGAPI-HOST-UNTRUSTED")
+            self._record_completion(scope, request_id, status_code, started)
             return
         origin = headers.get(b"origin", b"").decode("ascii", "ignore")
         if origin and origin not in self.settings.allowed_origins:
             await reject("LGAPI-ORIGIN-DENIED")
+            self._record_completion(scope, request_id, status_code, started)
             return
         content_length = headers.get(b"content-length")
         if content_length is not None:
@@ -274,9 +291,11 @@ class SecurityBoundaryMiddleware:
                 too_large = True
             if too_large:
                 await reject("LGAPI-BODY-TOO-LARGE")
+                self._record_completion(scope, request_id, status_code, started)
                 return
         if self._csrf_invalid(scope, headers):
             await reject("LGAPI-CSRF-REQUIRED")
+            self._record_completion(scope, request_id, status_code, started)
             return
 
         received = 0
@@ -298,16 +317,36 @@ class SecurityBoundaryMiddleware:
         except TimeoutError:
             await reject("LGAPI-TIMEOUT")
         finally:
-            logger.info(
-                "request complete",
-                extra={
-                    "request_id": request_id,
-                    "method": scope.get("method"),
-                    "path": scope.get("path"),
-                    "status": status_code,
-                    "duration_ms": round((time.monotonic() - started) * 1_000, 3),
-                },
-            )
+            self._record_completion(scope, request_id, status_code, started)
+
+    def _record_completion(
+        self,
+        scope: Scope,
+        request_id: str,
+        status_code: int,
+        started: float,
+    ) -> None:
+        duration_ms = round((time.monotonic() - started) * 1_000, 3)
+        method = str(scope.get("method", "UNKNOWN"))
+        route = getattr(scope.get("route"), "path", None)
+        path = bounded_route(str(route)) if route is not None else "/unmatched"
+        logger.info(
+            "request complete",
+            extra={
+                "request_id": request_id,
+                "method": method,
+                "path": path,
+                "status": status_code,
+                "duration_ms": duration_ms,
+            },
+        )
+        self.telemetry.record_request(
+            request_id=request_id,
+            method=method,
+            path=path,
+            status_code=status_code,
+            duration_ms=duration_ms,
+        )
 
     def _untrusted_forwarding(self, scope: Scope, headers: dict[bytes, bytes]) -> bool:
         if not _FORWARDED_HEADERS.intersection(headers):

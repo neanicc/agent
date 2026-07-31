@@ -38,6 +38,11 @@ heal = [
     "PyGithub>=2.5,<3",
     "temporalio>=1.8,<2",
 ]
+telemetry = [
+    "opentelemetry-api>=1.28,<2",
+    "opentelemetry-sdk>=1.28,<2",
+    "opentelemetry-exporter-otlp-proto-http>=1.28,<2",
+]
 all-dev = [
     "build>=1.2",
     "pytest>=8",
@@ -58,6 +63,9 @@ all-dev = [
     "docker>=7.1,<8",
     "PyGithub>=2.5,<3",
     "temporalio>=1.8,<2",
+    "opentelemetry-api>=1.28,<2",
+    "opentelemetry-sdk>=1.28,<2",
+    "opentelemetry-exporter-otlp-proto-http>=1.28,<2",
 ]
 
 [project.scripts]
