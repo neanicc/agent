@@ -11,6 +11,7 @@ import sys
 import time
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -34,16 +35,150 @@ data_app = typer.Typer(help="Manage owner-only local LoopGuard data.")
 dx_app = typer.Typer(help="Inspect privacy-safe local developer-experience metrics.")
 router_app = typer.Typer(help="Validate and evaluate deterministic model routing.")
 router_policy_app = typer.Typer(help="Validate versioned routing policies.")
+update_app = typer.Typer(help="Verify signed LoopGuard release manifests.")
+migrate_app = typer.Typer(help="Check and apply backup-first local schema migrations.")
 app.add_typer(daemon_app, name="daemon")
 app.add_typer(config_app, name="config")
 app.add_typer(integrations_app, name="integrations")
 app.add_typer(data_app, name="data")
 app.add_typer(dx_app, name="dx")
 app.add_typer(router_app, name="router")
+app.add_typer(update_app, name="update")
+app.add_typer(migrate_app, name="migrate")
 integrations_app.add_typer(integrations_install_app, name="install")
 integrations_app.add_typer(integrations_verify_app, name="verify")
 integrations_app.add_typer(integrations_uninstall_app, name="uninstall")
 router_app.add_typer(router_policy_app, name="policy")
+
+
+@update_app.command("check")
+def update_check(
+    manifest: Path = typer.Option(..., exists=True, dir_okay=False),
+    public_key: Path = typer.Option(..., exists=True, dir_okay=False),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Verify release metadata without downloading or executing an artifact."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    from .security.update import UpdateVerifier
+
+    try:
+        loaded = serialization.load_pem_public_key(public_key.read_bytes())
+        if not isinstance(loaded, Ed25519PublicKey):
+            raise ValueError("update key must be Ed25519")
+        result = UpdateVerifier(loaded).verify(manifest.read_bytes())
+    except (OSError, ValueError):
+        result = None
+    payload = {
+        "status": result.code if result is not None else "invalid_public_key",
+        "trusted": bool(result and result.trusted),
+        "manifest": dict(result.manifest) if result and result.manifest else None,
+    }
+    if as_json:
+        _echo_json(payload)
+    else:
+        typer.echo(
+            "Trusted signed update manifest."
+            if payload["trusted"]
+            else f"Update check failed: {payload['status']}."
+        )
+    if not payload["trusted"]:
+        raise typer.Exit(1)
+
+
+@migrate_app.command("check")
+def migrate_check(
+    database: Path | None = typer.Option(None, help="Override the local events database."),
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Inspect migration compatibility without modifying local state."""
+    from .security.migrate import LocalMigrationService
+
+    path = database or ControlPaths.from_home(home).events_db
+    status = LocalMigrationService(b"\0" * 32).check(path)
+    payload = _migration_payload(status)
+    if as_json:
+        _echo_json(payload)
+    else:
+        typer.echo(
+            f"{status.code}: schema {status.current_schema} → {status.target_schema}"
+        )
+        for step in status.required_steps:
+            typer.echo(f"- {step}")
+    if status.code not in {"current", "migration_required", "not_initialized"}:
+        raise typer.Exit(1)
+
+
+@migrate_app.command("apply")
+def migrate_apply(
+    database: Path | None = typer.Option(None, help="Override the local events database."),
+    home: Path | None = typer.Option(None, help="Override LOOPGUARD_HOME."),
+    yes: bool = typer.Option(False, "--yes", help="Apply the previewed forward migration."),
+    as_json: bool = typer.Option(False, "--json", help="Emit stable machine-readable output."),
+) -> None:
+    """Create and verify an encrypted backup, then apply forward-only migrations."""
+    from .security.migrate import LocalMigrationService
+
+    path = database or ControlPaths.from_home(home).events_db
+    preview = LocalMigrationService(b"\0" * 32).check(path)
+    if preview.code == "migration_required" and not yes:
+        payload = {**_migration_payload(preview), "status": "confirmation_required"}
+        _echo_json(payload) if as_json else typer.echo(
+            "Migration previewed; rerun with --yes to create an encrypted backup and apply."
+        )
+        raise typer.Exit(2)
+    service = LocalMigrationService(_migration_backup_key(create=True))
+    result = service.apply(path)
+    payload = _migration_payload(result)
+    _echo_json(payload) if as_json else typer.echo(
+        f"{result.code}: schema {result.current_schema}; backup {result.backup_path or 'not needed'}"
+    )
+    if result.code != "current":
+        raise typer.Exit(1)
+
+
+@migrate_app.command("restore")
+def migrate_restore(
+    backup: Path = typer.Option(..., exists=True, dir_okay=False),
+    database: Path = typer.Option(..., dir_okay=False),
+    yes: bool = typer.Option(False, "--yes", help="Replace the database from this backup."),
+) -> None:
+    """Restore a verified encrypted backup after an exact operator confirmation."""
+    if not yes:
+        typer.echo("Restore not applied; rerun with --yes after stopping the daemon.")
+        raise typer.Exit(2)
+    from .security.migrate import LocalMigrationService
+
+    LocalMigrationService(_migration_backup_key(create=False)).restore(backup, database)
+    typer.echo(f"Restored {database}. Run `loopguard doctor --json` before restart.")
+
+
+def _migration_backup_key(*, create: bool) -> bytes:
+    from .control.crypto import MissingKeyError, PlatformKeyStore, generate_data_key
+
+    store = PlatformKeyStore(service_name="dev.loopguard.migration-backup")
+    key_id = "migration-backup-v1"
+    try:
+        return store.get(key_id)
+    except MissingKeyError:
+        if not create:
+            raise
+        key = generate_data_key()
+        store.put(key_id, key)
+        return key
+
+
+def _migration_payload(status: Any) -> dict[str, object]:
+    return {
+        "status": status.code,
+        "current_schema": status.current_schema,
+        "target_schema": status.target_schema,
+        "required_steps": list(status.required_steps),
+        "backup_path": str(status.backup_path) if status.backup_path else None,
+        "restore_command": status.restore_command,
+    }
 
 
 @router_policy_app.command("validate")

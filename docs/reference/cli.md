@@ -45,6 +45,8 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 │ data          Manage owner-only local LoopGuard data.                        │
 │ dx            Inspect privacy-safe local developer-experience metrics.       │
 │ router        Validate and evaluate deterministic model routing.             │
+│ update        Verify signed LoopGuard release manifests.                     │
+│ migrate       Check and apply backup-first local schema migrations.          │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
@@ -730,6 +732,113 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
 │ --json          Emit stable machine-readable output.                         │
 │ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard update`
+
+```text
+
+ Usage: loopguard update [OPTIONS] COMMAND [ARGS]...
+
+ Verify signed LoopGuard release manifests.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ check  Verify release metadata without downloading or executing an artifact. │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard update check`
+
+```text
+
+ Usage: loopguard update check [OPTIONS]
+
+ Verify release metadata without downloading or executing an artifact.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --manifest          FILE  [required]                                      │
+│ *  --public-key        FILE  [required]                                      │
+│    --json                    Emit stable machine-readable output.            │
+│    --help                    Show this message and exit.                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard migrate`
+
+```text
+
+ Usage: loopguard migrate [OPTIONS] COMMAND [ARGS]...
+
+ Check and apply backup-first local schema migrations.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --help          Show this message and exit.                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ check    Inspect migration compatibility without modifying local state.      │
+│ apply    Create and verify an encrypted backup, then apply forward-only      │
+│          migrations.                                                         │
+│ restore  Restore a verified encrypted backup after an exact operator         │
+│          confirmation.                                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard migrate check`
+
+```text
+
+ Usage: loopguard migrate check [OPTIONS]
+
+ Inspect migration compatibility without modifying local state.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --database        PATH  Override the local events database.                  │
+│ --home            PATH  Override LOOPGUARD_HOME.                             │
+│ --json                  Emit stable machine-readable output.                 │
+│ --help                  Show this message and exit.                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard migrate apply`
+
+```text
+
+ Usage: loopguard migrate apply [OPTIONS]
+
+ Create and verify an encrypted backup, then apply forward-only migrations.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --database        PATH  Override the local events database.                  │
+│ --home            PATH  Override LOOPGUARD_HOME.                             │
+│ --yes                   Apply the previewed forward migration.               │
+│ --json                  Emit stable machine-readable output.                 │
+│ --help                  Show this message and exit.                          │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+```
+
+## `loopguard migrate restore`
+
+```text
+
+ Usage: loopguard migrate restore [OPTIONS]
+
+ Restore a verified encrypted backup after an exact operator confirmation.
+
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ *  --backup          FILE  [required]                                        │
+│ *  --database        FILE  [required]                                        │
+│    --yes                   Replace the database from this backup.            │
+│    --help                  Show this message and exit.                       │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
 ```
