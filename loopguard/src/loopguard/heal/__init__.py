@@ -30,6 +30,7 @@ from loopguard.heal.evaluate import (
 from loopguard.heal.rank import RankingResult, rank_candidates
 from loopguard.heal.github import GitHubPublisher, PublicationRequest
 from loopguard.heal.report import RepairReport, render_report
+from loopguard.heal.metrics import MetricsSnapshot, RolloutMetrics, RolloutMode, RolloutPolicy
 
 __all__ = [
     "CandidateEvaluation",
@@ -49,6 +50,7 @@ __all__ = [
     "EvaluationPlan",
     "EvaluationRecord",
     "HostileEvidenceEnvelope",
+    "MetricsSnapshot",
     "PatchPolicy",
     "PublicationRecord",
     "PublicationRequest",
@@ -58,6 +60,9 @@ __all__ = [
     "RepairReport",
     "RepairState",
     "RepairStrategy",
+    "RolloutMetrics",
+    "RolloutMode",
+    "RolloutPolicy",
     "ReplayFixture",
     "ReproductionResult",
     "ReproductionService",
