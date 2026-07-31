@@ -4,6 +4,7 @@ import base64
 import asyncio
 import time
 import uuid
+from datetime import datetime, timezone
 
 import jwt
 import pytest
@@ -186,14 +187,28 @@ def test_viewer_cannot_create_action(client: TestClient, token_factory):
 
 
 def test_operator_permission_is_accepted(client: TestClient, token_factory):
+    queries = client.app.state.control_queries
+    host_id = queries.add_host(
+        tenant_id=TENANT_ID,
+        name="operator-host",
+        observed_at=datetime.now(timezone.utc),
+        ttl_seconds=60,
+        adapter_version="1.0.0",
+        repository_bound=True,
+    )
+    session_id = queries.add_resource(
+        "sessions",
+        tenant_id=TENANT_ID,
+        values={"status": "paused"},
+    )
     response = client.post(
         "/v1/actions/challenge",
         headers=bearer(token_factory()),
         json={
             "target": {
                 "kind": "session",
-                "target_id": str(uuid.uuid4()),
-                "host_id": str(uuid.uuid4()),
+                "target_id": str(session_id),
+                "host_id": str(host_id),
             },
             "device_id": str(uuid.uuid4()),
             "kind": "interrupt",

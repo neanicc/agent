@@ -168,6 +168,21 @@ async def create_action_challenge(
     body: ActionChallengeRequest,
     principal: Annotated[Principal, Depends(require_controller)],
 ) -> dict[str, Any]:
+    if body.kind in {"interrupt", "approve", "continue_once", "inject"}:
+        if body.target.kind != "session":
+            raise ApiProblem("LGAPI-FORBIDDEN")
+        try:
+            session_id = uuid.UUID(body.target.target_id)
+            host_id = uuid.UUID(body.target.host_id)
+        except ValueError as exc:
+            raise ApiProblem("LGAPI-REQUEST-INVALID", field="target") from exc
+        queries = request.app.state.control_queries
+        if (
+            queries.resource("sessions", principal.tenant_id, session_id) is None
+            or queries.host(principal.tenant_id, host_id) is None
+        ):
+            # Keep resource existence private across tenant boundaries.
+            raise ApiProblem("LGAPI-NOT-FOUND")
     if body.kind in {"publish_repair", "cancel_repair", "retry_repair"}:
         if (
             body.target.kind != "repair"
@@ -261,6 +276,14 @@ async def accept_signed_action(
     principal: Annotated[Principal, Depends(require_controller)],
 ) -> dict[str, Any]:
     service: ActionService = request.app.state.action_service
+    value = service.read(body.action_id)
+    challenge = getattr(value, "challenge", value)
+    if (
+        value is None
+        or challenge.tenant_id != principal.tenant_id
+        or challenge.requested_by != principal.user_id
+    ):
+        raise ApiProblem("LGAPI-NOT-FOUND")
     try:
         record = service.accept_signed(
             body.action_id,
