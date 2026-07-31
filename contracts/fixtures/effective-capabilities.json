@@ -8,7 +8,7 @@
     "features":{
       "remote_actions":{"status":"ready","available":true,"reason":"ready"},
       "session_stream":{"status":"ready","available":true,"reason":"ready"},
-      "repair":{"status":"disabled","available":false,"reason":"feature_flag_disabled"}
+      "repair":{"status":"unavailable","available":false,"reason":"workflow_unavailable"}
     }
   },
   {

@@ -129,7 +129,7 @@ def test_client_fixtures_cover_replay_actions_capabilities_hosts_and_repairs():
         "revoked",
     }
     assert {item["features"]["repair"]["status"] for item in capabilities} == {
-        "disabled",
+        "unavailable",
         "ready",
     }
     assert {item["state"] for item in hosts} >= {

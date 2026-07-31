@@ -59,6 +59,7 @@ class ControlQueryService:
             "verifications": [],
             "repairs": [],
         }
+        self.repair_workflow_registered = False
         self.managed_rules = {"wcag-contrast": "block"}
 
     def read_preferences(self, tenant_id: uuid.UUID) -> dict[str, Any]:
@@ -191,7 +192,7 @@ class ControlQueryService:
         unavailable = {
             "remote_actions": {"available": False, "reason": "host_unknown"},
             "session_stream": {"available": False, "reason": "host_unknown"},
-            "repair": {"available": False, "reason": "feature_flag_disabled"},
+            "repair": {"available": False, "reason": "host_unknown"},
         }
         if host is None or host.tenant_id != principal.tenant_id:
             return {
@@ -220,7 +221,14 @@ class ControlQueryService:
                 "reason": "ready" if can_control and bound else "role_or_repository_denied",
             },
             "session_stream": {"available": True, "reason": "ready"},
-            "repair": {"available": False, "reason": "feature_flag_disabled"},
+            "repair": {
+                "available": self.repair_workflow_registered,
+                "reason": (
+                    "workflow_registered"
+                    if self.repair_workflow_registered
+                    else "workflow_unavailable"
+                ),
+            },
         }
         return {
             "schema_version": 1,

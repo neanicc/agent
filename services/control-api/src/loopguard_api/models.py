@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -239,6 +240,27 @@ class Repair(IdentifierMixin, TenantOwnedMixin, Base):
     verification_id: Mapped[UUID | None] = mapped_column(ForeignKey("verifications.id"))
     state: Mapped[str] = mapped_column(String(64), nullable=False)
     failure_fingerprint: Mapped[str] = mapped_column(String(256), nullable=False)
+    state_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    state_hash: Mapped[str] = mapped_column(String(64), default="0" * 64, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    publication_deadline: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC) + timedelta(days=7),
+        nullable=False,
+    )
+    workflow_state: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    ranking: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    rollback: Mapped[str] = mapped_column(
+        Text,
+        default="Revert the repair commit and rerun the original pipeline.",
+        nullable=False,
+    )
+    publication: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    approved_action_id: Mapped[str | None] = mapped_column(String(256))
+    cancellation_reason: Mapped[str | None] = mapped_column(String(256))
+    total_cost: Mapped[Decimal] = mapped_column(Numeric(20, 8), default=0, nullable=False)
 
 
 class RepairCandidate(IdentifierMixin, TenantOwnedMixin, Base):
@@ -248,6 +270,10 @@ class RepairCandidate(IdentifierMixin, TenantOwnedMixin, Base):
     state: Mapped[str] = mapped_column(String(64), nullable=False)
     patch_artifact_id: Mapped[UUID | None] = mapped_column(ForeignKey("artifacts.id"))
     proof_artifact_id: Mapped[UUID | None] = mapped_column(ForeignKey("artifacts.id"))
+    strategy: Mapped[str] = mapped_column(String(256), default="unspecified", nullable=False)
+    changed_files: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    changed_lines: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    evaluation: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
 
 
 class HookCredential(IdentifierMixin, TenantOwnedMixin, Base):

@@ -600,7 +600,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "interrupt" | "approve" | "continue_once" | "inject" | "publish_repair";
+            kind: "interrupt" | "approve" | "continue_once" | "inject" | "publish_repair" | "cancel_repair" | "retry_repair";
             /** Parameters */
             parameters?: {
                 [key: string]: unknown;
@@ -945,6 +945,61 @@ export interface components {
             /** Registered */
             registered: boolean;
         };
+        /** RepairDetail */
+        RepairDetail: {
+            /** Candidates */
+            candidates: {
+                [key: string]: unknown;
+            }[];
+            /** Capability */
+            capability: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Failure Fingerprint */
+            failure_fingerprint: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Publication */
+            publication: {
+                [key: string]: unknown;
+            };
+            /** Ranking */
+            ranking: {
+                [key: string]: unknown;
+            };
+            /**
+             * Repository Id
+             * Format: uuid
+             */
+            repository_id: string;
+            /** Reproduction */
+            reproduction: {
+                [key: string]: unknown;
+            };
+            /** Rollback */
+            rollback: string;
+            /** State */
+            state: string;
+            /** State Hash */
+            state_hash: string;
+            /** State Version */
+            state_version: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Winning Candidate Id */
+            winning_candidate_id?: string | null;
+        };
         /** RepairIntakeAccepted */
         RepairIntakeAccepted: {
             /** Duplicate */
@@ -962,6 +1017,46 @@ export interface components {
              * @constant
              */
             status: "accepted";
+        };
+        /** RepairPage */
+        RepairPage: {
+            /** Capability */
+            capability: {
+                [key: string]: unknown;
+            };
+            /** Items */
+            items: components["schemas"]["RepairSummary"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** RepairSummary */
+        RepairSummary: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Failure Fingerprint */
+            failure_fingerprint: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Repository Id
+             * Format: uuid
+             */
+            repository_id: string;
+            /** State */
+            state: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Winning Candidate Id */
+            winning_candidate_id?: string | null;
         };
         /** SignedActionAcceptance */
         SignedActionAcceptance: {
@@ -1842,7 +1937,10 @@ export interface operations {
     };
     list_repairs_v1_repairs_get: {
         parameters: {
-            query?: never;
+            query?: {
+                page_cursor?: string | null;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1855,9 +1953,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["RepairPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1879,9 +1984,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["RepairDetail"];
                 };
             };
             /** @description Validation Error */

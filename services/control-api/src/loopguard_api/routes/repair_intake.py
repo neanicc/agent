@@ -116,6 +116,12 @@ async def ingest_repair_failure(
         raise ApiProblem("LGAPI-HOOK-BINDING")
     registry: RepairIntakeRegistry = request.app.state.repair_intake_registry
     record, duplicate = registry.accept(verified, failure)
+    await request.app.state.repair_workflow_service.accept_intake(
+        repair_id=record.repair_id,
+        tenant_id=record.tenant_id,
+        repository_handle=record.repository_handle,
+        failure_fingerprint=failure.fingerprint,
+    )
     return RepairIntakeAccepted(
         repair_id=record.repair_id,
         fingerprint=failure.fingerprint,

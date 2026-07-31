@@ -30,6 +30,7 @@ from .device_pairing import DevicePairingService
 from .errors import ApiProblem, problem_response
 from .hook_ingest import HookService
 from .pairing import PairingService
+from .repair_workflow import RepairWorkflowService
 from .routes.hooks import router as hooks_router
 from .routes.hosts import router as hosts_router
 from .routes.actions import router as actions_router
@@ -71,6 +72,7 @@ def create_app(
     device_pairing_service: DevicePairingService | None = None,
     hook_service: HookService | None = None,
     repair_intake_registry: RepairIntakeRegistry | None = None,
+    repair_workflow_service: RepairWorkflowService | None = None,
 ) -> FastAPI:
     active = settings or Settings()
     app = FastAPI(title="LoopGuard Control API", version="0.1.0")
@@ -101,6 +103,17 @@ def create_app(
         repair_intake_registry = RepairIntakeRegistry()
     app.state.hook_service = hook_service
     app.state.repair_intake_registry = repair_intake_registry
+    if repair_workflow_service is None:
+        if active.environment in {"staging", "production"}:
+            raise ValueError("hosted deployments require a durable repair workflow adapter")
+        repair_workflow_service = RepairWorkflowService()
+    if active.environment in {"staging", "production"} and (
+        not repair_workflow_service.durable
+        or not repair_workflow_service.workflow_registered
+        or repair_workflow_service.workflow_controller is None
+    ):
+        raise ValueError("hosted repair workflow must be durable and worker-registered")
+    app.state.repair_workflow_service = repair_workflow_service
     app.state.stream_ticket_service = stream_ticket_service or StreamTicketService()
     app.state.subscription_service = subscription_service or SessionSubscriptionService()
     if action_service is None:
@@ -124,6 +137,7 @@ def create_app(
             raise ValueError("hosted deployments require a durable device-pairing adapter")
         device_pairing_service = DevicePairingService()
     app.state.control_queries = control_queries
+    control_queries.repair_workflow_registered = repair_workflow_service.workflow_registered
     app.state.device_pairing_service = device_pairing_service
 
     @app.exception_handler(ApiProblem)

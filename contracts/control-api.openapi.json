@@ -64,7 +64,9 @@
               "approve",
               "continue_once",
               "inject",
-              "publish_repair"
+              "publish_repair",
+              "cancel_repair",
+              "retry_repair"
             ],
             "title": "Kind",
             "type": "string"
@@ -959,6 +961,108 @@
         "title": "PushDestinationRegistrationResponse",
         "type": "object"
       },
+      "RepairDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "capability": {
+            "additionalProperties": true,
+            "title": "Capability",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "failure_fingerprint": {
+            "title": "Failure Fingerprint",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "publication": {
+            "additionalProperties": true,
+            "title": "Publication",
+            "type": "object"
+          },
+          "ranking": {
+            "additionalProperties": true,
+            "title": "Ranking",
+            "type": "object"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "reproduction": {
+            "additionalProperties": true,
+            "title": "Reproduction",
+            "type": "object"
+          },
+          "rollback": {
+            "title": "Rollback",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "state_hash": {
+            "title": "State Hash",
+            "type": "string"
+          },
+          "state_version": {
+            "title": "State Version",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "winning_candidate_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winning Candidate Id"
+          }
+        },
+        "required": [
+          "id",
+          "repository_id",
+          "state",
+          "failure_fingerprint",
+          "created_at",
+          "updated_at",
+          "state_version",
+          "state_hash",
+          "reproduction",
+          "candidates",
+          "ranking",
+          "rollback",
+          "publication",
+          "capability"
+        ],
+        "title": "RepairDetail",
+        "type": "object"
+      },
       "RepairIntakeAccepted": {
         "additionalProperties": false,
         "properties": {
@@ -989,6 +1093,95 @@
           "duplicate"
         ],
         "title": "RepairIntakeAccepted",
+        "type": "object"
+      },
+      "RepairPage": {
+        "additionalProperties": false,
+        "properties": {
+          "capability": {
+            "additionalProperties": true,
+            "title": "Capability",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RepairSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "capability"
+        ],
+        "title": "RepairPage",
+        "type": "object"
+      },
+      "RepairSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "failure_fingerprint": {
+            "title": "Failure Fingerprint",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "winning_candidate_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winning Candidate Id"
+          }
+        },
+        "required": [
+          "id",
+          "repository_id",
+          "state",
+          "failure_fingerprint",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RepairSummary",
         "type": "object"
       },
       "SignedActionAcceptance": {
@@ -2375,18 +2568,56 @@
     "/v1/repairs": {
       "get": {
         "operationId": "list_repairs_v1_repairs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page_cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Page Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response List Repairs V1 Repairs Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/RepairPage"
                 }
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -2420,9 +2651,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Read Repair V1 Repairs  Repair Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/RepairDetail"
                 }
               }
             },

@@ -64,7 +64,7 @@ Cross-tenant identifiers are intentionally indistinguishable from absent identif
 | `GET` | `/v1/preferences` | `read_preferences_v1_preferences_get` | Bearer | 200 |
 | `PUT` | `/v1/preferences` | `write_preferences_v1_preferences_put` | Bearer | 200, 422 |
 | `POST` | `/v1/repair-intake` | `ingest_repair_failure_v1_repair_intake_post` | Signed hook | 202, 422 |
-| `GET` | `/v1/repairs` | `list_repairs_v1_repairs_get` | Bearer | 200 |
+| `GET` | `/v1/repairs` | `list_repairs_v1_repairs_get` | Bearer | 200, 422 |
 | `GET` | `/v1/repairs/{repair_id}` | `read_repair_v1_repairs__repair_id__get` | Bearer | 200, 422 |
 | `GET` | `/v1/sessions` | `list_sessions_v1_sessions_get` | Bearer | 200 |
 | `GET` | `/v1/sessions/{session_id}` | `read_session_v1_sessions__session_id__get` | Bearer | 200, 422 |
