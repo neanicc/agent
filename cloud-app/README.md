@@ -1,5 +1,11 @@
 # LoopGuard Cloud (mobile app)
 
+> **Deprecated compatibility fallback:** This Expo prototype is retained for one release while
+> existing users move to the production web console in `apps/web` and native iOS app in
+> `apps/ios`. It receives no new production workflow or security features and must not be exposed
+> directly to the public internet. There is no silent redirect; use it only for local/demo
+> compatibility during migration.
+
 A React Native (Expo) "mission control" app for monitoring real LoopGuard-guarded agents and
 intervening from your phone. It talks to the LoopGuard server (`loopguard serve`) over the
 network — for the demo the server runs on your laptop; in production you deploy the same server
@@ -61,6 +67,9 @@ npx expo export --platform web   # prove the bundle builds
 
 ## Notes & limitations
 
+- **Migration:** Use the production clients for authenticated control-plane state, capability-gated
+  repairs, durable evidence, paired-device signing, and replay-safe action receipts. This
+  prototype is scheduled for removal after the one-release fallback window and migration review.
 - **Reconnect:** the app remembers the server URL and reconnects on launch. Opening a run (from
   Run or Agents) connects to its WebSocket, and the server replays the run's events + any pending
   decision — so you can rejoin a run already in flight. There is no automatic mid-session socket

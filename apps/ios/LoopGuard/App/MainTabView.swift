@@ -33,6 +33,18 @@ struct MainTabView: View {
             }
             .accessibilityIdentifier("changes-tab")
 
+            if model.repairCapabilityReady {
+                Tab("Repairs", systemImage: "wrench.and.screwdriver", value: .repairs) {
+                    RepairListView(
+                        state: model.repairs,
+                        loadDetail: model.repairDetail,
+                        preparePublication: model.prepareRepairPublication,
+                        refresh: refresh
+                    )
+                }
+                .accessibilityIdentifier("repairs-tab")
+            }
+
             Tab("Settings", systemImage: "gearshape", value: .settings) {
                 SettingsView(
                     subject: model.subject,
@@ -52,6 +64,11 @@ struct MainTabView: View {
             case .session:
                 selection = .runs
             case .action:
+                selection = .inbox
+            }
+        }
+        .onChange(of: model.repairCapabilityReady) { _, ready in
+            if !ready, selection == .repairs {
                 selection = .inbox
             }
         }
@@ -82,5 +99,6 @@ private enum CoreDestination: Hashable {
     case inbox
     case runs
     case changes
+    case repairs
     case settings
 }

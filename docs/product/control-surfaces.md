@@ -23,10 +23,20 @@ and unknown, stale, unavailable, or revoked inputs fail closed.
 | Observed provider cost | Costs | Run detail |
 | Signing-device lifecycle | Devices | Settings → Paired devices |
 | Immutable control history | Audit | Authoritative receipts in context |
-| Explicit action review | Run detail | Inbox/action deep link |
+| Repair evidence and draft publication | Repairs | Repairs |
+| Explicit action review | Run/repair detail | Inbox/action deep link |
 
-Repairs stay absent until the server reports the completed Auto-Heal capability as ready. Empty
-repair data is not treated as availability.
+Repairs are now implemented in both production clients, but stay completely absent until the
+server reports a fresh, available `repair.ready` capability. Empty repair data, a stale
+capability, or an unknown capability state is not treated as availability. Revocation removes the
+destination and disables any in-progress publication control.
+
+Repair detail is evidence-first: it shows the sanitized reproduction result, bounded candidate
+diffs, exact replay/regression/security verdicts, deterministic ranking reason, contract impact,
+rollback instructions, and draft-publication state. Publication is a high-risk signed action
+bound to the repair's exact state version and hash. It can only create a draft pull request;
+LoopGuard cannot merge or deploy it, and an ambiguous response is reconciled by action ID rather
+than rerunning evaluation or publishing again.
 
 ## Safety interaction contract
 
@@ -105,16 +115,17 @@ Baseline changes require an intentional UI change, visual inspection in both app
 
 ## Migration from `cloud-app`
 
-`cloud-app` remains a compatibility reference while native parity is completed. New production
-work belongs in `apps/web`, `apps/ios`, and the versioned `services/control-api` contract.
+`cloud-app` is now a deprecated compatibility fallback for one release. New production work
+belongs in `apps/web`, `apps/ios`, and the versioned `services/control-api` contract.
 
 The migration is incremental:
 
 1. Web owns authenticated operational and administration routes.
 2. Native iOS owns the safety inbox, monitoring, settings, notifications, and signed reviews.
-3. Auto-Heal adds real repair routes and actions only after its backend capability is ready.
-4. Control Surface Task 12 proves final route, action, state, accessibility, and visual parity.
-5. Only after that proof may `cloud-app` receive a deprecation notice and removal schedule.
+3. Auto-Heal supplies workflow-backed repair routes and signed draft-publication actions.
+4. Control Surface Task 12 adds capability-gated repair routes, evidence views, accessibility
+   coverage, and exact-state publication review to both clients.
+5. `cloud-app` remains available for one release as an explicit fallback, with no silent redirect.
 
-Until step 4 is green, do not delete `cloud-app`, redirect its users silently, or describe it as
-deprecated. It must not receive new production architecture, security, or workflow behavior.
+Do not add new production architecture, security, or workflow behavior to `cloud-app`. Remove it
+only in a later, separately announced release after migration feedback has been reviewed.

@@ -154,6 +154,206 @@ struct DeviceSummary: Codable, Identifiable, Sendable, Equatable {
     }
 }
 
+struct CapabilityFeature: Codable, Sendable, Equatable {
+    let available: Bool
+    let status: String?
+    let reason: String?
+}
+
+struct EffectiveCapabilities: Codable, Sendable, Equatable {
+    let status: String
+    let features: [String: CapabilityFeature]
+    let observedAt: Date?
+    let ttlSeconds: Int
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case features
+        case observedAt = "observed_at"
+        case ttlSeconds = "ttl_seconds"
+    }
+
+    func repairIsReady(now: Date = Date()) -> Bool {
+        guard status == "ready",
+              let repair = features["repair"],
+              repair.available,
+              repair.status == nil || repair.status == "ready",
+              let observedAt,
+              ttlSeconds > 0
+        else { return false }
+        return observedAt.addingTimeInterval(TimeInterval(ttlSeconds)) > now
+    }
+}
+
+struct RepairSummary: Codable, Identifiable, Sendable, Equatable {
+    let id: String
+    let repositoryID: String
+    let state: String
+    let failureFingerprint: String
+    let createdAt: Date
+    let updatedAt: Date
+    let winningCandidateID: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case repositoryID = "repository_id"
+        case state
+        case failureFingerprint = "failure_fingerprint"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case winningCandidateID = "winning_candidate_id"
+    }
+}
+
+struct RepairReproduction: Codable, Sendable, Equatable {
+    let status: String?
+    let reproduced: Bool?
+    let attempts: Int?
+    let artifactID: String?
+    let outputArtifactID: String?
+    let assurance: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case reproduced
+        case attempts
+        case artifactID = "artifact_id"
+        case outputArtifactID = "output_artifact_id"
+        case assurance
+    }
+}
+
+enum RepairCheckResult: Codable, Sendable, Equatable {
+    case passed
+    case failed
+    case inconclusive
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let value = try? container.decode(Bool.self) {
+            self = value ? .passed : .failed
+            return
+        }
+        let value = (try? container.decode(String.self))?.lowercased()
+        self = switch value {
+        case "passed", "pass", "true": .passed
+        case "failed", "fail", "false": .failed
+        default: .inconclusive
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(label.lowercased())
+    }
+
+    var label: String {
+        switch self {
+        case .passed: "Passed"
+        case .failed: "Failed"
+        case .inconclusive: "Inconclusive"
+        }
+    }
+
+    var state: String { label.lowercased() }
+}
+
+struct RepairEvaluation: Codable, Sendable, Equatable {
+    let replay: RepairCheckResult?
+    let regression: RepairCheckResult?
+    let security: RepairCheckResult?
+    let contractBreaking: Bool?
+    let contractChanges: [[String: String]]?
+    let artifactIDs: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case replay
+        case regression
+        case security
+        case contractBreaking = "contract_breaking"
+        case contractChanges = "contract_changes"
+        case artifactIDs = "artifact_ids"
+    }
+}
+
+struct RepairCandidate: Codable, Identifiable, Sendable, Equatable {
+    let id: String
+    let strategy: String?
+    let changedFiles: [String]
+    let changedLines: Int
+    let diff: String?
+    let patchArtifactID: String?
+    let evaluation: RepairEvaluation?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case strategy
+        case changedFiles = "changed_files"
+        case changedLines = "changed_lines"
+        case diff
+        case patchArtifactID = "patch_artifact_id"
+        case evaluation
+    }
+}
+
+struct RepairRanking: Codable, Sendable, Equatable {
+    let winningCandidateID: String?
+    let reason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case winningCandidateID = "winning_candidate_id"
+        case reason
+    }
+}
+
+struct RepairPublication: Codable, Sendable, Equatable {
+    let status: String
+    let pullRequestURL: String?
+    let artifactID: String?
+    let reason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case pullRequestURL = "pull_request_url"
+        case artifactID = "artifact_id"
+        case reason
+    }
+}
+
+struct RepairDetail: Codable, Identifiable, Sendable, Equatable {
+    let id: String
+    let repositoryID: String
+    let state: String
+    let failureFingerprint: String
+    let createdAt: Date
+    let updatedAt: Date
+    let winningCandidateID: String?
+    let stateVersion: Int
+    let stateHash: String
+    let reproduction: RepairReproduction
+    let candidates: [RepairCandidate]
+    let ranking: RepairRanking
+    let rollback: String
+    let publication: RepairPublication
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case repositoryID = "repository_id"
+        case state
+        case failureFingerprint = "failure_fingerprint"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case winningCandidateID = "winning_candidate_id"
+        case stateVersion = "state_version"
+        case stateHash = "state_hash"
+        case reproduction
+        case candidates
+        case ranking
+        case rollback
+        case publication
+    }
+}
+
 struct APIProblem: Codable, Error, Equatable, Sendable {
     let type: String?
     let title: String

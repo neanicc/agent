@@ -1,5 +1,7 @@
 import type { Page, Route } from "@playwright/test";
 
+import repairStates from "../../../contracts/fixtures/repair-states.json";
+
 export const ids = {
   session: "42d0ee68-043a-40ba-bc6e-3ddf2238acbf",
   change: "f83ac878-0ec5-4ce8-bbfa-0a3e1c6522bb",
@@ -7,6 +9,7 @@ export const ids = {
   host: "c2d6438e-1bcd-43fe-b8c3-2adee13f7f0c",
   device: "1d5512ad-8a62-44bd-a192-f5e082cd9670",
   audit: "4a71c494-7c72-4714-bcab-ef23913fb7d5",
+  repair: "018f0000-0000-7000-8000-000000000305",
 } as const;
 
 type MockOptions = {
@@ -14,6 +17,7 @@ type MockOptions = {
   emptyHosts?: boolean;
   failPath?: string;
   sessionOverride?: Record<string, unknown>;
+  repairReady?: boolean;
   onRequest?: (route: Route) => void;
 };
 
@@ -108,7 +112,35 @@ function responseFor(path: string, options: MockOptions): unknown {
   if (path === "/v1/hosts") return { items: options.emptyHosts ? [] : [host], next_cursor: null };
   if (path === `/v1/hosts/${ids.host}`) return host;
   if (path.startsWith("/v1/capabilities")) {
-    return { status: "ready", features: { repairs: { available: false, status: "disabled" } } };
+    return {
+      status: "ready",
+      observed_at: new Date().toISOString(),
+      ttl_seconds: 60,
+      features: {
+        repair: options.repairReady
+          ? { available: true, status: "ready", reason: "workflow_registered" }
+          : { available: false, status: "unavailable", reason: "workflow_unavailable" },
+      },
+    };
+  }
+  if (path === "/v1/repairs") {
+    return {
+      items: repairStates.map((repair) => ({
+        id: repair.id,
+        repository_id: repair.repository_id,
+        state: repair.state,
+        failure_fingerprint: repair.failure_fingerprint,
+        created_at: repair.created_at,
+        updated_at: repair.updated_at,
+        winning_candidate_id: repair.winning_candidate_id,
+      })),
+      next_cursor: null,
+      capability: { available: true, reason: "workflow_registered" },
+    };
+  }
+  if (path.startsWith("/v1/repairs/")) {
+    const id = path.slice("/v1/repairs/".length);
+    return repairStates.find((repair) => repair.id === id) ?? {};
   }
   if (path === "/v1/preferences") {
     return {

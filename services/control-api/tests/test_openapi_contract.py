@@ -113,6 +113,7 @@ def test_client_fixtures_cover_replay_actions_capabilities_hosts_and_repairs():
     actions = json.loads((ROOT / "contracts/fixtures/action-states.json").read_text())
     capabilities = json.loads((ROOT / "contracts/fixtures/effective-capabilities.json").read_text())
     hosts = json.loads((ROOT / "contracts/fixtures/host-integration-health.json").read_text())
+    repairs = json.loads((ROOT / "contracts/fixtures/repair-states.json").read_text())
 
     assert [event["session_seq"] for event in stream] == [1, 2, 2, 4]
     assert stream[1]["event_id"] == stream[2]["event_id"]
@@ -142,3 +143,19 @@ def test_client_fixtures_cover_replay_actions_capabilities_hosts_and_repairs():
         "outdated_adapter",
         "ready",
     }
+    assert {item["state"] for item in repairs} >= {
+        "intake",
+        "reproducing",
+        "generating",
+        "evaluating",
+        "awaiting_publication",
+        "completed",
+        "failed",
+    }
+    assert any(item["candidates"] for item in repairs)
+    assert any(item["publication"]["status"] == "draft_published" for item in repairs)
+    serialized_repairs = json.dumps(repairs).lower()
+    assert all(
+        secret_name not in serialized_repairs
+        for secret_name in ("authorization", "access_token", "refresh_token", "private_key")
+    )

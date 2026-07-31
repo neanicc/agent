@@ -5,19 +5,19 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { useControlQuery } from "@/lib/api/use-control-query";
+import {
+  isFreshRepairCapability,
+  type RepairCapabilities,
+} from "./repair-candidate-matrix";
 
 
 type HostCollection = { items?: Array<{ id?: string }> };
-type Capabilities = {
-  status?: string;
-  features?: Record<string, { available?: boolean; status?: string }>;
-};
-
 const destinations = [
   { href: "/inbox", label: "Inbox", icon: "inbox" },
   { href: "/runs", label: "Runs", icon: "runs" },
   { href: "/changes", label: "Changes", icon: "changes" },
   { href: "/verification", label: "Verification", icon: "verification" },
+  { href: "/repairs", label: "Repairs", icon: "repairs", repairOnly: true },
   { href: "/hosts", label: "Hosts & integrations", shortLabel: "Hosts", icon: "hosts" },
   { href: "/policies", label: "Policies", icon: "policies" },
   { href: "/costs", label: "Costs", icon: "costs" },
@@ -30,7 +30,7 @@ export function ConsoleShell({ children }: Readonly<{ children: React.ReactNode 
   const menu = useRef<HTMLDialogElement>(null);
   const hosts = useControlQuery<HostCollection>("/v1/hosts");
   const hostId = hosts.data?.items?.[0]?.id;
-  const capabilities = useControlQuery<Capabilities>(
+  const capabilities = useControlQuery<RepairCapabilities>(
     `/v1/capabilities?host_id=${encodeURIComponent(hostId ?? "")}`,
     { enabled: Boolean(hostId) },
   );
@@ -40,6 +40,7 @@ export function ConsoleShell({ children }: Readonly<{ children: React.ReactNode 
   }, [pathname]);
 
   const health = capabilities.data?.status ?? (hosts.isPending ? "loading" : hostId ? "unknown" : "setup");
+  const repairReady = isFreshRepairCapability(capabilities.data);
   const focusMainContent = (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     const main = document.getElementById("main-content");
@@ -65,7 +66,7 @@ export function ConsoleShell({ children }: Readonly<{ children: React.ReactNode 
       </header>
       <aside aria-label="Primary" className="console-sidebar">
         <Brand />
-        <PrimaryNavigation pathname={pathname} />
+        <PrimaryNavigation pathname={pathname} repairReady={repairReady} />
         <div className="sidebar-health">
           <span aria-hidden="true" className="sidebar-health__dot" data-health={health} />
           <span>{healthLabel(health)}</span>
@@ -83,17 +84,23 @@ export function ConsoleShell({ children }: Readonly<{ children: React.ReactNode 
             <CloseIcon />
           </button>
         </div>
-        <PrimaryNavigation pathname={pathname} />
+        <PrimaryNavigation pathname={pathname} repairReady={repairReady} />
       </dialog>
       <main id="main-content" tabIndex={-1}>{children}</main>
     </div>
   );
 }
 
-function PrimaryNavigation({ pathname }: { pathname: string }) {
+function PrimaryNavigation({
+  pathname,
+  repairReady,
+}: {
+  pathname: string;
+  repairReady: boolean;
+}) {
   return (
     <nav aria-label="Control console" className="primary-navigation">
-      {destinations.map((destination) => {
+      {destinations.filter((destination) => !("repairOnly" in destination) || repairReady).map((destination) => {
         const current = pathname === destination.href || pathname.startsWith(`${destination.href}/`);
         return (
           <Link
@@ -134,6 +141,7 @@ function NavigationIcon({ name }: { name: (typeof destinations)[number]["icon"] 
     runs: <path d="M4 3.5h12v13H4zM7 7h6M7 10h6M7 13h3" />,
     changes: <path d="M6 3v10.5a2.5 2.5 0 005 0V6m-2 2l2-2 2 2M6 6H3m3 4H3" />,
     verification: <path d="M10 2.8l6 2.7v4.4c0 3.8-2.3 6.4-6 7.9-3.7-1.5-6-4.1-6-7.9V5.5l6-2.7zM7 10l2 2 4-4" />,
+    repairs: <path d="M4 5h8l3 3-7 7-4-4zM9 8l3 3M3 16h6" />,
     hosts: <path d="M3 4h14v9H3zM7 16h6M10 13v3M5.5 7h.1M8 7h6" />,
     policies: <path d="M4 3h12v14H4zM7 7h6M7 10h6M7 13h3" />,
     costs: <path d="M10 2.5v15M13.5 5.5H8.3a2.3 2.3 0 000 4.6h3.4a2.3 2.3 0 010 4.6H6.5" />,

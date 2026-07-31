@@ -9,6 +9,8 @@ final class AppModel {
     private(set) var changes: AsyncViewState<[ChangeSummary]> = .idle
     private(set) var hosts: AsyncViewState<[HostSummary]> = .idle
     private(set) var devices: AsyncViewState<[DeviceSummary]> = .idle
+    private(set) var repairs: AsyncViewState<[RepairSummary]> = .idle
+    private(set) var repairCapability: AsyncViewState<EffectiveCapabilities> = .idle
     private(set) var pendingAction: ActionViewModel?
     private(set) var routedSessionID: String?
     let auth: AuthSession
@@ -24,6 +26,10 @@ final class AppModel {
         if fixtureMode { return "developer@loopguard.dev" }
         if case .signedIn(let subject) = auth.state { return subject }
         return "Signed-in developer"
+    }
+
+    var repairCapabilityReady: Bool {
+        !repairCapability.isStale && repairCapability.value?.repairIsReady() == true
     }
 
     init(
@@ -58,10 +64,14 @@ final class AppModel {
         let previousChanges = changes.value
         let previousHosts = hosts.value
         let previousDevices = devices.value
+        let previousRepairs = repairs.value
+        let previousRepairCapability = repairCapability.value
         sessions = .loading
         changes = .loading
         hosts = .loading
         devices = .loading
+        repairs = .loading
+        repairCapability = .loading
         inbox = .loading
 
         async let loadedSessions: AsyncViewState<[SessionSummary]> = loadCollection(
@@ -87,6 +97,11 @@ final class AppModel {
         hosts = results.2
         devices = results.3
         updateInbox(from: results.0)
+        await loadRepairs(
+            hostsState: results.2,
+            previousRepairs: previousRepairs,
+            previousCapability: previousRepairCapability
+        )
     }
 
     func logout() {
@@ -97,6 +112,8 @@ final class AppModel {
         changes = .idle
         hosts = .idle
         devices = .idle
+        repairs = .idle
+        repairCapability = .idle
         pendingAction = nil
         routedSessionID = nil
     }
@@ -159,6 +176,84 @@ final class AppModel {
             notifications.recordRegistration(success: true)
         } catch {
             notifications.recordRegistration(success: false)
+        }
+    }
+
+    func repairDetail(id: String) async throws -> RepairDetail {
+        if fixtureMode {
+            return Self.fixtureRepairDetail(id: id)
+        }
+        return try await api.request(path: "v1/repairs/\(id)")
+    }
+
+    func prepareRepairPublication(_ repair: RepairDetail) async throws -> ActionViewModel {
+        if fixtureMode {
+            let model = ActionViewModel(
+                request: .fixture(
+                    expiresAt: Date().addingTimeInterval(120),
+                    expectedStateVersion: repair.stateVersion,
+                    risk: .high,
+                    actionKind: "publish_repair",
+                    targetKind: "repair",
+                    targetID: repair.id,
+                    targetLabel: "Repair \(repair.id.prefix(8))",
+                    effect: "Publish the verified repair as a draft pull request.",
+                    canonicalStateVersion: repair.stateVersion
+                ),
+                api: FixtureActionAPI(),
+                signer: FixtureActionSigner(),
+                authorizer: AllowActionAuthorizer()
+            )
+            pendingAction = model
+            return model
+        }
+        let actionAPI = ControlActionAPI(api: api)
+        let request = try await actionAPI.createRepairPublication(
+            repair: repair,
+            deviceID: try deviceKeyStore.pairedDeviceID()
+        )
+        let model = ActionViewModel(
+            request: request,
+            api: actionAPI,
+            signer: DeviceActionSigner(keyStore: deviceKeyStore),
+            authorizer: LocalActionAuthorizer()
+        )
+        pendingAction = model
+        return model
+    }
+
+    private func loadRepairs(
+        hostsState: AsyncViewState<[HostSummary]>,
+        previousRepairs: [RepairSummary]?,
+        previousCapability: EffectiveCapabilities?
+    ) async {
+        guard let hostID = hostsState.value?.first?.id else {
+            repairCapability = .empty
+            repairs = .empty
+            return
+        }
+        do {
+            let capability: EffectiveCapabilities = try await api.request(
+                path: "v1/capabilities",
+                query: [URLQueryItem(name: "host_id", value: hostID)]
+            )
+            guard !Task.isCancelled else { return }
+            repairCapability = .loaded(capability)
+            guard capability.repairIsReady() else {
+                repairs = .empty
+                return
+            }
+            let response: APICollection<RepairSummary> = try await api.request(path: "v1/repairs")
+            repairs = response.items.isEmpty ? .empty : .loaded(response.items)
+        } catch {
+            repairCapability = previousCapability.map(AsyncViewState.stale) ?? .failed(
+                message: "Repair capability could not be refreshed.",
+                requestID: nil
+            )
+            repairs = previousRepairs.map(AsyncViewState.stale) ?? .failed(
+                message: "Repair evidence could not be refreshed.",
+                requestID: nil
+            )
         }
     }
 
@@ -260,6 +355,8 @@ final class AppModel {
             changes = .loading
             hosts = .loading
             devices = .loading
+            repairs = .loading
+            repairCapability = .loading
             return
         }
         if scenario == "empty" {
@@ -268,6 +365,8 @@ final class AppModel {
             changes = .empty
             hosts = .empty
             devices = .empty
+            repairs = .empty
+            repairCapability = .empty
             return
         }
         if scenario == "error" {
@@ -280,6 +379,11 @@ final class AppModel {
             changes = .failed(message: "Changes are temporarily unavailable.", requestID: "req_ui_fixture")
             hosts = .failed(message: "Host status is temporarily unavailable.", requestID: "req_ui_fixture")
             devices = .failed(message: "Device status is temporarily unavailable.", requestID: "req_ui_fixture")
+            repairs = .failed(message: "Repair evidence is temporarily unavailable.", requestID: "req_ui_fixture")
+            repairCapability = .failed(
+                message: "Repair capability is temporarily unavailable.",
+                requestID: "req_ui_fixture"
+            )
             return
         }
         let run = SessionSummary(
@@ -428,13 +532,117 @@ final class AppModel {
                 revokedAt: nil
             ),
         ])
+        if scenario?.hasPrefix("repair") == true {
+            repairCapability = .loaded(EffectiveCapabilities(
+                status: "ready",
+                features: [
+                    "repair": CapabilityFeature(
+                        available: true,
+                        status: "ready",
+                        reason: "workflow_registered"
+                    ),
+                ],
+                observedAt: Date(),
+                ttlSeconds: 300
+            ))
+            repairs = .loaded([Self.fixtureRepairSummary])
+        } else {
+            repairCapability = .empty
+            repairs = .empty
+        }
         if scenario == "stale" {
             sessions = .stale(sessions.value ?? [])
             inbox = .stale(inbox.value ?? [])
             changes = .stale(changes.value ?? [])
             hosts = .stale(hosts.value ?? [])
             devices = .stale(devices.value ?? [])
+            repairs = .stale(repairs.value ?? [])
+            if let capability = repairCapability.value {
+                repairCapability = .stale(capability)
+            }
         }
+    }
+
+    private static var fixtureRepairSummary: RepairSummary {
+        RepairSummary(
+            id: "018f0000-0000-7000-8000-000000000305",
+            repositoryID: "018f0000-0000-7000-8000-000000000401",
+            state: "awaiting_publication",
+            failureFingerprint: String(repeating: "5", count: 64),
+            createdAt: Date(timeIntervalSince1970: 1_783_001_500),
+            updatedAt: Date(timeIntervalSince1970: 1_783_001_800),
+            winningCandidateID: "candidate-1"
+        )
+    }
+
+    private static func fixtureRepairDetail(id: String) -> RepairDetail {
+        RepairDetail(
+            id: id,
+            repositoryID: fixtureRepairSummary.repositoryID,
+            state: "awaiting_publication",
+            failureFingerprint: fixtureRepairSummary.failureFingerprint,
+            createdAt: fixtureRepairSummary.createdAt,
+            updatedAt: fixtureRepairSummary.updatedAt,
+            winningCandidateID: "candidate-1",
+            stateVersion: 8,
+            stateHash: String(repeating: "e", count: 64),
+            reproduction: RepairReproduction(
+                status: "reproduced",
+                reproduced: true,
+                attempts: 1,
+                artifactID: "artifact-reproduction",
+                outputArtifactID: nil,
+                assurance: "hosted_isolated"
+            ),
+            candidates: [
+                RepairCandidate(
+                    id: "candidate-1",
+                    strategy: "Normalize ingestion boundary",
+                    changedFiles: ["src/coordinates.py"],
+                    changedLines: 8,
+                    diff: """
+                    - return float(value)
+                    + return float(value.trimmingCharacters(in: .whitespaces))
+                    """,
+                    patchArtifactID: "artifact-patch",
+                    evaluation: RepairEvaluation(
+                        replay: .passed,
+                        regression: .passed,
+                        security: .passed,
+                        contractBreaking: false,
+                        contractChanges: [],
+                        artifactIDs: ["artifact-evaluation"]
+                    )
+                ),
+                RepairCandidate(
+                    id: "candidate-2",
+                    strategy: "Coerce downstream",
+                    changedFiles: ["src/export.py"],
+                    changedLines: 19,
+                    diff: nil,
+                    patchArtifactID: "artifact-patch-2",
+                    evaluation: RepairEvaluation(
+                        replay: .passed,
+                        regression: .failed,
+                        security: .passed,
+                        contractBreaking: false,
+                        contractChanges: [],
+                        artifactIDs: ["artifact-evaluation-2"]
+                    )
+                ),
+            ],
+            ranking: RepairRanking(
+                winningCandidateID: "candidate-1",
+                reason: "Smallest fully verified compatible patch."
+            ),
+            rollback: "Revert the draft repair commit and rerun the original pipeline.",
+            publication: RepairPublication(
+                status: "waiting_for_approval",
+                pullRequestURL: nil,
+                artifactID: nil,
+                reason: nil
+            )
+        )
     }
 }
 

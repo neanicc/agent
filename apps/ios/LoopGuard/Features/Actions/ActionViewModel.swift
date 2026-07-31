@@ -75,19 +75,25 @@ struct ActionReviewRequest: Identifiable, Sendable, Equatable {
         expiresAt: Date = Date(timeIntervalSince1970: 300),
         hostAvailable: Bool = true,
         expectedStateVersion: Int = 14,
-        risk: ActionRisk = .medium
+        risk: ActionRisk = .medium,
+        actionKind: String = "continue_once",
+        targetKind: String = "session",
+        targetID: String = "run-auth-migration",
+        targetLabel: String = "Harden authentication migration",
+        effect: String = "Continue this paused run once from its verified state.",
+        canonicalStateVersion: Int = 14
     ) -> ActionReviewRequest {
-        let canonicalVersion = 14
+        let canonicalVersion = canonicalStateVersion
         let values: [String: Any] = [
             "schema_version": 1,
             "canonicalization_version": 1,
             "action_id": "act_fixture",
             "target": [
-                "kind": "session",
-                "target_id": "run-auth-migration",
+                "kind": targetKind,
+                "target_id": targetID,
             ],
             "host_id": "host-studio",
-            "kind": "continue_once",
+            "kind": actionKind,
             "parameters_hash": "sha256:fixture-parameters",
             "expected_state_version": canonicalVersion,
             "expected_state_hash": "sha256:state14",
@@ -101,9 +107,9 @@ struct ActionReviewRequest: Identifiable, Sendable, Equatable {
         let payload = try! JSONSerialization.data(withJSONObject: values, options: [.sortedKeys])
         return ActionReviewRequest(
             actionID: "act_fixture",
-            actionKind: "continue_once",
-            target: ActionTarget(kind: "session", id: "run-auth-migration", label: "Harden authentication migration"),
-            effect: "Continue this paused run once from its verified state.",
+            actionKind: actionKind,
+            target: ActionTarget(kind: targetKind, id: targetID, label: targetLabel),
+            effect: effect,
             risk: risk,
             parametersHash: "sha256:fixture-parameters",
             expectedState: "Run remains paused at state version \(expectedStateVersion) until host acceptance.",
@@ -403,6 +409,75 @@ struct ControlActionAPI: ActionAPI {
     func review(actionID: String) async throws -> ActionReviewRequest {
         let response: ActionReviewPayload = try await api.request(path: "v1/actions/\(actionID)")
         return try response.request()
+    }
+
+    func createRepairPublication(
+        repair: RepairDetail,
+        deviceID: String
+    ) async throws -> ActionReviewRequest {
+        let body = try JSONEncoder().encode(
+            RepairPublicationChallengePayload(
+                repair: repair,
+                deviceID: deviceID
+            )
+        )
+        let challenge: ActionChallengeIdentifier = try await api.request(
+            path: "v1/actions/challenge",
+            method: "POST",
+            body: body
+        )
+        return try await review(actionID: challenge.actionID)
+    }
+}
+
+private struct RepairPublicationChallengePayload: Encodable {
+    let target: Target
+    let deviceID: String
+    let kind = "publish_repair"
+    let parameters: [String: String] = [:]
+    let expectedStateVersion: Int
+    let expectedStateHash: String
+    let expiresIn = 120
+
+    init(repair: RepairDetail, deviceID: String) {
+        target = Target(
+            kind: "repair",
+            targetID: repair.id,
+            hostID: "repair-workflow"
+        )
+        self.deviceID = deviceID
+        expectedStateVersion = repair.stateVersion
+        expectedStateHash = repair.stateHash
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case target
+        case deviceID = "device_id"
+        case kind
+        case parameters
+        case expectedStateVersion = "expected_state_version"
+        case expectedStateHash = "expected_state_hash"
+        case expiresIn = "expires_in"
+    }
+
+    struct Target: Encodable {
+        let kind: String
+        let targetID: String
+        let hostID: String
+
+        enum CodingKeys: String, CodingKey {
+            case kind
+            case targetID = "target_id"
+            case hostID = "host_id"
+        }
+    }
+}
+
+private struct ActionChallengeIdentifier: Decodable {
+    let actionID: String
+
+    enum CodingKeys: String, CodingKey {
+        case actionID = "action_id"
     }
 }
 
