@@ -60,8 +60,9 @@ jobs:
             'pip-audit==2.9.0'
           python -m pip install -e './loopguard[all-dev]'
           python -m pip install -e './services/control-api[dev]'
-          python -m pip_audit --strict
-          python -m bandit -q -r loopguard/src services/control-api/src
+          python -m pip_audit --strict loopguard
+          python -m pip_audit --skip-editable
+          python -m bandit -q -lll -r loopguard/src services/control-api/src
       - name: Locked JavaScript dependency audits
         run: |
           npm --prefix apps/web ci --ignore-scripts

@@ -54,6 +54,10 @@ On the first screen, enter the server URL (it's remembered for next launch):
 - Physical phone: your laptop's LAN IP, e.g. `http://192.168.1.42:8000`
   (`ipconfig getifaddr en0` on macOS). The phone and laptop must be on the same network.
 
+The legacy demo server defaults to loopback. A LAN demo therefore requires the explicit,
+temporary command `loopguard serve --host 0.0.0.0 --port 8000`; use only a trusted network and
+stop the process when the demo ends. This unauthenticated compatibility path is not a hosted mode.
+
 ## Tests
 
 ```bash

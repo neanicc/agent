@@ -1965,7 +1965,7 @@ def init_config(path: Path = Path("loopguard.json")):
 
 
 @app.command()
-def serve(host: str = "0.0.0.0", port: int = 8000):
+def serve(host: str = "127.0.0.1", port: int = 8000):
     _load_dotenv()
     import uvicorn
 

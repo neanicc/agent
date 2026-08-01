@@ -59,6 +59,14 @@ def test_production_commands_are_discoverable():
         assert command in integrations.stdout
 
 
+def test_legacy_demo_server_defaults_to_loopback():
+    result = runner.invoke(app, ["serve", "--help"])
+
+    assert result.exit_code == 0
+    assert "127.0.0.1" in result.stdout
+    assert "0.0.0.0" not in result.stdout
+
+
 def test_doctor_json_reports_missing_daemon_with_structured_fix(tmp_path, monkeypatch):
     monkeypatch.setenv("LOOPGUARD_HOME", str(tmp_path))
 

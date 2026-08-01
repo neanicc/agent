@@ -949,7 +949,7 @@ Regenerate it with `python -m loopguard.cli_docs` from the package directory.
  Usage: loopguard serve [OPTIONS]
 
 ╭─ Options ────────────────────────────────────────────────────────────────────╮
-│ --host        TEXT     [default: 0.0.0.0]                                    │
+│ --host        TEXT     [default: 127.0.0.1]                                  │
 │ --port        INTEGER  [default: 8000]                                       │
 │ --help                 Show this message and exit.                           │
 ╰──────────────────────────────────────────────────────────────────────────────╯
