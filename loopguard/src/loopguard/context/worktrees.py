@@ -593,7 +593,10 @@ def _allocation(row: sqlite3.Row) -> WorktreeAllocation:
     )
 
 
-def _pid_active(pid: int) -> bool:
+def _pid_active(pid: int, *, platform: str | None = None) -> bool:
+    active_platform = os.name if platform is None else platform
+    if active_platform == "nt":
+        return _windows_pid_active(pid)
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -601,6 +604,48 @@ def _pid_active(pid: int) -> bool:
     except PermissionError:
         return True
     return True
+
+
+def _windows_pid_active(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    import ctypes
+    from ctypes import wintypes
+
+    synchronize = 0x00100000
+    wait_object_0 = 0x00000000
+    wait_timeout = 0x00000102
+    wait_failed = 0xFFFFFFFF
+    access_denied = 5
+    invalid_parameter = 87
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+    kernel32.WaitForSingleObject.restype = wintypes.DWORD
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    kernel32.CloseHandle.restype = wintypes.BOOL
+
+    handle = kernel32.OpenProcess(synchronize, False, pid)
+    if not handle:
+        error = ctypes.get_last_error()
+        if error == access_denied:
+            return True
+        if error == invalid_parameter:
+            return False
+        raise OSError(error, "Windows PID probe failed")
+    try:
+        result = kernel32.WaitForSingleObject(handle, 0)
+    finally:
+        kernel32.CloseHandle(handle)
+    if result == wait_timeout:
+        return True
+    if result == wait_object_0:
+        return False
+    if result == wait_failed:
+        raise OSError(ctypes.get_last_error(), "Windows PID wait failed")
+    return False
 
 
 def _bounded_reason(error: Exception) -> str:

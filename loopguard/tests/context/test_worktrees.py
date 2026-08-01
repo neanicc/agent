@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+import loopguard.context.worktrees as worktrees_module
 from loopguard.context.worktrees import WorktreeAllocationError, WorktreeManager
 from loopguard.control.daemon import DaemonServices
 from loopguard.control.decisions import ActionTarget, PolicyDecision, TargetKind
@@ -20,6 +21,18 @@ def _repository(tmp_path: Path) -> Path:
     write(repository / "README.md", "base\n")
     commit_all(repository)
     return repository
+
+
+def test_windows_pid_liveness_uses_a_non_destructive_process_probe(monkeypatch) -> None:
+    observed: list[int] = []
+    monkeypatch.setattr(
+        worktrees_module,
+        "_windows_pid_active",
+        lambda pid: bool(observed.append(pid)),
+    )
+
+    assert worktrees_module._pid_active(42, platform="nt") is False
+    assert observed == [42]
 
 
 def test_concurrent_sessions_receive_different_worktrees(tmp_path: Path) -> None:
