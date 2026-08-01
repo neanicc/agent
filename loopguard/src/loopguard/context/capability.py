@@ -196,11 +196,15 @@ class CapabilityIssuer:
             raise ValueError("capability token file must stay in the LoopGuard home")
         descriptor = os.open(
             destination,
-            os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0),
+            os.O_CREAT
+            | os.O_EXCL
+            | os.O_WRONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_BINARY", 0),
             0o600,
         )
         try:
-            os.write(descriptor, issued.token)
+            _write_all(descriptor, issued.token)
             os.fsync(descriptor)
             if os.name == "posix":
                 os.fchmod(descriptor, 0o600)
@@ -371,7 +375,7 @@ class ContextMCPLauncher:
         if os.name == "posix":
             read_descriptor, write_descriptor = os.pipe()
             try:
-                os.write(write_descriptor, issued.token)
+                _write_all(write_descriptor, issued.token)
             finally:
                 os.close(write_descriptor)
             environment["LOOPGUARD_CONTEXT_CAPABILITY_FD"] = str(read_descriptor)
@@ -423,7 +427,11 @@ def _load_or_create_key(path: Path) -> bytes:
     try:
         descriptor = os.open(
             path,
-            os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0),
+            os.O_CREAT
+            | os.O_EXCL
+            | os.O_WRONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_BINARY", 0),
             0o600,
         )
     except FileExistsError:
@@ -432,7 +440,7 @@ def _load_or_create_key(path: Path) -> bytes:
     else:
         key = secrets.token_bytes(32)
         try:
-            os.write(descriptor, key)
+            _write_all(descriptor, key)
             os.fsync(descriptor)
             if os.name == "posix":
                 os.fchmod(descriptor, 0o600)
@@ -441,6 +449,16 @@ def _load_or_create_key(path: Path) -> bytes:
     if len(key) != 32:
         raise ValueError("capability key has an invalid length")
     return key
+
+
+def _write_all(descriptor: int, body: bytes) -> None:
+    view = memoryview(body)
+    written = 0
+    while written < len(view):
+        count = os.write(descriptor, view[written:])
+        if count <= 0:
+            raise OSError("capability write stalled")
+        written += count
 
 
 def _create_owner_file(path: Path) -> None:

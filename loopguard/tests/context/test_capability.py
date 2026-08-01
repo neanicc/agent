@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import loopguard.context.capability as capability_module
 from loopguard.context.capability import CapabilityIssuer
 
 
@@ -21,6 +22,28 @@ def _private_home(tmp_path: Path) -> Path:
     home = tmp_path / "state"
     home.mkdir(mode=0o700)
     return home
+
+
+def test_capability_files_handle_partial_binary_writes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_write = capability_module.os.write
+
+    def partial_write(descriptor: int, body: bytes | memoryview) -> int:
+        raw = bytes(body)
+        return original_write(descriptor, raw[: max(1, len(raw) // 2)])
+
+    monkeypatch.setattr(capability_module.os, "write", partial_write)
+    home = _private_home(tmp_path)
+    with CapabilityIssuer(home) as issuer:
+        token_file = issuer.write_token(
+            issuer.issue(host_id="host", repo_id="repo", session_id="session")
+        )
+    with CapabilityIssuer(home) as issuer:
+        capability = issuer.consume_file(token_file)
+
+    assert capability.session_id == "session"
+    assert not token_file.exists()
 
 
 def test_capability_is_bound_authenticated_and_single_use(tmp_path: Path) -> None:
