@@ -130,8 +130,7 @@ jobs:
             -project LoopGuard.xcodeproj \
             -scheme LoopGuard \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
-            -derivedDataPath "${RUNNER_TEMP}/LoopGuardDerivedData" \
-            CODE_SIGNING_ALLOWED=NO
+            -derivedDataPath "${RUNNER_TEMP}/LoopGuardDerivedData"
       - name: Create unsigned verification archive
         working-directory: ${{ env.IOS_DIRECTORY }}
         run: |
