@@ -100,6 +100,7 @@ def test_renderer_rejects_a_malformed_packaged_template(tmp_path: Path, monkeypa
         )
 
 
+@pytest.mark.skipif(os.name == "nt", reason="launchctl activation requires a POSIX user id")
 def test_macos_install_validates_staged_plist_then_bootstraps_and_kickstarts(
     tmp_path: Path,
 ) -> None:

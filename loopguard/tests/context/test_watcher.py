@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import stat
 import subprocess
 from datetime import datetime, timedelta, timezone
 
@@ -18,6 +19,11 @@ from tests.context.conftest import commit_all, make_git_repo, write
 
 
 NOW = datetime(2026, 7, 15, tzinfo=timezone.utc)
+
+
+def _remove_readonly(function, path: str, _error) -> None:
+    os.chmod(path, stat.S_IWRITE)
+    function(path)
 
 
 def _tracked_repo(tmp_path):
@@ -178,7 +184,7 @@ def test_case_folded_paths_share_canonical_repository_identity(tmp_path) -> None
 def test_repository_removal_is_explicit_and_never_claims_recovery(tmp_path) -> None:
     repository = _tracked_repo(tmp_path)
     reconciler = ChangeReconciler(repository)
-    shutil.rmtree(repository)
+    shutil.rmtree(repository, onerror=_remove_readonly)
 
     result = reconciler.reconcile_current_state(reason="restart")
 
