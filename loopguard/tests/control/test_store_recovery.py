@@ -341,6 +341,20 @@ os._exit(0)
     } == preserved
 
 
+def test_transient_partial_wal_header_is_retried_until_sqlite_settles(
+    tmp_path, monkeypatch
+):
+    reads = iter((b"partial-1", b"partial-header-2", b"partial-header-3", b""))
+    monkeypatch.setattr(
+        store_module,
+        "_read_verified_regular_file",
+        lambda *_args: next(reads),
+    )
+    monkeypatch.setattr(store_module.time, "sleep", lambda _seconds: None)
+
+    store_module._validate_wal_structure(tmp_path / "events.db")
+
+
 def test_corrupt_database_is_a_named_startup_failure(tmp_path):
     path = tmp_path / "events.db"
     with EventStore.for_test(path) as store:

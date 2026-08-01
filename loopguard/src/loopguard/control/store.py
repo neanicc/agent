@@ -111,6 +111,8 @@ class HandlerDispatchState:
 
 
 _Result = TypeVar("_Result")
+_WAL_SETTLE_ATTEMPTS = 100
+_WAL_SETTLE_DELAY_SECONDS = 0.01
 
 
 class EventStore:
@@ -1156,7 +1158,7 @@ def _validate_existing_sidecars(path: Path) -> None:
 
 def _validate_wal_structure(path: Path) -> None:
     wal_path = path.with_name(f"{path.name}-wal")
-    for attempt in range(3):
+    for attempt in range(_WAL_SETTLE_ATTEMPTS):
         try:
             wal_bytes = _read_verified_regular_file(wal_path, "database WAL")
         except FileNotFoundError:
@@ -1167,9 +1169,12 @@ def _validate_wal_structure(path: Path) -> None:
             _validate_wal_bytes(wal_bytes)
             return
         except DatabaseCorruptionError:
-            if attempt == 2:
+            if attempt == _WAL_SETTLE_ATTEMPTS - 1:
                 raise
-            time.sleep(0.01)
+            # A live SQLite writer can make a growing WAL header briefly
+            # visible, especially on Windows. Persistent malformed state still
+            # fails closed after the bounded one-second settle window.
+            time.sleep(_WAL_SETTLE_DELAY_SECONDS)
 
 
 def _validate_wal_bytes(wal_bytes: bytes) -> None:
