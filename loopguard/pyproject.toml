@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["build>=1.2", "pytest>=8", "ruff>=0.5"]
+dev = ["build>=1.2", "pytest>=8", "ruff==0.15.20"]
 control = [
     "cryptography>=42",
     "keyring>=25",
@@ -46,7 +46,7 @@ telemetry = [
 all-dev = [
     "build>=1.2",
     "pytest>=8",
-    "ruff>=0.5",
+    "ruff==0.15.20",
     "cryptography>=42",
     "keyring>=25",
     "pywin32>=306; sys_platform == 'win32'",

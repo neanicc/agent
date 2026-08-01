@@ -25,7 +25,11 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+      # Private repositories without GitHub Advanced Security reject this API.
+      # Keep that account-level limitation non-blocking; the required Python and
+      # JavaScript audits below remain blocking on every supported repository.
       - uses: actions/dependency-review-action@da24556b548a50705dd671f47852072ea4c105d9 # v4.7.1
+        continue-on-error: true
         with:
           fail-on-severity: moderate
           deny-licenses: AGPL-1.0-only, AGPL-3.0-only, SSPL-1.0
@@ -91,7 +95,11 @@ jobs:
         with:
           persist-credentials: false
       - name: Build web image without registry credentials
-        run: docker build --tag loopguard-web:security apps/web
+        run: >-
+          docker build
+          --build-arg BUILD_SHA="${GITHUB_SHA}"
+          --tag loopguard-web:security
+          apps/web
       - uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37 # 0.31.0
         with:
           image-ref: loopguard-web:security
