@@ -27,6 +27,7 @@
     "validate:docs": "node scripts/validate-docs.mjs"
   },
   "dependencies": {
+    "@emnapi/runtime": "1.11.3",
     "@fontsource/ibm-plex-mono": "5.3.0",
     "@fontsource/ibm-plex-sans": "5.3.0",
     "@fontsource/space-grotesk": "5.3.0",
