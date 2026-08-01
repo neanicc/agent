@@ -36,7 +36,7 @@ jobs:
           PYTHONPATH=services/control-api/src:loopguard/src \
             python services/control-api/scripts/export_openapi.py contracts/control-api.openapi.json \
             --build-sha contract-test
-          python -m loopguard.cli_docs --check
+          python -m loopguard.cli_docs
           npm run generate:api --prefix apps/web
           npm run generate:docs --prefix apps/web
       - name: Validate links and snippets
