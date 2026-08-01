@@ -5,6 +5,8 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 from loopguard.verify.isolation import (
     IsolationPlan,
     SandboxExecIsolationProvider,
@@ -160,6 +162,7 @@ def test_runner_enforces_timeout_and_output_limits(tmp_path: Path) -> None:
     assert len(bounded.stdout) == 128
 
 
+@pytest.mark.skipif(os.name != "posix", reason="POSIX resource limits and process groups")
 def test_runner_enforces_file_and_process_group_limits(tmp_path: Path) -> None:
     output = tmp_path / "bounded.bin"
     file_runner = CommandRunner(

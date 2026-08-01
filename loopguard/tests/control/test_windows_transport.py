@@ -75,6 +75,7 @@ def test_windows_transport_rejects_backend_without_current_user_sid():
     assert raised.value.code == "windows_peer_identity_unavailable"
 
 
+@pytest.mark.skipif(os.name != "posix", reason="Unix socket transport is POSIX-only")
 def test_unix_transport_rejects_insecure_existing_parent_without_chmod():
     async def scenario():
         with short_socket_path() as socket_path:
@@ -88,6 +89,7 @@ def test_unix_transport_rejects_insecure_existing_parent_without_chmod():
     asyncio.run(scenario())
 
 
+@pytest.mark.skipif(os.name != "posix", reason="Unix socket transport is POSIX-only")
 def test_unix_transport_rejects_overlong_path_with_stable_code(tmp_path):
     socket_path = tmp_path / ("x" * 120)
     transport = UnixSocketTransport(socket_path)
@@ -98,6 +100,7 @@ def test_unix_transport_rejects_overlong_path_with_stable_code(tmp_path):
     assert raised.value.code == "socket_path_too_long"
 
 
+@pytest.mark.skipif(os.name != "posix", reason="Unix socket transport is POSIX-only")
 def test_unix_socket_is_owner_only_and_removed_on_close():
     async def scenario():
         with short_socket_path() as socket_path:
@@ -110,6 +113,7 @@ def test_unix_socket_is_owner_only_and_removed_on_close():
     asyncio.run(scenario())
 
 
+@pytest.mark.skipif(os.name != "posix", reason="Unix socket transport is POSIX-only")
 def test_unix_transport_never_unlinks_a_non_socket_stale_path():
     async def scenario():
         with short_socket_path() as socket_path:

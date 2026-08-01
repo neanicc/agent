@@ -197,7 +197,7 @@ class CommandRunner:
             stderr_task = asyncio.create_task(
                 _read_bounded(process.stderr, self.max_output_bytes)
             )
-            if os.name == "posix" and (monitor_memory or monitor_processes):
+            if monitor_memory or monitor_processes:
                 resource_task = asyncio.create_task(
                     _monitor_process_group(
                         process,
@@ -309,6 +309,11 @@ class CommandRunner:
 
     def _environment(self, requested: Mapping[str, str]) -> dict[str, str]:
         environment = {"PATH": self.executable_path, "LC_ALL": "C.UTF-8", "LANG": "C.UTF-8"}
+        if os.name == "nt":
+            for name in ("SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT"):
+                value = os.environ.get(name)
+                if value:
+                    environment[name] = value
         for name, value in requested.items():
             if not _ENVIRONMENT_NAME.fullmatch(name) or "\x00" in value:
                 raise ValueError("invalid_environment")

@@ -154,7 +154,8 @@ def test_managed_completion_allows_only_two_repairs_across_restart(tmp_path: Pat
     assert two.metadata["completion"]["repair_attempt"] == 2
     assert three.metadata["completion"]["outcome"] == "human_required"
     assert replayed_one.metadata["completion"]["repair_attempt"] == 1
-    assert ledger_path.stat().st_mode & 0o777 == 0o600
+    if os.name == "posix":
+        assert ledger_path.stat().st_mode & 0o777 == 0o600
 
 
 def test_persistent_completion_ledger_rejects_missing_wrong_or_tampered_key(

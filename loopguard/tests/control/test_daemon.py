@@ -3,12 +3,17 @@ from __future__ import annotations
 import asyncio
 import os
 
+import pytest
+
 from loopguard.control.daemon import LoopGuardDaemon
 from loopguard.control.protocol import MAGIC, MessageType, encode_frame, read_frame
 from loopguard.control.store import EventStore
 from loopguard.control.transport import UnixSocketTransport
 
 from .daemon_test_support import send_event, short_socket_path, tool_event
+
+
+pytestmark = pytest.mark.skipif(os.name != "posix", reason="Unix socket transport is POSIX-only")
 
 
 def test_daemon_acknowledges_only_after_persistence_and_core_dispatch(tmp_path):

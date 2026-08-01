@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import time
+
+import pytest
 
 from loopguard.control.daemon import LoopGuardDaemon
 from loopguard.control.dispatch import EventDispatcher, GuardRegistry, HandlerDelivery
@@ -10,6 +13,9 @@ from loopguard.control.protocol import MessageType
 from loopguard.control.store import EventStore
 
 from .daemon_test_support import send_event, short_socket_path, tool_event
+
+
+pytestmark = pytest.mark.skipif(os.name != "posix", reason="Unix socket transport is POSIX-only")
 
 
 def test_duplicate_retry_returns_original_ack_without_double_applying_guard(tmp_path):

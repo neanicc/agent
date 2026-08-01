@@ -74,7 +74,9 @@ def test_doctor_json_reports_missing_daemon_with_structured_fix(tmp_path, monkey
 
     assert result.exit_code == 1
     body = json.loads(result.stdout)
-    assert body["daemon"] == "unreachable"
+    assert body["daemon"] == (
+        "unreachable" if os.name == "posix" else "capability_unavailable"
+    )
     assert body["protocol"]["version"] == 1
     assert body["store"]["status"] == "missing"
     assert body["user_service"]["automatic_startup"] in {"supported", "experimental"}

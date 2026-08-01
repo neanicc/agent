@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import os
-import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from loopguard.context.git_runtime import resolve_git_runtime
 
 from .models import Baseline, CheckPhase, ProofContract
 
@@ -110,10 +111,11 @@ def capture_repository_snapshot(repository: Path) -> RepositorySnapshot:
         repo = repository.expanduser().resolve(strict=True)
     except OSError as exc:
         raise BaselineCaptureError("repository is unavailable") from exc
-    git = shutil.which("git", path=os.defpath)
-    if git is None or not (repo / ".git").exists():
+    runtime = resolve_git_runtime()
+    if runtime is None or not (repo / ".git").exists():
         raise BaselineCaptureError("trusted baseline requires a Git worktree")
-    environment = {"PATH": os.defpath, "LC_ALL": "C", "LANG": "C"}
+    git = runtime.executable
+    environment = runtime.environment
     repository_sha = _git_output(
         git,
         repo,

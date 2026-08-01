@@ -219,7 +219,13 @@ class JudgeIncidentCache:
         if len(encoded) > _MAX_FILE_BYTES:
             raise CachePersistenceError("encrypted judge cache exceeds its size limit")
         temporary = self._path.with_name(f".{self._path.name}.{token_hex(8)}.tmp")
-        flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0)
+        flags = (
+            os.O_CREAT
+            | os.O_EXCL
+            | os.O_WRONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_BINARY", 0)
+        )
         descriptor = os.open(temporary, flags, 0o600)
         try:
             _write_all(descriptor, encoded)
@@ -293,7 +299,11 @@ def _validate_existing_target(path: Path) -> None:
 
 
 def _read_private_file(path: Path) -> bytes:
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_BINARY", 0)
+    )
     descriptor = os.open(path, flags)
     try:
         status = os.fstat(descriptor)

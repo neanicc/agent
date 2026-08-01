@@ -4,7 +4,6 @@ import hashlib
 import hmac
 import json
 import os
-import shutil
 import subprocess
 import tempfile
 import threading
@@ -16,6 +15,7 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from loopguard.context.git_runtime import resolve_git_runtime
 from loopguard.control.decisions import ActionTarget, PolicyDecision, TargetKind
 from loopguard.control.events import ControlEvent, EventKind
 
@@ -547,9 +547,10 @@ class VerificationWorkflow:
 def canonical_repository_changes(repository: Path) -> list[ChangeRecord]:
     """Derive a bounded, deterministic Git change set without requiring Context."""
     repo = repository.expanduser().resolve(strict=True)
-    git = shutil.which("git", path=os.defpath)
-    if git is None or not (repo / ".git").exists():
+    runtime = resolve_git_runtime()
+    if runtime is None or not (repo / ".git").exists():
         raise ValueError("canonical changes require a Git worktree")
+    git = runtime.executable
     try:
         result = subprocess.run(
             [git, "-C", str(repo), "status", "--porcelain=v1", "-z", "--untracked-files=all"],
@@ -557,7 +558,7 @@ def canonical_repository_changes(repository: Path) -> list[ChangeRecord]:
             capture_output=True,
             check=False,
             timeout=10,
-            env={"PATH": os.defpath, "LC_ALL": "C", "LANG": "C"},
+            env=runtime.environment,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise ValueError("canonical Git change discovery failed") from exc

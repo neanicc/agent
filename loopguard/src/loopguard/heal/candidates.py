@@ -267,7 +267,8 @@ class CandidateGenerationService:
         self.artifact_store = artifact_store or FileCandidateArtifactStore(
             self.worktree_root / "_artifacts"
         )
-        if _git(self.repository, "rev-parse", "--show-toplevel") != str(self.repository):
+        reported_root = Path(_git(self.repository, "rev-parse", "--show-toplevel"))
+        if reported_root.resolve(strict=True) != self.repository:
             raise ValueError("candidate repository must be the Git worktree root")
 
     async def generate(

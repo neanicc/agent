@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import stat
 from datetime import datetime, timezone
 from pathlib import Path
@@ -269,7 +270,8 @@ def test_intake_journal_is_private_and_rejects_mismatched_recovery_state(
         return journal
 
     journal = asyncio.run(persist())
-    assert stat.S_IMODE(journal.stat().st_mode) == 0o600
+    if os.name == "posix":
+        assert stat.S_IMODE(journal.stat().st_mode) == 0o600
     payload = json.loads(journal.read_text())
     payload[0]["baseline"]["source_prompt_event_id"] = "different-prompt"
     journal.write_text(json.dumps(payload))

@@ -368,7 +368,8 @@ def _write_temp(directory: Path, name: str, payload: bytes) -> Path:
     descriptor, raw_path = tempfile.mkstemp(prefix=f".{name}.tmp-", dir=directory)
     path = Path(raw_path)
     try:
-        os.fchmod(descriptor, 0o600)
+        if os.name == "posix":
+            os.fchmod(descriptor, 0o600)
         with os.fdopen(descriptor, "wb") as handle:
             handle.write(payload)
             handle.flush()

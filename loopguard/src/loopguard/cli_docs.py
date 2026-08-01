@@ -64,6 +64,11 @@ _COMMANDS = (
 def _normalize_help(value: str) -> str:
     """Make captured terminal help deterministic across runners and platforms."""
 
+    if "â" in value or "Ã" in value:
+        try:
+            value = value.encode("cp1252").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
     return "\n".join(line.rstrip() for line in unstyle(value).splitlines())
 
 
