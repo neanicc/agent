@@ -29,6 +29,7 @@ struct StatusBadge: View {
 
     private var badge: some View {
         Label(label, systemImage: symbol)
+            .labelStyle(.titleAndIcon)
             .font(LoopGuardTypography.status)
             .foregroundStyle(color)
             .fixedSize(horizontal: !dynamicTypeSize.isAccessibilitySize, vertical: true)
