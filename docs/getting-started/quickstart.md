@@ -40,13 +40,24 @@ loopguard quickstart --json
 
 ## 3. Protect a real agent
 
-`loopguard setup --agent auto` is delivered by the managed integration milestone. Until then, run the daemon attached for local development:
+Preview and install the matching managed Codex or Claude integration:
+
+```bash
+loopguard setup --agent auto
+loopguard doctor
+```
+
+Setup is idempotent, edits only the LoopGuard-managed configuration block, and requires explicit
+repository trust. If the current agent/platform combination is not supported, it remains disabled
+instead of installing an unverified hook. For attached local development, run:
 
 ```bash
 loopguard daemon start --foreground
 ```
 
-Background startup deliberately refuses to fork itself. Managed launchd/systemd/Windows service installation belongs to the integration workflow so lifecycle and uninstall remain auditable.
+Managed launchd/systemd/Windows service installation is capability-gated so lifecycle and uninstall
+remain auditable. Use `loopguard integrations uninstall <agent>` to remove only the managed
+integration when needed.
 
 ## Troubleshooting
 
@@ -57,4 +68,5 @@ loopguard explain LGD-DAEMON-001
 loopguard config show --json
 ```
 
-The offline magical moment should take seconds after installation. The production target for a protected Codex or Claude session is under five minutes once managed adapters ship.
+The offline proof should take seconds after installation. The target for a supported protected
+Codex or Claude session is under five minutes; verify the actual result with `loopguard doctor`.

@@ -35,3 +35,28 @@ test("documentation source forbids private implementation plans", async ({ reque
   expect(response.ok()).toBe(true);
   expect(body.results.every((result) => !result.slug.startsWith("superpowers/"))).toBe(true);
 });
+
+for (const width of [320, 375, 414]) {
+  test(`documentation navigation stays compact at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/docs");
+
+    const navigation = page.getByRole("navigation", { name: "Documentation" });
+    const box = await navigation.boundingBox();
+    expect(box?.height).toBeLessThanOrEqual(96);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    await expect(navigation.getByRole("link", { name: "Production readiness" })).toHaveCount(1);
+  });
+}
+
+test("documentation layout does not overflow at the 768px breakpoint", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto("/docs");
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await expect(page.getByRole("main")).toBeVisible();
+});

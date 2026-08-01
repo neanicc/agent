@@ -1695,18 +1695,36 @@
   .docs-navigation {
     display: flex;
     overflow-x: auto;
-    gap: var(--space-md);
+    align-items: center;
+    gap: var(--space-xs);
+    max-block-size: 6rem;
     border-block-end: var(--rule-hairline) solid var(--color-rule);
     border-inline-end: 0;
     padding: var(--space-sm) var(--space-md);
   }
 
-  .docs-navigation section {
-    min-inline-size: 11rem;
+  .docs-navigation section,
+  .docs-navigation ul {
+    display: contents;
   }
 
-  .docs-navigation section + section {
-    margin-block-start: 0;
+  .docs-navigation h2 {
+    display: none;
+  }
+
+  .docs-navigation li {
+    flex: 0 0 auto;
+  }
+
+  .docs-navigation a {
+    border: var(--rule-hairline) solid var(--color-rule);
+    border-radius: var(--radius-control);
+    padding: var(--space-xs) var(--space-sm);
+    white-space: nowrap;
+  }
+
+  .docs-navigation a[aria-current="page"] {
+    border-color: var(--color-accent);
   }
 
   .docs-main {
