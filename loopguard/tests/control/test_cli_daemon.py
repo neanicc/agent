@@ -244,6 +244,7 @@ def test_generated_cli_reference_has_no_drift():
     assert reference.read_text(encoding="utf-8") == rendered
     assert "Usage: loopguard" in rendered
     assert "terminate / continue / allowlist / inject" in rendered
+    assert not any(character in rendered for character in "╭╮╰╯┌┐└┘")
     assert all(line == line.rstrip() for line in rendered.splitlines())
     for command in (
         "loopguard daemon status",

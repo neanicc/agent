@@ -67,8 +67,26 @@ def _normalize_help(value: str) -> str:
     return "\n".join(line.rstrip() for line in unstyle(value).splitlines())
 
 
+def _typer_tree(root: object) -> tuple[object, ...]:
+    """Return every Typer instance registered below ``root`` exactly once."""
+
+    pending = [root]
+    found: list[object] = []
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        found.append(current)
+        pending.extend(group.typer_instance for group in current.registered_groups)
+    return tuple(found)
+
+
 def render_cli_reference() -> str:
     runner = CliRunner()
+    typer_apps = _typer_tree(app)
+    rich_modes = tuple(typer_app.rich_markup_mode for typer_app in typer_apps)
     sections = [
         "# CLI reference",
         "",
@@ -76,18 +94,27 @@ def render_cli_reference() -> str:
         "Regenerate it with `python -m loopguard.cli_docs` from the package directory.",
         "",
     ]
-    for label, command in _COMMANDS:
-        result = runner.invoke(
-            app,
-            [*command, "--help"],
-            color=False,
-            terminal_width=100,
-            prog_name="loopguard",
-        )
-        if result.exit_code != 0:
-            raise RuntimeError(f"could not render help for {label}")
-        help_text = _normalize_help(result.stdout)
-        sections.extend((f"## `{label}`", "", "```text", help_text, "```", ""))
+    try:
+        # Rich deliberately changes panel glyphs and wrapping on legacy Windows
+        # terminals. The reference is a source artifact, so render Click's plain
+        # help format at an explicit width on every host.
+        for typer_app in typer_apps:
+            typer_app.rich_markup_mode = None
+        for label, command in _COMMANDS:
+            result = runner.invoke(
+                app,
+                [*command, "--help"],
+                color=False,
+                terminal_width=100,
+                prog_name="loopguard",
+            )
+            if result.exit_code != 0:
+                raise RuntimeError(f"could not render help for {label}")
+            help_text = _normalize_help(result.stdout)
+            sections.extend((f"## `{label}`", "", "```text", help_text, "```", ""))
+    finally:
+        for typer_app, rich_mode in zip(typer_apps, rich_modes, strict=True):
+            typer_app.rich_markup_mode = rich_mode
     return "\n".join(sections).rstrip() + "\n"
 
 
