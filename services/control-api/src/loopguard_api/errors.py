@@ -20,6 +20,8 @@ class ErrorDefinition:
 ERROR_CATALOG: dict[str, ErrorDefinition] = {
     "LGAPI-ACTION-CONFLICT": ErrorDefinition(409, "Action state conflict", "The action cannot transition from its current state."),
     "LGAPI-ARTIFACT-INTEGRITY": ErrorDefinition(422, "Artifact integrity check failed", "The uploaded object does not match its authorized evidence declaration."),
+    "LGAPI-BILLING-UNAVAILABLE": ErrorDefinition(503, "Billing provider unavailable", "The hosted billing provider is temporarily unavailable. Local guarding, reads, exports, deletion, and security actions remain available.", True),
+    "LGAPI-BILLING-WEBHOOK-INVALID": ErrorDefinition(401, "Billing webhook rejected", "The billing event signature, timestamp, provider binding, or schema is invalid."),
     "LGAPI-BODY-TOO-LARGE": ErrorDefinition(413, "Request body too large", "The request exceeds the documented size limit."),
     "LGAPI-CSRF-REQUIRED": ErrorDefinition(403, "CSRF proof required", "Cookie-authenticated changes require an allowed origin and matching CSRF proof."),
     "LGAPI-DEVICE-PROOF-REQUIRED": ErrorDefinition(401, "Device proof required", "A current registered device signature is required for this action."),
@@ -29,11 +31,13 @@ ERROR_CATALOG: dict[str, ErrorDefinition] = {
     "LGAPI-HOOK-BINDING": ErrorDefinition(403, "Hook repository denied", "The hook credential is not bound to the requested repository."),
     "LGAPI-HOOK-INVALID": ErrorDefinition(401, "Hook authentication failed", "The hook request could not be authenticated."),
     "LGAPI-HOOK-REPLAY": ErrorDefinition(409, "Hook replay rejected", "The hook nonce has already been consumed."),
+    "LGAPI-HOSTED-QUOTA-EXCEEDED": ErrorDefinition(402, "Hosted quota unavailable", "New hosted expensive work is unavailable under the current quota or billing grace policy. Local guarding, reads, exports, deletion, and security actions remain available."),
     "LGAPI-INTERNAL": ErrorDefinition(500, "Internal service error", "The service could not complete the request.", True),
     "LGAPI-METHOD-NOT-ALLOWED": ErrorDefinition(405, "Method not allowed", "The resource does not support this HTTP method."),
     "LGAPI-MANAGED-RULE-WEAKENED": ErrorDefinition(422, "Managed rule cannot be weakened", "The preference update would weaken a tenant-managed safety rule."),
     "LGAPI-NOT-FOUND": ErrorDefinition(404, "Resource not found", "The requested resource was not found."),
     "LGAPI-ORIGIN-DENIED": ErrorDefinition(403, "Origin denied", "The browser origin is not in the exact deployment allowlist."),
+    "LGAPI-OVERLOADED": ErrorDefinition(429, "Capacity temporarily exhausted", "The tenant or service reached a documented concurrency or rate limit. Retry after the supplied jittered delay.", True),
     "LGAPI-PAIRING-CONFLICT": ErrorDefinition(409, "Pairing code unavailable", "The pairing code is unknown or has already been consumed."),
     "LGAPI-PAIRING-EXPIRED": ErrorDefinition(410, "Pairing code expired", "The one-time host pairing code has expired."),
     "LGAPI-PROXY-UNTRUSTED": ErrorDefinition(400, "Untrusted proxy headers", "Forwarded headers are accepted only from a configured proxy."),
@@ -50,12 +54,14 @@ class ApiProblem(Exception):
         *,
         field: str | None = None,
         current_state: dict[str, Any] | None = None,
+        retry_after_seconds: int | None = None,
     ) -> None:
         if code not in ERROR_CATALOG:
             raise ValueError("unknown public API error code")
         self.code = code
         self.field = field
         self.current_state = current_state
+        self.retry_after_seconds = retry_after_seconds
         super().__init__(code)
 
 
@@ -65,6 +71,7 @@ def problem_response(
     *,
     field: str | None = None,
     current_state: dict[str, Any] | None = None,
+    retry_after_seconds: int | None = None,
 ) -> JSONResponse:
     definition = ERROR_CATALOG[code]
     body: dict[str, Any] = {
@@ -80,9 +87,12 @@ def problem_response(
         body["field"] = field
     if current_state is not None:
         body["current_state"] = current_state
+    headers = {"X-Request-ID": request_id}
+    if retry_after_seconds is not None:
+        headers["Retry-After"] = str(retry_after_seconds)
     return JSONResponse(
         body,
         status_code=definition.status,
         media_type="application/problem+json",
-        headers={"X-Request-ID": request_id},
+        headers=headers,
     )

@@ -124,6 +124,9 @@ def render_reference(schema: dict[str, Any]) -> str:
         "| preferences write | `policy:manage` |",
         "| device and pairing management | `device:manage` |",
         "| host pairing-code creation | `device:manage` |",
+        "| enterprise domains, federation, tokens, and group mappings | `policy:manage` |",
+        "| SCIM resources | Tenant-scoped SCIM bearer token |",
+        "| billing summary, Checkout, and Portal | Tenant owner |",
         "",
         "Cross-tenant identifiers are intentionally indistinguishable from absent identifiers and return `404`.",
         "",
@@ -145,6 +148,10 @@ def render_reference(schema: dict[str, Any]) -> str:
         responses = ", ".join(sorted(operation.get("responses", {})))
         if path in {"/v1/hook-events", "/v1/repair-intake"}:
             auth = "Signed hook"
+        elif path == "/v1/billing/webhooks/stripe":
+            auth = "Signed Stripe webhook"
+        elif path.startswith("/scim/v2"):
+            auth = "SCIM bearer"
         else:
             auth = "Bearer" if path.startswith("/v1") else "Public"
         lines.append(

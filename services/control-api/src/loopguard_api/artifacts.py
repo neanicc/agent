@@ -78,11 +78,15 @@ class ArtifactService:
         kms: Kms,
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         manifest_verification_key: bytes | None = None,
+        maximum_bytes: int = 5 * 1024 * 1024 * 1024,
     ) -> None:
+        if maximum_bytes < 1 or maximum_bytes > 5 * 1024 * 1024 * 1024:
+            raise ValueError("artifact byte limit is invalid")
         self.objects = objects
         self.kms = kms
         self._clock = clock
         self._manifest_key = manifest_verification_key or secrets.token_bytes(32)
+        self.maximum_bytes = maximum_bytes
         self._records: dict[uuid.UUID, ArtifactRecord] = {}
         self._audit: list[dict[str, str]] = []
         self._lock = threading.Lock()
@@ -101,7 +105,7 @@ class ArtifactService:
             len(declared_sha256) != 64
             or any(character not in "0123456789abcdef" for character in declared_sha256)
             or byte_count < 1
-            or byte_count > 5 * 1024 * 1024 * 1024
+            or byte_count > self.maximum_bytes
             or not media_type
             or retention_class not in {"source", "log", "proof", "repair"}
         ):

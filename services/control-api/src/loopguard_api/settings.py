@@ -48,6 +48,23 @@ class Settings(BaseSettings):
     trusted_hosts: tuple[str, ...] = ("testserver", "localhost", "127.0.0.1")
     max_request_bytes: int = Field(default=1_048_576, ge=1_024, le=16_777_216)
     request_timeout_seconds: float = Field(default=30, gt=0, le=120)
+    max_ingest_batch_events: int = Field(default=100, ge=1, le=10_000)
+    max_artifact_bytes: int = Field(
+        default=5 * 1024 * 1024 * 1024,
+        ge=1_024,
+        le=5 * 1024 * 1024 * 1024,
+    )
+    max_actions_per_tenant_per_minute: int = Field(default=60, ge=1, le=10_000)
+    max_active_workflows_per_tenant: int = Field(default=10, ge=1, le=1_000)
+    max_stream_connections_per_tenant: int = Field(default=20, ge=1, le=10_000)
+    websocket_queue_size: int = Field(default=1_000, ge=1, le=100_000)
+    outbox_batch_size: int = Field(default=100, ge=1, le=10_000)
+    database_pool_size: int = Field(default=10, ge=1, le=200)
+    database_max_overflow: int = Field(default=10, ge=0, le=200)
+    database_statement_timeout_ms: int = Field(default=5_000, ge=100, le=120_000)
+    temporal_max_concurrent_activities: int = Field(default=20, ge=1, le=1_000)
+    overload_retry_min_seconds: int = Field(default=1, ge=1, le=300)
+    overload_retry_max_seconds: int = Field(default=30, ge=1, le=300)
 
     @field_validator(
         "build_sha",
@@ -134,6 +151,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_is_explicit(self) -> Settings:
+        if self.overload_retry_max_seconds < self.overload_retry_min_seconds:
+            raise ValueError("overload retry range is invalid")
         if self.environment != "production":
             return self
         required = {

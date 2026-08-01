@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from loopguard_api.hook_ingest import HookRejected, HookService
+from loopguard_api.hook_ingest import HookRejected, HookService, sign_hook_request
 
 
 NOW = datetime(2026, 7, 21, 12, tzinfo=timezone.utc)
@@ -94,3 +94,34 @@ def test_expired_revoked_and_tampered_hooks_fail():
     )
     with pytest.raises(HookRejected, match="revoked"):
         service.verify(method="POST", path="/v1/hook-events", body=b"{}", **revoked)
+
+
+def test_host_can_sign_without_server_state():
+    service = HookService(clock=lambda: NOW)
+    credential = service.issue(
+        tenant_id=uuid.uuid4(),
+        host_id=uuid.uuid4(),
+        repository_handle="rh_1",
+        expires_at=NOW + timedelta(hours=1),
+    )
+    body = b'{"event_id":"evt_host_signed"}'
+
+    signed = sign_hook_request(
+        credential.secret,
+        key_id=credential.key_id,
+        method="POST",
+        path="/v1/hook-events",
+        timestamp=NOW,
+        nonce="host-nonce",
+        repository_handle="rh_1",
+        body=body,
+    )
+
+    verified = service.verify(
+        method="POST",
+        path="/v1/hook-events",
+        body=body,
+        required_scope="events:write",
+        **signed,
+    )
+    assert verified.host_id == credential.host_id

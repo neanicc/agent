@@ -367,3 +367,100 @@ class UsageRecord(IdentifierMixin, TenantOwnedMixin, Base):
     observed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )
+
+
+class MeterEntry(IdentifierMixin, TenantOwnedMixin, Base):
+    __tablename__ = "meter_entries"
+    __table_args__ = (UniqueConstraint("tenant_id", "usage_id"),)
+
+    usage_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    units: Mapped[Decimal] = mapped_column(Numeric(28, 8), nullable=False)
+    provider_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(28, 8))
+    catalog_version: Mapped[str] = mapped_column(
+        ForeignKey("price_catalogs.version"), nullable=False
+    )
+    source: Mapped[str] = mapped_column(String(128), nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+
+
+class QuotaReservationRecord(IdentifierMixin, TenantOwnedMixin, Base):
+    __tablename__ = "quota_reservations"
+    __table_args__ = (UniqueConstraint("tenant_id", "reservation_id"),)
+
+    reservation_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    units: Mapped[Decimal] = mapped_column(Numeric(28, 8), nullable=False)
+    operation: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+
+
+class PriceCatalogRecord(IdentifierMixin, Base):
+    __tablename__ = "price_catalogs"
+
+    version: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    effective_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    prices: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+
+
+class SubscriptionRecord(IdentifierMixin, TenantOwnedMixin, Base):
+    __tablename__ = "billing_subscriptions"
+    __table_args__ = (
+        UniqueConstraint("tenant_id"),
+        UniqueConstraint("provider_customer_id"),
+    )
+
+    provider_customer_id: Mapped[str] = mapped_column(
+        String(256), nullable=False
+    )
+    provider_subscription_id: Mapped[str | None] = mapped_column(String(256))
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+    latest_provider_event_created: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0
+    )
+    grace_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class BillingEventRecord(IdentifierMixin, TenantOwnedMixin, Base):
+    __tablename__ = "billing_events"
+    __table_args__ = (UniqueConstraint("provider_event_id"),)
+
+    provider_event_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    provider_created: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    event_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    applied: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+
+class BillingAdjustmentRecord(IdentifierMixin, TenantOwnedMixin, Base):
+    __tablename__ = "billing_adjustments"
+    __table_args__ = (UniqueConstraint("tenant_id", "adjustment_id"),)
+
+    adjustment_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    amount_usd: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)
+    reason: Mapped[str] = mapped_column(String(512), nullable=False)
+    kind: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class InvoiceRecord(IdentifierMixin, TenantOwnedMixin, Base):
+    __tablename__ = "billing_invoices"
+    __table_args__ = (UniqueConstraint("tenant_id", "invoice_id"),)
+
+    invoice_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    ended_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    lines: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    adjustments_usd: Mapped[Decimal] = mapped_column(
+        Numeric(20, 2), nullable=False
+    )
+    total_usd: Mapped[Decimal] = mapped_column(Numeric(20, 2), nullable=False)

@@ -1,0 +1,63 @@
+name: public-docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            loopguard/pyproject.toml
+            services/control-api/pyproject.toml
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install reference generators
+        run: |
+          python -m pip install -e "./loopguard[control,heal,telemetry]" -e "./services/control-api[dev]"
+          npm ci --prefix apps/web
+      - name: Regenerate contracts and docs
+        run: |
+          PYTHONPATH=services/control-api/src:loopguard/src \
+            python services/control-api/scripts/export_openapi.py contracts/control-api.openapi.json \
+            --build-sha contract-test
+          python -m loopguard.cli_docs --check
+          npm run generate:api --prefix apps/web
+          npm run generate:docs --prefix apps/web
+      - name: Validate links and snippets
+        run: npm run validate:docs --prefix apps/web -- --external
+      - name: Reject generated-reference drift
+        run: >-
+          git diff --exit-code --
+          contracts/control-api.openapi.json
+          docs/reference/control-api.md
+          docs/reference/cli.md
+          apps/web/src/lib/api/generated.ts
+          apps/web/src/generated/docs-index.json
+      - name: Test docs surface
+        run: |
+          npm run typecheck --prefix apps/web
+          npm run lint --prefix apps/web
+          npm test --prefix apps/web
+          npm run build --prefix apps/web
+      - name: Install Chromium
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+      - name: Browser-test public docs
+        working-directory: apps/web
+        run: npx playwright test e2e/docs.spec.ts

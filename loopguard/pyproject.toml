@@ -83,7 +83,8 @@ src = ["src", "tests", "examples"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "tests"]
+addopts = ["--import-mode=importlib"]
 markers = [
     "docker: requires an explicitly configured local Docker daemon and immutable test image",
 ]

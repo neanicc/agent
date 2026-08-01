@@ -152,6 +152,7 @@ class RepairWorkflowService:
         maximum_cost_usd: Decimal | str = Decimal("25"),
         workflow_controller: RepairWorkflowController | None = None,
         workflow_registered: bool = False,
+        terminal_callback: Callable[[uuid.UUID, uuid.UUID], None] | None = None,
     ) -> None:
         if len(cursor_secret) < 16:
             raise ValueError("repair cursor secret must contain at least 16 bytes")
@@ -163,6 +164,7 @@ class RepairWorkflowService:
             raise ValueError("repair workflow cost budget must be finite and positive")
         self.workflow_controller = workflow_controller
         self.workflow_registered = workflow_registered
+        self.terminal_callback = terminal_callback
 
     @property
     def durable(self) -> bool:
@@ -628,7 +630,13 @@ class RepairWorkflowService:
             )
             updated = self._rehash(updated)
             self.store.records[record.id] = updated
-            return updated
+        if (
+            state_changed
+            and updated.state in {"completed", "cancelled", "failed"}
+            and self.terminal_callback is not None
+        ):
+            self.terminal_callback(updated.tenant_id, updated.id)
+        return updated
 
     def _required(self, repair_id: uuid.UUID) -> RepairWorkflowRecord:
         try:

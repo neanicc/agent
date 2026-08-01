@@ -1,0 +1,220 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Approved deployment environment
+        required: true
+        type: choice
+        options: [staging, production]
+      control_api_image:
+        description: Signed ECR control API image (repository@sha256:digest)
+        required: true
+        type: string
+      web_image:
+        description: Signed ECR web image (repository@sha256:digest)
+        required: true
+        type: string
+      worker_image:
+        description: Signed ECR worker image (repository@sha256:digest)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Verify, canary, and promote
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EKS_CLUSTER: ${{ vars.EKS_CLUSTER }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      RELEASE_NAME: loopguard
+      NAMESPACE: loopguard
+      CONTROL_API_IMAGE: ${{ inputs.control_api_image }}
+      WEB_IMAGE: ${{ inputs.web_image }}
+      WORKER_IMAGE: ${{ inputs.worker_image }}
+      RELEASE_IDENTITY_REGEXP: ^https://github.com/${{ github.repository }}/.github/workflows/release.yml@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d # v6.2.2
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+          mask-aws-account-id: true
+          role-session-name: loopguard-${{ github.run_id }}
+      - uses: Azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+        with:
+          version: v4.2.0
+      - uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/control-api/pyproject.toml
+      - name: Validate immutable release inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          pattern='^[a-z0-9][a-z0-9._/-]*\.dkr\.ecr\.[a-z0-9-]+\.amazonaws\.com/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$'
+          for image in "$CONTROL_API_IMAGE" "$WEB_IMAGE" "$WORKER_IMAGE"; do
+            [[ "$image" =~ $pattern ]] || {
+              echo "Deployment accepts only immutable private ECR digests" >&2
+              exit 64
+            }
+            [[ "$image" == "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/"* ]] || {
+              echo "Image is outside the approved account and region" >&2
+              exit 77
+            }
+            cosign verify \
+              --certificate-identity-regexp "$RELEASE_IDENTITY_REGEXP" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "$image" >/dev/null
+          done
+      - name: Connect to the private cluster
+        run: |
+          aws eks update-kubeconfig \
+            --name "$EKS_CLUSTER" \
+            --region "$AWS_REGION" \
+            --alias loopguard-deploy
+          kubectl auth can-i patch deployments --namespace "$NAMESPACE" | grep -qx yes
+          helm status "$RELEASE_NAME" --namespace "$NAMESPACE"
+      - name: Rehearse expand/read-switch/contract migration
+        working-directory: services/control-api
+        env:
+          LOOPGUARD_REHEARSAL_DATABASE_URL: ${{ secrets.MIGRATION_REHEARSAL_DATABASE_URL }}
+          LOOPGUARD_OLD_APP_PROBE: ${{ github.workspace }}/services/control-api/scripts/probe_migration_baseline.sh
+          LOOPGUARD_NEW_APP_PROBE: ${{ github.workspace }}/services/control-api/scripts/probe_migration_current.sh
+        run: |
+          python -m pip install -e '.[dev]'
+          scripts/rehearse_migration.sh
+      - name: Capture rollback revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          revision="$(helm history "$RELEASE_NAME" --namespace "$NAMESPACE" -o json | jq -r '.[-1].revision')"
+          [[ "$revision" =~ ^[1-9][0-9]*$ ]]
+          echo "ROLLBACK_REVISION=$revision" >>"$GITHUB_ENV"
+      - name: Deploy isolated API canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          control_digest="${CONTROL_API_IMAGE##*@}"
+          helm upgrade "$RELEASE_NAME" infra/helm/loopguard \
+            --namespace "$NAMESPACE" \
+            --reuse-values \
+            --set-string "global.buildSha=$GITHUB_SHA" \
+            --set-string "migration.imageDigest=$control_digest" \
+            --set canary.enabled=true \
+            --set-string "canary.controlApiDigest=$control_digest" \
+            --wait \
+            --timeout 10m
+          kubectl rollout status \
+            "deployment/$RELEASE_NAME-control-api-canary" \
+            --namespace "$NAMESPACE" \
+            --timeout 5m
+      - name: Probe canary without public traffic
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl port-forward \
+            --namespace "$NAMESPACE" \
+            "service/$RELEASE_NAME-control-api-canary" \
+            18000:8000 >"$RUNNER_TEMP/canary-port-forward.log" 2>&1 &
+          forward_pid=$!
+          trap 'kill "$forward_pid" 2>/dev/null || true' EXIT
+          for _ in {1..30}; do
+            if curl --fail --silent --show-error \
+              --max-time 3 \
+              http://127.0.0.1:18000/health \
+              | jq -e --arg sha "$GITHUB_SHA" '.status == "ok" and .build_sha == $sha' >/dev/null
+            then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/canary-port-forward.log" >&2
+          exit 70
+      - name: Promote signed digests atomically
+        shell: bash
+        run: |
+          set -euo pipefail
+          control_repository="${CONTROL_API_IMAGE%@*}"
+          web_repository="${WEB_IMAGE%@*}"
+          worker_repository="${WORKER_IMAGE%@*}"
+          helm upgrade "$RELEASE_NAME" infra/helm/loopguard \
+            --namespace "$NAMESPACE" \
+            --reuse-values \
+            --atomic \
+            --timeout 15m \
+            --set canary.enabled=false \
+            --set-string "global.buildSha=$GITHUB_SHA" \
+            --set-string "images.controlApi.repository=$control_repository" \
+            --set-string "images.controlApi.digest=${CONTROL_API_IMAGE##*@}" \
+            --set-string "images.web.repository=$web_repository" \
+            --set-string "images.web.digest=${WEB_IMAGE##*@}" \
+            --set-string "images.worker.repository=$worker_repository" \
+            --set-string "images.worker.digest=${WORKER_IMAGE##*@}" \
+            --set-string "migration.imageDigest=${CONTROL_API_IMAGE##*@}"
+      - name: Enforce post-deploy health and SLO alarms
+        env:
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+          SLO_ALARM_PREFIX: ${{ vars.SLO_ALARM_PREFIX }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 5 \
+            --retry-all-errors \
+            --max-time 10 \
+            "$API_HEALTH_URL" \
+            | jq -e --arg sha "$GITHUB_SHA" '.status == "ok" and .build_sha == $sha'
+          alarms="$(aws cloudwatch describe-alarms --alarm-name-prefix "$SLO_ALARM_PREFIX")"
+          count="$(jq '.MetricAlarms | length' <<<"$alarms")"
+          [[ "$count" -gt 0 ]] || {
+            echo "No SLO alarms matched the protected prefix" >&2
+            exit 70
+          }
+          jq -e '[.MetricAlarms[] | select(.StateValue != "OK")] | length == 0' <<<"$alarms"
+      - name: Roll back to the captured release on failure
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${ROLLBACK_REVISION:-}" =~ ^[1-9][0-9]*$ ]]; then
+            helm rollback "$RELEASE_NAME" "$ROLLBACK_REVISION" \
+              --namespace "$NAMESPACE" \
+              --wait \
+              --timeout 10m
+          fi
+      - name: Collect failure evidence
+        if: failure()
+        run: |
+          mkdir -p "$RUNNER_TEMP/deploy-evidence"
+          helm history "$RELEASE_NAME" --namespace "$NAMESPACE" \
+            >"$RUNNER_TEMP/deploy-evidence/helm-history.txt" || true
+          kubectl get events --namespace "$NAMESPACE" --sort-by=.lastTimestamp \
+            >"$RUNNER_TEMP/deploy-evidence/events.txt" || true
+          kubectl get pods --namespace "$NAMESPACE" -o wide \
+            >"$RUNNER_TEMP/deploy-evidence/pods.txt" || true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: deploy-failure-${{ inputs.environment }}-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 30
+          path: ${{ runner.temp }}/deploy-evidence

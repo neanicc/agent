@@ -1,0 +1,48 @@
+name: Feature request
+description: Explain a developer problem LoopGuard could solve
+title: "[Feature] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Developer problem
+      description: What happens today, and who experiences it?
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Current workflow
+      description: Describe the current workaround and its cost
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe success without prescribing an implementation
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Most relevant surface
+      options:
+        - Local CLI or daemon
+        - Agent integration
+        - Hosted API or worker
+        - Web console or docs
+        - iOS app
+        - Repair workflow
+        - Deployment or operations
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: This request contains no prompts, source, credentials, customer data, or production identifiers.
+          required: true

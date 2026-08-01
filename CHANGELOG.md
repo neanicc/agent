@@ -13,6 +13,10 @@ protocol, event, workflow, and database contracts have explicit independent vers
   operations console, and native iOS safety client.
 - Production threat model, tenant/object action authorization, hook path containment, owner-only
   state validation, signed update-manifest verification, and backup-first local migrations.
+- Capacity admission, chaos recovery, encrypted restore integrity, migration rehearsal, immutable
+  usage/billing reconciliation, enterprise SCIM/federation policy, and consent-bound support access.
+- Signed release and deploy workflows, reference AWS/Kubernetes infrastructure, incident runbooks,
+  public searchable documentation, and evidence-based production readiness gates.
 
 ### Security
 

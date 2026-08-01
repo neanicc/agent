@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Header, Request, WebSocket, WebSocketDis
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..authorization import Permission, Principal, require_viewer
+from ..capacity import CapacityExceeded, CapacityLimiter
 from ..stream_tickets import StreamGrant, StreamTicketRejected, StreamTicketService
 from ..subscriptions import SessionSubscriptionService
 
@@ -119,7 +120,21 @@ async def session_stream(websocket: WebSocket, session_id: uuid.UUID) -> None:
         await websocket.close(code=4404)
         return
 
+    limiter: CapacityLimiter = websocket.app.state.capacity_limiter
+    try:
+        with limiter.stream(grant.tenant_id):
+            await _serve_session_stream(websocket, grant, subscriptions)
+    except CapacityExceeded:
+        await websocket.close(code=4429, reason="tenant stream capacity exhausted")
+
+
+async def _serve_session_stream(
+    websocket: WebSocket,
+    grant: StreamGrant,
+    subscriptions: SessionSubscriptionService,
+) -> None:
     await websocket.accept()
+    session_id = grant.session_id
     last_session_seq = grant.after_session_seq
     client_stream_seq = 0
     try:

@@ -33,6 +33,12 @@ REQUIRED_PATHS = {
     "/v1/devices/{device_id}/push-token",
     "/v1/stream-tickets",
     "/v1/audit",
+    "/v1/billing",
+    "/v1/billing/webhooks/stripe",
+    "/v1/enterprise/scim-tokens",
+    "/v1/enterprise/federation",
+    "/scim/v2/Users",
+    "/scim/v2/Groups",
 }
 
 

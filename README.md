@@ -21,17 +21,22 @@ No model or API key used. No telemetry sent. Temporary state removed.
 Next: loopguard setup --agent auto
 ```
 
-## What runs today
+## What is implemented
 
 | Surface | Purpose | Status |
 |---|---|---|
 | Python engine | Exact, semantic, ping-pong, and budget loop detection | Working and tested |
 | Local control plane | Framed owner-authenticated daemon, encrypted SQLite log, crash replay, durable handlers | Working on POSIX; Windows named pipe remains capability-gated |
-| CLI | Offline quickstart, foreground daemon, doctor, error explanations, layered configuration | Working |
-| FastAPI + Expo demo | Streams real demo-agent runs to web/mobile controls | Prototype; open CORS, no production auth, in-memory runs |
-| Managed Codex/Claude hooks | Idempotent setup, trust, uninstall, compatibility doctor | Planned in the integration milestone |
+| CLI and managed hooks | Quickstart, daemon, doctor, setup/trust/uninstall, updates and migration checks | Implemented with platform capability gates |
+| Hosted control API | Tenant-scoped ingest, replay, signed actions, audit, retention, metering, billing, SCIM and support policy | Implemented; hosted startup requires durable adapters |
+| Web console and public docs | Authenticated monitoring/control plus searchable public documentation | Implemented and browser-tested locally |
+| Native iOS client | Inbox, runs, actions, policies, costs, devices, audit and reconnect behavior | Implemented for the iOS 26 simulator |
+| Auto-Heal | Isolated reproduction, bounded candidate, verification and draft repair PR | Implemented for supported eligible pipelines; cannot merge/deploy |
+| AWS/Kubernetes operations | Terraform, Helm, signed deploy, backup/restore, DR and incident runbooks | Prepared; live validation and human approval remain |
 
-LoopGuard does not advertise a capability until its platform integration test passes. Background daemon startup therefore refuses unmanaged forking; use `loopguard daemon start --foreground` until managed service installation ships.
+LoopGuard does not advertise a capability until its platform integration test passes. Unsupported
+agent/platform combinations fail closed, and the local circuit breaker remains useful when hosted
+services are unavailable.
 
 ## How the protected path works
 
@@ -58,13 +63,21 @@ loopguard explain LGD-DAEMON-001
 loopguard config show --json
 ```
 
-See [offline quickstart](docs/getting-started/quickstart.md), [CLI reference](docs/reference/cli.md), [configuration](docs/reference/configuration.md), and [errors](docs/reference/errors.md).
+See the [plain-English product guide](docs/getting-started/product-guide.md),
+[offline quickstart](docs/getting-started/quickstart.md),
+[first-session tutorial](docs/tutorials/protect-first-session.md),
+[CLI reference](docs/reference/cli.md), [configuration](docs/reference/configuration.md), and
+[errors](docs/reference/errors.md).
 
 ## Repository map
 
-- [`loopguard/`](loopguard/) — Python engine, daemon, CLI, server prototype, and tests.
-- [`cloud-app/`](cloud-app/) — Expo monitoring/intervention prototype.
-- [`docs/superpowers/`](docs/superpowers/) — reviewed production roadmap, specifications, and implementation progress.
+- [`loopguard/`](loopguard/) — Python engine, local daemon, CLI, integrations, repair engine, and tests.
+- [`services/control-api/`](services/control-api/) — multi-tenant hosted API and worker.
+- [`apps/web/`](apps/web/) — authenticated web console and public docs.
+- [`apps/ios/`](apps/ios/) — native SwiftUI control client.
+- [`infra/`](infra/) — Terraform, Helm, and rendered-manifest policy tests.
+- [`cloud-app/`](cloud-app/) — legacy Expo prototype retained for migration comparison.
+- [`docs/superpowers/`](docs/superpowers/) — reviewed specifications, implementation plans, and progress.
 
 ## Development checks
 
@@ -81,4 +94,13 @@ CI runs the foundation suite on Ubuntu, macOS, and Windows. Windows control tran
 
 ## Production honesty
 
-The repository is being productized milestone by milestone. The local event contract, encrypted store, daemon protocol, offline quickstart, diagnostics, and their safety tests are implemented. Managed agent adapters, authenticated cloud relay, production web/iOS control surfaces, pipeline healing, and final operations hardening remain on the tracked roadmap. The FastAPI/Expo demo must not be exposed publicly in its current form.
+Public beta and GA are currently **NO-GO**. The implementation includes the production safety and
+operations architecture, but live staging load, encrypted restore, migration, regional
+failover/failback, signed-release, real identity/payment-provider, and infrastructure validation
+still require approved environments. Durable hosted adapters, legal terms, and engineering,
+security, operations, privacy, product, and support sign-offs are also outstanding. The repository
+has no license; distribution remains `awaiting_owner_legal_choice`.
+
+The legacy Expo demo must not be exposed publicly. See the
+[production readiness ledger](docs/operations/production-readiness.md) for exact evidence and
+remaining authority.

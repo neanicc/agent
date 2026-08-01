@@ -1,0 +1,17 @@
+.git
+.github
+.worktrees
+**/.DS_Store
+**/.pytest_cache
+**/.ruff_cache
+**/.venv
+**/__pycache__
+**/node_modules
+**/.next
+**/build
+**/dist
+**/*.db
+**/*.sqlite
+artifacts
+docs
+infra

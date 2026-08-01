@@ -10,6 +10,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 
+_HOOK_KEY_DOMAIN = "loopguard.hook.hmac.v1:"
+
+
 class HookRejected(ValueError):
     pass
 
@@ -52,12 +55,10 @@ class HookService:
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         maximum_body_bytes: int = 1_048_576,
         maximum_clock_skew: timedelta = timedelta(minutes=5),
-        derivation_key: bytes | None = None,
     ) -> None:
         self._clock = clock
         self.maximum_body_bytes = maximum_body_bytes
         self.maximum_clock_skew = maximum_clock_skew
-        self._derivation_key = derivation_key or secrets.token_bytes(32)
         self._credentials: dict[str, _StoredCredential] = {}
         self._nonces: dict[tuple[str, str], datetime] = {}
         self._lock = threading.Lock()
@@ -136,18 +137,16 @@ class HookService:
         repository_handle: str,
         body: bytes,
     ) -> dict[str, str]:
-        signature = hmac.new(
-            self._derive(credential.secret),
-            _canonical(method, path, timestamp, nonce, repository_handle, body),
-            hashlib.sha256,
-        ).hexdigest()
-        return {
-            "key_id": credential.key_id,
-            "timestamp": timestamp.isoformat(),
-            "nonce": nonce,
-            "repository_handle": repository_handle,
-            "signature": signature,
-        }
+        return sign_hook_request(
+            credential.secret,
+            key_id=credential.key_id,
+            method=method,
+            path=path,
+            timestamp=timestamp,
+            nonce=nonce,
+            repository_handle=repository_handle,
+            body=body,
+        )
 
     def verify(
         self,
@@ -211,7 +210,35 @@ class HookService:
         )
 
     def _derive(self, secret: str) -> bytes:
-        return hmac.new(self._derivation_key, secret.encode(), hashlib.sha256).digest()
+        return hashlib.sha256((_HOOK_KEY_DOMAIN + secret).encode("utf-8")).digest()
+
+
+def sign_hook_request(
+    secret: str,
+    *,
+    key_id: str,
+    method: str,
+    path: str,
+    timestamp: datetime,
+    nonce: str,
+    repository_handle: str,
+    body: bytes,
+) -> dict[str, str]:
+    """Create the host-side signature without access to any server-only key."""
+
+    derived = hashlib.sha256((_HOOK_KEY_DOMAIN + secret).encode("utf-8")).digest()
+    signature = hmac.new(
+        derived,
+        _canonical(method, path, timestamp, nonce, repository_handle, body),
+        hashlib.sha256,
+    ).hexdigest()
+    return {
+        "key_id": key_id,
+        "timestamp": timestamp.isoformat(),
+        "nonce": nonce,
+        "repository_handle": repository_handle,
+        "signature": signature,
+    }
 
 
 def _canonical(

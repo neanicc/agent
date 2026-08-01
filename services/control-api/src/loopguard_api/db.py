@@ -109,15 +109,36 @@ def _enable_sqlite_foreign_keys(connection: Any, _record: Any) -> None:
 TenantSessionFactory = async_sessionmaker[AsyncSession]
 
 
-def create_database_engine(database_url: str, *, echo: bool = False) -> AsyncEngine:
+def create_database_engine(
+    database_url: str,
+    *,
+    echo: bool = False,
+    pool_size: int = 10,
+    max_overflow: int = 10,
+    statement_timeout_ms: int = 5_000,
+) -> AsyncEngine:
     if not database_url.startswith(("postgresql+asyncpg://", "sqlite+aiosqlite://")):
         raise ValueError("database URL must use asyncpg or aiosqlite")
-    return create_async_engine(
-        database_url,
-        echo=echo,
-        pool_pre_ping=True,
-        connect_args={"timeout": 15} if database_url.startswith("sqlite") else {},
-    )
+    options: dict[str, object] = {
+        "echo": echo,
+        "pool_pre_ping": True,
+    }
+    if database_url.startswith("sqlite"):
+        options["connect_args"] = {"timeout": 15}
+    else:
+        options.update(
+            {
+                "pool_size": pool_size,
+                "max_overflow": max_overflow,
+                "pool_timeout": 10,
+                "connect_args": {
+                    "server_settings": {
+                        "statement_timeout": str(statement_timeout_ms),
+                    }
+                },
+            }
+        )
+    return create_async_engine(database_url, **options)
 
 
 def tenant_session_factory(engine: AsyncEngine) -> TenantSessionFactory:

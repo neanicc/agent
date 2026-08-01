@@ -20,6 +20,9 @@ Every request accepts `X-Request-ID`; the service generates a bounded opaque ID 
 | preferences write | `policy:manage` |
 | device and pairing management | `device:manage` |
 | host pairing-code creation | `device:manage` |
+| enterprise domains, federation, tokens, and group mappings | `policy:manage` |
+| SCIM resources | Tenant-scoped SCIM bearer token |
+| billing summary, Checkout, and Portal | Tenant owner |
 
 Cross-tenant identifiers are intentionally indistinguishable from absent identifiers and return `404`.
 
@@ -37,6 +40,19 @@ Cross-tenant identifiers are intentionally indistinguishable from absent identif
 | Method | Path | Operation ID | Authentication | Success responses |
 |---|---|---|---|---|
 | `GET` | `/health` | `health_health_get` | Public | 200 |
+| `GET` | `/scim/v2/Groups` | `list_groups_scim_v2_Groups_get` | SCIM bearer | 200, 422 |
+| `POST` | `/scim/v2/Groups` | `create_group_scim_v2_Groups_post` | SCIM bearer | 201, 422 |
+| `GET` | `/scim/v2/Groups/{group_id}` | `read_group_scim_v2_Groups__group_id__get` | SCIM bearer | 200, 422 |
+| `PATCH` | `/scim/v2/Groups/{group_id}` | `patch_group_scim_v2_Groups__group_id__patch` | SCIM bearer | 200, 422 |
+| `DELETE` | `/scim/v2/Groups/{group_id}` | `delete_group_scim_v2_Groups__group_id__delete` | SCIM bearer | 204, 422 |
+| `GET` | `/scim/v2/ResourceTypes` | `resource_types_scim_v2_ResourceTypes_get` | SCIM bearer | 200 |
+| `GET` | `/scim/v2/Schemas` | `schemas_scim_v2_Schemas_get` | SCIM bearer | 200 |
+| `GET` | `/scim/v2/ServiceProviderConfig` | `service_provider_config_scim_v2_ServiceProviderConfig_get` | SCIM bearer | 200 |
+| `GET` | `/scim/v2/Users` | `list_users_scim_v2_Users_get` | SCIM bearer | 200, 422 |
+| `POST` | `/scim/v2/Users` | `create_user_scim_v2_Users_post` | SCIM bearer | 201, 422 |
+| `GET` | `/scim/v2/Users/{user_id}` | `read_user_scim_v2_Users__user_id__get` | SCIM bearer | 200, 422 |
+| `PATCH` | `/scim/v2/Users/{user_id}` | `patch_user_scim_v2_Users__user_id__patch` | SCIM bearer | 200, 422 |
+| `DELETE` | `/scim/v2/Users/{user_id}` | `delete_user_scim_v2_Users__user_id__delete` | SCIM bearer | 204, 422 |
 | `GET` | `/v1/actions` | `list_actions_v1_actions_get` | Bearer | 200 |
 | `POST` | `/v1/actions` | `accept_signed_action_v1_actions_post` | Bearer | 202, 422 |
 | `POST` | `/v1/actions/challenge` | `create_action_challenge_v1_actions_challenge_post` | Bearer | 201, 422 |
@@ -46,6 +62,10 @@ Cross-tenant identifiers are intentionally indistinguishable from absent identif
 | `POST` | `/v1/artifacts/{artifact_id}/complete` | `complete_artifact_v1_artifacts__artifact_id__complete_post` | Bearer | 200, 422 |
 | `GET` | `/v1/artifacts/{artifact_id}/download` | `download_artifact_v1_artifacts__artifact_id__download_get` | Bearer | 200, 422 |
 | `GET` | `/v1/audit` | `list_audit_v1_audit_get` | Bearer | 200, 422 |
+| `GET` | `/v1/billing` | `read_billing_v1_billing_get` | Bearer | 200 |
+| `POST` | `/v1/billing/checkout` | `create_checkout_v1_billing_checkout_post` | Bearer | 200, 422 |
+| `POST` | `/v1/billing/portal` | `create_portal_v1_billing_portal_post` | Bearer | 200, 422 |
+| `POST` | `/v1/billing/webhooks/stripe` | `stripe_webhook_v1_billing_webhooks_stripe_post` | Signed Stripe webhook | 202, 422 |
 | `GET` | `/v1/capabilities` | `effective_capabilities_v1_capabilities_get` | Bearer | 200, 422 |
 | `GET` | `/v1/changes` | `list_changes_v1_changes_get` | Bearer | 200 |
 | `GET` | `/v1/changes/{change_id}` | `read_change_v1_changes__change_id__get` | Bearer | 200, 422 |
@@ -55,6 +75,12 @@ Cross-tenant identifiers are intentionally indistinguishable from absent identif
 | `POST` | `/v1/devices/pairing/start` | `start_device_pairing_v1_devices_pairing_start_post` | Bearer | 200 |
 | `DELETE` | `/v1/devices/{device_id}` | `revoke_device_v1_devices__device_id__delete` | Bearer | 204, 422 |
 | `PUT` | `/v1/devices/{device_id}/push-token` | `register_push_destination_v1_devices__device_id__push_token_put` | Bearer | 200, 422 |
+| `POST` | `/v1/enterprise/domains/challenge` | `create_domain_challenge_v1_enterprise_domains_challenge_post` | Bearer | 201, 422 |
+| `POST` | `/v1/enterprise/domains/{domain}/verify` | `verify_domain_v1_enterprise_domains__domain__verify_post` | Bearer | 200, 422 |
+| `PUT` | `/v1/enterprise/federation` | `configure_federation_v1_enterprise_federation_put` | Bearer | 200, 422 |
+| `PUT` | `/v1/enterprise/group-mappings/{external_group}` | `put_group_mapping_v1_enterprise_group_mappings__external_group__put` | Bearer | 200, 422 |
+| `POST` | `/v1/enterprise/scim-tokens` | `issue_scim_token_v1_enterprise_scim_tokens_post` | Bearer | 201, 422 |
+| `DELETE` | `/v1/enterprise/scim-tokens/{token_id}` | `revoke_scim_token_v1_enterprise_scim_tokens__token_id__delete` | Bearer | 204, 422 |
 | `POST` | `/v1/hook-events` | `ingest_hook_event_v1_hook_events_post` | Signed hook | 202, 422 |
 | `GET` | `/v1/hosts` | `list_hosts_v1_hosts_get` | Bearer | 200 |
 | `POST` | `/v1/hosts/pair` | `pair_host_v1_hosts_pair_post` | Bearer | 201, 422 |
@@ -94,6 +120,8 @@ Errors use `application/problem+json` and include stable `code`, `title`, `detai
 |---|---:|---|---|
 | `LGAPI-ACTION-CONFLICT` | 409 | no | Action state conflict |
 | `LGAPI-ARTIFACT-INTEGRITY` | 422 | no | Artifact integrity check failed |
+| `LGAPI-BILLING-UNAVAILABLE` | 503 | yes | Billing provider unavailable |
+| `LGAPI-BILLING-WEBHOOK-INVALID` | 401 | no | Billing webhook rejected |
 | `LGAPI-BODY-TOO-LARGE` | 413 | no | Request body too large |
 | `LGAPI-CSRF-REQUIRED` | 403 | no | CSRF proof required |
 | `LGAPI-DEVICE-PAIRING-CONFLICT` | 409 | no | Device pairing conflict |
@@ -103,11 +131,13 @@ Errors use `application/problem+json` and include stable `code`, `title`, `detai
 | `LGAPI-HOOK-INVALID` | 401 | no | Hook authentication failed |
 | `LGAPI-HOOK-REPLAY` | 409 | no | Hook replay rejected |
 | `LGAPI-HOST-UNTRUSTED` | 400 | no | Untrusted host |
+| `LGAPI-HOSTED-QUOTA-EXCEEDED` | 402 | no | Hosted quota unavailable |
 | `LGAPI-INTERNAL` | 500 | yes | Internal service error |
 | `LGAPI-MANAGED-RULE-WEAKENED` | 422 | no | Managed rule cannot be weakened |
 | `LGAPI-METHOD-NOT-ALLOWED` | 405 | no | Method not allowed |
 | `LGAPI-NOT-FOUND` | 404 | no | Resource not found |
 | `LGAPI-ORIGIN-DENIED` | 403 | no | Origin denied |
+| `LGAPI-OVERLOADED` | 429 | yes | Capacity temporarily exhausted |
 | `LGAPI-PAIRING-CONFLICT` | 409 | no | Pairing code unavailable |
 | `LGAPI-PAIRING-EXPIRED` | 410 | no | Pairing code expired |
 | `LGAPI-PROXY-UNTRUSTED` | 400 | no | Untrusted proxy headers |

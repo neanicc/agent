@@ -23,6 +23,18 @@ request bodies, or tokens—when contacting support.
 - Fix: reduce the batch or use the documented artifact upload flow.
 - Retry: only after reducing the body; reuse the same idempotency key for the same operation.
 
+## LGAPI-BILLING-UNAVAILABLE
+
+- Meaning: Stripe Checkout or Customer Portal is temporarily unavailable (`503`).
+- Fix: retry the hosted billing page later; local guarding and safety/data access remain available.
+- Retry: retryable with backoff. Never repeat a payment based on an ambiguous browser response.
+
+## LGAPI-BILLING-WEBHOOK-INVALID
+
+- Meaning: a billing webhook failed signature, freshness, schema, or provider-binding checks (`401`).
+- Fix: verify the exact Stripe endpoint secret and raw-body delivery configuration.
+- Retry: only Stripe should retry a newly valid signed event; clients must not call this endpoint.
+
 ## LGAPI-CSRF-REQUIRED
 
 - Meaning: a cookie-authenticated mutation lacked an allowed exact origin or matching CSRF proof
@@ -72,6 +84,13 @@ request bodies, or tokens—when contacting support.
 - Fix: reconcile the original event ID; use a fresh nonce only for a genuinely new request.
 - Retry: do not blindly retry the same signed request.
 
+## LGAPI-HOSTED-QUOTA-EXCEEDED
+
+- Meaning: new hosted expensive work is unavailable under quota or expired billing grace (`402`).
+- Fix: adjust hosted quota or billing state. Local guarding, reads, exports, deletion, and security
+  actions remain available.
+- Retry: not retryable until the hosted entitlement or quota changes.
+
 ## LGAPI-INTERNAL
 
 - Meaning: the service could not safely complete the request (`500`).
@@ -101,6 +120,12 @@ request bodies, or tokens—when contacting support.
 - Meaning: a browser request supplied an origin outside the exact CORS allowlist (`403`).
 - Fix: use an approved web application origin; wildcard subdomains are intentionally unsupported.
 - Retry: not retryable from the denied origin.
+
+## LGAPI-OVERLOADED
+
+- Meaning: the tenant or service reached a documented rate or concurrency boundary (`429`).
+- Fix: honor `Retry-After`, reconcile mutations by idempotency key, and reduce request concurrency.
+- Retry: retryable after the supplied bounded jitter; never treat rejection as accepted work.
 
 ## LGAPI-PAIRING-CONFLICT
 

@@ -22,7 +22,9 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
-    "generate:api": "openapi-typescript ../../contracts/control-api.openapi.json -o src/lib/api/generated.ts"
+    "generate:api": "openapi-typescript ../../contracts/control-api.openapi.json -o src/lib/api/generated.ts",
+    "generate:docs": "node scripts/generate-docs-index.mjs",
+    "validate:docs": "node scripts/validate-docs.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "5.3.0",

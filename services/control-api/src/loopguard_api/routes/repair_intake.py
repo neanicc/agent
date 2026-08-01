@@ -14,8 +14,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from loopguard.heal.intake import FailurePayloadRejected, normalize_failure
 from loopguard.heal.models import FailureEvent
 
+from ..capacity import CapacityExceeded, CapacityLimiter
 from ..errors import ApiProblem
 from ..hook_ingest import HookRejected, HookService, VerifiedHook
+from ..metering import UsageCategory
+from ..quotas import QuotaExceeded, QuotaManager
 
 
 router = APIRouter(prefix="/v1", tags=["repair-intake"])
@@ -56,6 +59,18 @@ class RepairIntakeRegistry:
             )
             self._records[key] = record
             return record, False
+
+    def discard(self, record: RepairIntakeRecord) -> None:
+        if record.failure.fingerprint is None:
+            return
+        key = (
+            record.tenant_id,
+            record.repository_handle,
+            record.failure.fingerprint,
+        )
+        with self._lock:
+            if self._records.get(key) == record:
+                self._records.pop(key, None)
 
 
 class RepairIntakeAccepted(BaseModel):
@@ -116,12 +131,50 @@ async def ingest_repair_failure(
         raise ApiProblem("LGAPI-HOOK-BINDING")
     registry: RepairIntakeRegistry = request.app.state.repair_intake_registry
     record, duplicate = registry.accept(verified, failure)
-    await request.app.state.repair_workflow_service.accept_intake(
-        repair_id=record.repair_id,
-        tenant_id=record.tenant_id,
-        repository_handle=record.repository_handle,
-        failure_fingerprint=failure.fingerprint,
-    )
+    limiter: CapacityLimiter = request.app.state.capacity_limiter
+    quotas: QuotaManager = request.app.state.quota_manager
+    if not duplicate:
+        try:
+            quotas.reserve(
+                f"repair:{record.repair_id}",
+                tenant_id=record.tenant_id,
+                category=UsageCategory.REPAIR_WORKER_SECONDS,
+                units=1,
+            )
+            limiter.admit_workflow(record.tenant_id, str(record.repair_id))
+        except QuotaExceeded as exc:
+            registry.discard(record)
+            raise ApiProblem(
+                "LGAPI-HOSTED-QUOTA-EXCEEDED",
+                current_state={
+                    "hosted_work_allowed": False,
+                    "local_guarding_available": True,
+                },
+            ) from exc
+        except CapacityExceeded as exc:
+            quotas.release(record.tenant_id, f"repair:{record.repair_id}")
+            registry.discard(record)
+            raise ApiProblem(
+                "LGAPI-OVERLOADED",
+                current_state={
+                    "resource": exc.resource,
+                    "retry_after_seconds": exc.retry_after_seconds,
+                },
+                retry_after_seconds=exc.retry_after_seconds,
+            ) from exc
+    try:
+        await request.app.state.repair_workflow_service.accept_intake(
+            repair_id=record.repair_id,
+            tenant_id=record.tenant_id,
+            repository_handle=record.repository_handle,
+            failure_fingerprint=failure.fingerprint,
+        )
+    except Exception:
+        if not duplicate:
+            limiter.release_workflow(record.tenant_id, str(record.repair_id))
+            quotas.release(record.tenant_id, f"repair:{record.repair_id}")
+            registry.discard(record)
+        raise
     return RepairIntakeAccepted(
         repair_id=record.repair_id,
         fingerprint=failure.fingerprint,

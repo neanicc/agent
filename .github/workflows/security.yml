@@ -1,0 +1,101 @@
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@da24556b548a50705dd671f47852072ea4c105d9 # v4.7.1
+        with:
+          fail-on-severity: moderate
+          deny-licenses: AGPL-1.0-only, AGPL-3.0-only, SSPL-1.0
+
+  source-and-dependency-security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            loopguard/pyproject.toml
+            services/control-api/pyproject.toml
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.18.0
+          cache: npm
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            loopguard/integrations/playwright-loopguard/package-lock.json
+      - name: Python dependency audit and SAST
+        run: |
+          python -m pip install \
+            'bandit[toml]==1.8.6' \
+            'pip-audit==2.9.0'
+          python -m pip install -e './loopguard[all-dev]'
+          python -m pip install -e './services/control-api[dev]'
+          python -m pip_audit --strict
+          python -m bandit -q -r loopguard/src services/control-api/src
+      - name: Locked JavaScript dependency audits
+        run: |
+          npm --prefix apps/web ci --ignore-scripts
+          npm --prefix apps/web audit --audit-level=high
+          npm --prefix loopguard/integrations/playwright-loopguard ci --ignore-scripts
+          npm --prefix loopguard/integrations/playwright-loopguard audit --audit-level=high
+      - name: Pinned Gitleaks secret scan
+        env:
+          GITLEAKS_VERSION: "8.28.0"
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          curl --fail --location --silent --show-error --output "${archive}" "${base}/${archive}"
+          curl --fail --location --silent --show-error --output checksums.txt \
+            "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          grep "  ${archive}$" checksums.txt | sha256sum --check
+          tar -xzf "${archive}" gitleaks
+          ./gitleaks git --redact --no-banner
+
+  container-security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Build web image without registry credentials
+        run: docker build --tag loopguard-web:security apps/web
+      - uses: aquasecurity/trivy-action@76071ef0d7ec797419534a183b498b4d6366cf37 # 0.31.0
+        with:
+          image-ref: loopguard-web:security
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          scanners: vuln,secret,misconfig

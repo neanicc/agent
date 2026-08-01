@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ..actions import ActionConflict, ActionService, DeviceProofRequired
 from ..authorization import Permission, Principal, require_controller, require_viewer
+from ..capacity import CapacityExceeded, CapacityLimiter
 from ..errors import ApiProblem
 
 
@@ -229,6 +230,18 @@ async def create_action_challenge(
         ):
             raise ApiProblem("LGAPI-ACTION-CONFLICT")
     service: ActionService = request.app.state.action_service
+    limiter: CapacityLimiter = request.app.state.capacity_limiter
+    try:
+        limiter.admit_action(principal.tenant_id)
+    except CapacityExceeded as exc:
+        raise ApiProblem(
+            "LGAPI-OVERLOADED",
+            current_state={
+                "resource": exc.resource,
+                "retry_after_seconds": exc.retry_after_seconds,
+            },
+            retry_after_seconds=exc.retry_after_seconds,
+        ) from exc
     challenge = service.create_challenge(
         principal=principal,
         requested_by_device_id=body.device_id,

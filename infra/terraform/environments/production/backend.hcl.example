@@ -1,0 +1,5 @@
+bucket         = "REPLACE-production-terraform-state"
+key            = "loopguard/control-plane.tfstate"
+region         = "REPLACE-primary-region"
+dynamodb_table = "REPLACE-production-terraform-locks"
+encrypt        = true

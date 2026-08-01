@@ -10,6 +10,8 @@ from fastapi.testclient import TestClient
 
 from loopguard_api.app import create_app
 from loopguard_api.hook_ingest import HookService
+from loopguard_api.metering import UsageLedger
+from loopguard_api.quotas import QuotaManager
 from loopguard_api.settings import Settings
 
 
@@ -244,3 +246,82 @@ def test_forged_source_shape_and_provider_headers_cannot_replace_wrapper_signatu
     assert wrong_shape.status_code == 422
     assert wrong_shape.json()["code"] == "LGAPI-REQUEST-INVALID"
     assert provider_only.status_code == 422
+
+
+def test_workflow_capacity_rejects_before_acceptance_and_can_retry() -> None:
+    service = HookService(clock=lambda: NOW, maximum_body_bytes=4096)
+    app = create_app(
+        Settings.for_test(
+            max_request_bytes=4096,
+            max_active_workflows_per_tenant=1,
+            overload_retry_min_seconds=7,
+            overload_retry_max_seconds=7,
+        ),
+        hook_service=service,
+    )
+    credential = service.issue(
+        tenant_id=uuid.uuid4(),
+        host_id=uuid.uuid4(),
+        repository_handle="rh_coordinates",
+        scopes=("repair:intake",),
+        expires_at=NOW + timedelta(hours=1),
+    )
+    first_body = json.dumps(airflow_event(), separators=(",", ":")).encode()
+    second_payload = airflow_event()
+    second_payload["event"]["exception"]["type"] = "ValueError"  # type: ignore[index]
+    second_body = json.dumps(second_payload, separators=(",", ":")).encode()
+
+    with TestClient(app) as client:
+        accepted = client.post(
+            PATH,
+            content=first_body,
+            headers=signed_headers(service, credential, first_body, nonce="capacity-1"),
+        )
+        overloaded = client.post(
+            PATH,
+            content=second_body,
+            headers=signed_headers(service, credential, second_body, nonce="capacity-2"),
+        )
+
+    assert accepted.status_code == 202
+    assert overloaded.status_code == 429
+    assert overloaded.headers["Retry-After"] == "7"
+    assert overloaded.json()["code"] == "LGAPI-OVERLOADED"
+    assert overloaded.json()["retryable"] is True
+
+
+def test_expired_billing_grace_blocks_repair_but_not_local_guarding() -> None:
+    service = HookService(clock=lambda: NOW, maximum_body_bytes=4096)
+    ledger = UsageLedger(clock=lambda: NOW)
+    quotas = QuotaManager(
+        ledger,
+        hosted_work_allowed=lambda _tenant_id: False,
+    )
+    app = create_app(
+        Settings.for_test(max_request_bytes=4096),
+        hook_service=service,
+        usage_ledger=ledger,
+        quota_manager=quotas,
+    )
+    credential = service.issue(
+        tenant_id=uuid.uuid4(),
+        host_id=uuid.uuid4(),
+        repository_handle="rh_coordinates",
+        scopes=("repair:intake",),
+        expires_at=NOW + timedelta(hours=1),
+    )
+    body = json.dumps(airflow_event(), separators=(",", ":")).encode()
+
+    with TestClient(app) as client:
+        response = client.post(
+            PATH,
+            content=body,
+            headers=signed_headers(service, credential, body, nonce="quota"),
+        )
+
+    assert response.status_code == 402
+    assert response.json()["code"] == "LGAPI-HOSTED-QUOTA-EXCEEDED"
+    assert response.json()["current_state"] == {
+        "hosted_work_allowed": False,
+        "local_guarding_available": True,
+    }

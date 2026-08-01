@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .auth import AuthService, CachedOidcJwksProvider, DatabaseMembershipStore
@@ -24,23 +25,32 @@ from .action_signing import Ed25519ActionSigner
 from .actions import ActionService
 from .artifacts import ArtifactService, MemoryKms, MemoryObjectStore
 from .authorization import Principal, current_principal
+from .billing import BillingService
 from .client_queries import ControlQueryService
+from .capacity import CapacityLimiter
 from .db import create_database_engine, tenant_session_factory
 from .device_pairing import DevicePairingService
 from .errors import ApiProblem, problem_response
+from .enterprise_identity import EnterpriseIdentityService
 from .hook_ingest import HookService
+from .metering import UsageLedger
 from .pairing import PairingService
+from .quotas import QuotaManager
 from .repair_workflow import RepairWorkflowService
 from .routes.hooks import router as hooks_router
 from .routes.hosts import router as hosts_router
 from .routes.actions import router as actions_router
 from .routes.artifacts import router as artifacts_router
 from .routes.audit import router as audit_router
+from .routes.billing import router as billing_router
 from .routes.capabilities import router as capabilities_router
 from .routes.changes import router as changes_router
 from .routes.costs import router as costs_router
 from .routes.devices import router as devices_router
 from .routes.sessions import router as sessions_router
+from .routes.scim import ScimError, error_body as scim_error_body
+from .routes.scim import admin_router as enterprise_admin_router
+from .routes.scim import router as scim_router
 from .routes.preferences import router as preferences_router
 from .routes.repair_intake import RepairIntakeRegistry
 from .routes.repair_intake import router as repair_intake_router
@@ -49,6 +59,7 @@ from .routes.verifications import router as verifications_router
 from .settings import PublicBuild, Settings
 from .stream_tickets import StreamTicketService
 from .subscriptions import SessionSubscriptionService
+from .support import SupportAccessService
 from .telemetry import ControlApiTelemetry, bounded_route
 
 
@@ -75,13 +86,24 @@ def create_app(
     repair_intake_registry: RepairIntakeRegistry | None = None,
     repair_workflow_service: RepairWorkflowService | None = None,
     telemetry: ControlApiTelemetry | None = None,
+    capacity_limiter: CapacityLimiter | None = None,
+    usage_ledger: UsageLedger | None = None,
+    quota_manager: QuotaManager | None = None,
+    billing_service: BillingService | None = None,
+    enterprise_identity_service: EnterpriseIdentityService | None = None,
+    support_access_service: SupportAccessService | None = None,
 ) -> FastAPI:
     active = settings or Settings()
     app = FastAPI(title="LoopGuard Control API", version="0.1.0")
     app.state.settings = active
     app.state.telemetry = telemetry or ControlApiTelemetry(enabled=False)
     if auth_service is None:
-        engine = create_database_engine(active.database_url)
+        engine = create_database_engine(
+            active.database_url,
+            pool_size=active.database_pool_size,
+            max_overflow=active.database_max_overflow,
+            statement_timeout_ms=active.database_statement_timeout_ms,
+        )
         app.state.database_engine = engine
         auth_service = AuthService(
             issuer=active.oidc_issuer,
@@ -95,6 +117,25 @@ def create_app(
             allowed_algorithms=active.oidc_allowed_algorithms,
         )
     app.state.auth_service = auth_service
+    app.state.capacity_limiter = capacity_limiter or CapacityLimiter(
+        actions_per_minute=active.max_actions_per_tenant_per_minute,
+        active_workflows=active.max_active_workflows_per_tenant,
+        stream_connections=active.max_stream_connections_per_tenant,
+        retry_min_seconds=active.overload_retry_min_seconds,
+        retry_max_seconds=active.overload_retry_max_seconds,
+    )
+    app.state.usage_ledger = usage_ledger or UsageLedger()
+    app.state.billing_service = billing_service or BillingService(
+        app.state.usage_ledger,
+        allowed_return_origins=tuple(
+            origin for origin in active.allowed_origins if origin.startswith("https://")
+        )
+        or ("https://app.loopguard.dev",),
+    )
+    app.state.quota_manager = quota_manager or QuotaManager(
+        app.state.usage_ledger,
+        hosted_work_allowed=app.state.billing_service.hosted_work_allowed,
+    )
     app.state.pairing_service = PairingService()
     if hook_service is None:
         if active.environment in {"staging", "production"}:
@@ -109,7 +150,22 @@ def create_app(
     if repair_workflow_service is None:
         if active.environment in {"staging", "production"}:
             raise ValueError("hosted deployments require a durable repair workflow adapter")
-        repair_workflow_service = RepairWorkflowService()
+        def release_terminal_repair(
+            tenant_id: uuid.UUID,
+            repair_id: uuid.UUID,
+        ) -> None:
+            app.state.capacity_limiter.release_workflow(
+                tenant_id,
+                str(repair_id),
+            )
+            app.state.quota_manager.release(
+                tenant_id,
+                f"repair:{repair_id}",
+            )
+
+        repair_workflow_service = RepairWorkflowService(
+            terminal_callback=release_terminal_repair
+        )
     if active.environment in {"staging", "production"} and (
         not repair_workflow_service.durable
         or not repair_workflow_service.workflow_registered
@@ -129,7 +185,11 @@ def create_app(
     if artifact_service is None:
         if active.environment in {"staging", "production"}:
             raise ValueError("hosted deployments require object-store and KMS adapters")
-        artifact_service = ArtifactService(objects=MemoryObjectStore(), kms=MemoryKms())
+        artifact_service = ArtifactService(
+            objects=MemoryObjectStore(),
+            kms=MemoryKms(),
+            maximum_bytes=active.max_artifact_bytes,
+        )
     app.state.artifact_service = artifact_service
     if control_queries is None:
         if active.environment in {"staging", "production"}:
@@ -142,6 +202,36 @@ def create_app(
     app.state.control_queries = control_queries
     control_queries.repair_workflow_registered = repair_workflow_service.workflow_registered
     app.state.device_pairing_service = device_pairing_service
+    if active.environment in {"staging", "production"} and (
+        not app.state.usage_ledger.durable
+        or not app.state.billing_service.durable
+        or not app.state.quota_manager.durable
+    ):
+        raise ValueError(
+            "hosted deployments require durable metering, billing, and quota adapters"
+        )
+    if enterprise_identity_service is None:
+        if active.environment in {"staging", "production"}:
+            raise ValueError("hosted deployments require a durable enterprise identity adapter")
+        enterprise_identity_service = EnterpriseIdentityService()
+    if active.environment in {"staging", "production"} and not enterprise_identity_service.durable:
+        raise ValueError("hosted enterprise identity must be durable")
+    app.state.enterprise_identity_service = enterprise_identity_service
+    if support_access_service is None:
+        if active.environment in {"staging", "production"}:
+            raise ValueError("hosted deployments require a durable support-access adapter")
+        support_access_service = SupportAccessService()
+    if active.environment in {"staging", "production"} and not support_access_service.durable:
+        raise ValueError("hosted support access must be durable")
+    app.state.support_access_service = support_access_service
+
+    @app.exception_handler(ScimError)
+    async def scim_problem(_request: Request, exc: ScimError):
+        return JSONResponse(
+            scim_error_body(exc),
+            status_code=exc.status,
+            media_type="application/scim+json",
+        )
 
     @app.exception_handler(ApiProblem)
     async def api_problem(request: Request, exc: ApiProblem):
@@ -150,6 +240,7 @@ def create_app(
             _request_id(request.scope),
             field=exc.field,
             current_state=exc.current_state,
+            retry_after_seconds=exc.retry_after_seconds,
         )
 
     @app.exception_handler(RequestValidationError)
@@ -206,6 +297,7 @@ def create_app(
     app.include_router(actions_router)
     app.include_router(artifacts_router)
     app.include_router(audit_router)
+    app.include_router(billing_router)
     app.include_router(capabilities_router)
     app.include_router(changes_router)
     app.include_router(costs_router)
@@ -213,6 +305,8 @@ def create_app(
     app.include_router(preferences_router)
     app.include_router(repair_intake_router)
     app.include_router(repairs_router)
+    app.include_router(scim_router)
+    app.include_router(enterprise_admin_router)
     app.include_router(verifications_router)
 
     app.add_middleware(

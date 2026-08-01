@@ -166,3 +166,37 @@ def test_native_bearer_upgrade_never_puts_access_token_in_url():
         headers={"Authorization": "Bearer native-access-token"},
     ) as websocket:
         assert websocket.receive_json()["session_seq"] == 1
+
+
+def test_stream_capacity_closes_excess_connection_with_retryable_code():
+    tenant_id, user_id, session_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    tickets = StreamTicketService(clock=lambda: NOW)
+    subscriptions = SessionSubscriptionService()
+    subscriptions.register_session(tenant_id=tenant_id, session_id=session_id)
+    app = create_app(
+        Settings.for_test(max_stream_connections_per_tenant=1),
+        stream_ticket_service=tickets,
+        subscription_service=subscriptions,
+    )
+
+    def issue() -> str:
+        return tickets.issue(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            session_id=session_id,
+            origin=ORIGIN,
+            after_session_seq=0,
+        ).ticket
+
+    with TestClient(app) as client:
+        with client.websocket_connect(
+            f"/v1/sessions/{session_id}/stream?ticket={issue()}",
+            headers={"Origin": ORIGIN},
+        ):
+            with pytest.raises(WebSocketDisconnect) as overloaded:
+                with client.websocket_connect(
+                    f"/v1/sessions/{session_id}/stream?ticket={issue()}",
+                    headers={"Origin": ORIGIN},
+                ):
+                    pass
+            assert overloaded.value.code == 4429

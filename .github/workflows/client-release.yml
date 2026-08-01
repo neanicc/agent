@@ -30,8 +30,10 @@ jobs:
     name: Web tests and OCI package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -79,10 +81,10 @@ jobs:
           done
           docker logs "${container}"
           exit 1
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
       - name: Build OCI verification artifact
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: apps/web
           build-args: BUILD_SHA=${{ github.sha }}
@@ -99,7 +101,7 @@ jobs:
             > "${RUNNER_TEMP}/web-image-reference.txt"
           cd "${RUNNER_TEMP}"
           shasum -a 256 loopguard-web.oci.tar > SHA256SUMS.web
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: web-verification-${{ github.sha }}
           if-no-files-found: error
@@ -113,7 +115,9 @@ jobs:
     name: iOS tests and unsigned archive
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate project
@@ -143,7 +147,7 @@ jobs:
             "${RUNNER_TEMP}/LoopGuard-verification.xcarchive.zip"
           cd "${RUNNER_TEMP}"
           shasum -a 256 LoopGuard-verification.xcarchive.zip > SHA256SUMS.ios
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ios-verification-${{ github.sha }}
           if-no-files-found: error
@@ -157,12 +161,14 @@ jobs:
     needs: [web-verification, ios-verification]
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: web-verification-${{ github.sha }}
           path: artifacts/client-release
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: ios-verification-${{ github.sha }}
           path: artifacts/client-release
@@ -189,9 +195,11 @@ jobs:
       id-token: write
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -203,7 +211,7 @@ jobs:
           printf 'reference=ghcr.io/%s/web\n' "${repository}" >> "${GITHUB_OUTPUT}"
       - name: Build and publish
         id: publish
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: apps/web
           build-args: BUILD_SHA=${{ github.sha }}
@@ -211,7 +219,7 @@ jobs:
           push: true
           provenance: mode=max
           sbom: true
-      - uses: sigstore/cosign-installer@v3
+      - uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
       - name: Sign immutable image digest
         env:
           DIGEST: ${{ steps.publish.outputs.digest }}
@@ -220,7 +228,7 @@ jobs:
           test -n "${DIGEST}"
           cosign sign --yes "${IMAGE}@${DIGEST}"
           printf '%s@%s\n' "${IMAGE}" "${DIGEST}" > web-image-reference.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: web-release-reference-${{ github.sha }}
           if-no-files-found: error
@@ -234,7 +242,9 @@ jobs:
     runs-on: macos-26
     environment: client-ios-production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
       - name: Install XcodeGen and certificate
         env:
           CERTIFICATE_BASE64: ${{ secrets.APP_STORE_CERTIFICATE_BASE64 }}
