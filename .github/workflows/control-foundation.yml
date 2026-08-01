@@ -28,8 +28,15 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
           cache-dependency-path: loopguard/pyproject.toml
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.18.0
+          cache: npm
+          cache-dependency-path: loopguard/integrations/browser-broker/package-lock.json
       - name: Install all product and development extras
         run: python -m pip install -e ".[all-dev]"
+      - name: Install pinned browser broker runtime
+        run: npm ci --prefix integrations/browser-broker
       - name: Ruff
         run: python -m ruff check src tests
       - name: Warning-strict test suite

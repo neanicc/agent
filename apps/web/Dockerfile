@@ -29,6 +29,13 @@ ENV PORT=3000
 LABEL org.opencontainers.image.revision="${BUILD_SHA}"
 LABEL org.opencontainers.image.source="https://github.com/loopguard/loopguard"
 RUN test -n "${BUILD_SHA}"
+RUN rm -rf /usr/local/lib/node_modules \
+    && rm -f \
+      /usr/local/bin/corepack \
+      /usr/local/bin/npm \
+      /usr/local/bin/npx \
+      /usr/local/bin/yarn \
+      /usr/local/bin/yarnpkg
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 USER node

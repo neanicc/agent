@@ -100,7 +100,11 @@ def test_wrong_peer_is_closed_before_frame_processing(tmp_path):
                 reader, writer = await asyncio.open_unix_connection(socket_path)
                 writer.write(MAGIC)
                 await writer.drain()
-                assert await asyncio.wait_for(reader.read(), timeout=1) == b""
+                try:
+                    closed = await asyncio.wait_for(reader.read(), timeout=1)
+                except ConnectionResetError:
+                    closed = b""
+                assert closed == b""
                 assert store.count() == 0
                 writer.close()
                 await writer.wait_closed()
