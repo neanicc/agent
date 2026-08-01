@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -49,7 +50,7 @@ class LocalMigrationService:
                 CURRENT_SCHEMA_VERSION,
                 (),
             )
-        with sqlite3.connect(f"file:{database}?mode=ro", uri=True) as connection:
+        with closing(sqlite3.connect(f"file:{database}?mode=ro", uri=True)) as connection:
             current = int(connection.execute("PRAGMA user_version").fetchone()[0])
             integrity = str(connection.execute("PRAGMA quick_check").fetchone()[0])
         if integrity != "ok":
@@ -92,7 +93,10 @@ class LocalMigrationService:
             os.chmod(destination, 0o700)
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
         backup = destination / f"{database.name}.{stamp}.lgbak"
-        with sqlite3.connect(database) as source, sqlite3.connect(":memory:") as snapshot:
+        with (
+            closing(sqlite3.connect(database)) as source,
+            closing(sqlite3.connect(":memory:")) as snapshot,
+        ):
             source.backup(snapshot)
             snapshot_bytes = snapshot.serialize()
         nonce = os.urandom(12)
@@ -104,7 +108,7 @@ class LocalMigrationService:
         create_private_file(backup, _BACKUP_MAGIC + nonce + ciphertext)
         self._verify_backup(backup, database.name)
         try:
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection, connection:
                 migrate(connection)
                 if str(connection.execute("PRAGMA quick_check").fetchone()[0]) != "ok":
                     raise sqlite3.DatabaseError("post-migration integrity check failed")
@@ -131,7 +135,7 @@ class LocalMigrationService:
         plaintext = self._verify_backup(backup, database.name)
         temporary = database.with_suffix(database.suffix + ".restore")
         create_private_file(temporary, plaintext)
-        with sqlite3.connect(f"file:{temporary}?mode=ro", uri=True) as connection:
+        with closing(sqlite3.connect(f"file:{temporary}?mode=ro", uri=True)) as connection:
             if str(connection.execute("PRAGMA quick_check").fetchone()[0]) != "ok":
                 temporary.unlink(missing_ok=True)
                 raise ValueError("restored database failed integrity check")

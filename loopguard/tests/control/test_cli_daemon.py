@@ -82,7 +82,9 @@ def test_doctor_json_reports_missing_daemon_with_structured_fix(tmp_path, monkey
     assert body["user_service"]["automatic_startup"] in {"supported", "experimental"}
     assert body["agent_integrations"]["schema_version"] == 1
     assert len(body["agent_integrations"]["surfaces"]) == 6
-    assert body["errors"][0]["code"] == "LGD-DAEMON-001"
+    assert body["errors"][0]["code"] == (
+        "LGD-DAEMON-001" if os.name == "posix" else "LGD-CAP-005"
+    )
     assert "loopguard daemon start --foreground" in body["errors"][0]["suggested_commands"]
     assert "traceback" not in result.stdout.lower()
 
@@ -239,7 +241,7 @@ def test_generated_cli_reference_has_no_drift():
     reference = Path(__file__).resolve().parents[3] / "docs/reference/cli.md"
 
     rendered = render_cli_reference()
-    assert reference.read_text() == rendered
+    assert reference.read_text(encoding="utf-8") == rendered
     assert "Usage: loopguard" in rendered
     assert "terminate / continue / allowlist / inject" in rendered
     assert all(line == line.rstrip() for line in rendered.splitlines())

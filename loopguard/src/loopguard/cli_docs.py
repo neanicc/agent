@@ -64,11 +64,6 @@ _COMMANDS = (
 def _normalize_help(value: str) -> str:
     """Make captured terminal help deterministic across runners and platforms."""
 
-    if "â" in value or "Ã" in value:
-        try:
-            value = value.encode("cp1252").decode("utf-8")
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            pass
     return "\n".join(line.rstrip() for line in unstyle(value).splitlines())
 
 
@@ -107,11 +102,14 @@ def main() -> None:
     arguments = parser.parse_args()
     rendered = render_cli_reference()
     if arguments.check:
-        if not arguments.output.exists() or arguments.output.read_text() != rendered:
+        if (
+            not arguments.output.exists()
+            or arguments.output.read_text(encoding="utf-8") != rendered
+        ):
             raise SystemExit("CLI reference is out of date; run python -m loopguard.cli_docs")
         return
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
-    arguments.output.write_text(rendered)
+    arguments.output.write_text(rendered, encoding="utf-8")
 
 
 if __name__ == "__main__":

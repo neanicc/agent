@@ -325,6 +325,8 @@ class CommandRunner:
         timeout_seconds: int,
         command: list[str],
     ) -> list[str]:
+        if os.name != "posix":
+            return command
         return [
             str(self.python_executable),
             "-m",

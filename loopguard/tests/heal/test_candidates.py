@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import stat
 import subprocess
 from decimal import Decimal
@@ -129,7 +130,8 @@ def test_candidates_receive_same_baseline_not_each_others_diff(tmp_path: Path) -
     assert all(candidate.patch_sha256 != "0" * 64 for candidate in result.accepted)
     artifacts = sorted((service.worktree_root / "_artifacts").glob("*.patch"))
     assert len(artifacts) == 3
-    assert all(stat.S_IMODE(path.stat().st_mode) == 0o600 for path in artifacts)
+    if os.name == "posix":
+        assert all(stat.S_IMODE(path.stat().st_mode) == 0o600 for path in artifacts)
 
 
 def test_candidate_outside_allowed_scope_is_rejected() -> None:
