@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+
+from loopguard.context.git_runtime import resolve_git_runtime
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,13 +23,13 @@ class GitStateScanner:
     def scan(self) -> list[GitStatusEntry]:
         if not self.repository.is_dir() or not (self.repository / ".git").exists():
             raise FileNotFoundError("repository is unavailable")
-        git = shutil.which("git", path=os.defpath)
-        if git is None:
+        runtime = resolve_git_runtime()
+        if runtime is None:
             raise FileNotFoundError("Git is unavailable")
         try:
             result = subprocess.run(
                 [
-                    git,
+                    runtime.executable,
                     "-C",
                     str(self.repository),
                     "status",
@@ -40,7 +41,7 @@ class GitStateScanner:
                 capture_output=True,
                 check=False,
                 timeout=10,
-                env={"PATH": os.defpath, "LC_ALL": "C", "LANG": "C"},
+                env=runtime.environment,
             )
         except (OSError, subprocess.SubprocessError) as exc:
             raise FileNotFoundError("Git status reconciliation failed") from exc
@@ -52,17 +53,24 @@ class GitStateScanner:
         return entries
 
     def head_sha(self) -> str:
-        git = shutil.which("git", path=os.defpath)
-        if git is None:
+        runtime = resolve_git_runtime()
+        if runtime is None:
             raise FileNotFoundError("Git is unavailable")
         try:
             result = subprocess.run(
-                [git, "-C", str(self.repository), "rev-parse", "--verify", "HEAD"],
+                [
+                    runtime.executable,
+                    "-C",
+                    str(self.repository),
+                    "rev-parse",
+                    "--verify",
+                    "HEAD",
+                ],
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 check=False,
                 timeout=10,
-                env={"PATH": os.defpath, "LC_ALL": "C", "LANG": "C"},
+                env=runtime.environment,
             )
         except (OSError, subprocess.SubprocessError) as exc:
             raise FileNotFoundError("Git HEAD lookup failed") from exc

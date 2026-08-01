@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import stat
 import tempfile
 from pathlib import Path
@@ -105,7 +106,8 @@ def test_symbol_index_versions_changed_files_import_edges_renames_and_deletes(
     index.delete("repo", "worktree", "src/renamed.py")
     assert index.paths_for_symbol("repo", "refresh") == []
     index.close()
-    assert stat.S_IMODE((tmp_path / "symbols.db").stat().st_mode) == 0o600
+    if os.name == "posix":
+        assert stat.S_IMODE((tmp_path / "symbols.db").stat().st_mode) == 0o600
 
 
 def test_index_scopes_queries_by_worktree_and_persists_renames(tmp_path: Path) -> None:

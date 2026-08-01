@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import shutil
 import subprocess
 import uuid
 from dataclasses import dataclass
@@ -13,6 +12,7 @@ from typing import Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from .git_state import GitStateScanner
+from .git_runtime import resolve_git_runtime
 from .hashing import ContextHasher, FileChangedDuringHash, content_fingerprint
 from .models import ChangeObservation, ContextCheckpoint
 
@@ -306,18 +306,25 @@ class ChangeReconciler:
 
 
 def _repository_identity(repository: Path) -> tuple[str, str]:
-    git = shutil.which("git", path=os.defpath)
-    if git is None:
+    runtime = resolve_git_runtime()
+    if runtime is None:
         raise ValueError("Git is unavailable")
     try:
         result = subprocess.run(
-            [git, "-C", str(repository), "rev-parse", "--git-common-dir", "--show-toplevel"],
+            [
+                runtime.executable,
+                "-C",
+                str(repository),
+                "rev-parse",
+                "--git-common-dir",
+                "--show-toplevel",
+            ],
             stdin=subprocess.DEVNULL,
             capture_output=True,
             check=False,
             text=True,
             timeout=10,
-            env={"PATH": os.defpath, "LC_ALL": "C", "LANG": "C"},
+            env=runtime.environment,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise ValueError("repository identity is unavailable") from exc
@@ -368,18 +375,18 @@ def _detect_case_sensitivity(repository: Path) -> bool:
 
 
 def _git_metadata_directory(repository: Path) -> Path | None:
-    git = shutil.which("git", path=os.defpath)
-    if git is None:
+    runtime = resolve_git_runtime()
+    if runtime is None:
         return None
     try:
         result = subprocess.run(
-            [git, "-C", str(repository), "rev-parse", "--git-dir"],
+            [runtime.executable, "-C", str(repository), "rev-parse", "--git-dir"],
             stdin=subprocess.DEVNULL,
             capture_output=True,
             check=False,
             text=True,
             timeout=10,
-            env={"PATH": os.defpath, "LC_ALL": "C", "LANG": "C"},
+            env=runtime.environment,
         )
         if result.returncode != 0:
             return None

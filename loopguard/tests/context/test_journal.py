@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import stat
 from datetime import datetime, timedelta, timezone
 
@@ -139,7 +140,8 @@ def test_database_is_private_and_symlink_paths_are_rejected(tmp_path) -> None:
     journal.record(observation("obs", repo_seq=1))
     journal.close()
 
-    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    if os.name == "posix":
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
     link = tmp_path / "linked.db"
     link.symlink_to(path)
     with pytest.raises(ValueError, match="symlink"):

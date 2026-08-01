@@ -107,7 +107,7 @@ def test_macos_install_validates_staged_plist_then_bootstraps_and_kickstarts(
     destination = tmp_path / "com.loopguard.daemon.plist"
 
     result = install_user_service(
-        executable=Path("/opt/loopguard"),
+        executable="/opt/loopguard",
         home=tmp_path / "state",
         platform="darwin",
         destination=destination,
@@ -140,7 +140,7 @@ def test_dry_run_previews_without_files_or_commands(tmp_path: Path) -> None:
     destination = tmp_path / "loopguardd.service"
 
     result = install_user_service(
-        executable=Path("/opt/loopguard"),
+        executable="/opt/loopguard",
         home=tmp_path / "state",
         platform="linux",
         destination=destination,
@@ -159,7 +159,7 @@ def test_linux_install_is_idempotent_and_upgrade_restarts(tmp_path: Path) -> Non
     destination = tmp_path / "systemd" / "loopguardd.service"
 
     first = install_user_service(
-        executable=Path("/opt/loopguard/bin/loopguard"),
+        executable="/opt/loopguard/bin/loopguard",
         home=tmp_path / "state",
         platform="linux",
         destination=destination,
@@ -168,7 +168,7 @@ def test_linux_install_is_idempotent_and_upgrade_restarts(tmp_path: Path) -> Non
     first_calls = list(commands.calls)
     call_count = len(commands.calls)
     second = install_user_service(
-        executable=Path("/opt/loopguard/bin/loopguard"),
+        executable="/opt/loopguard/bin/loopguard",
         home=tmp_path / "state",
         platform="linux",
         destination=destination,
@@ -176,7 +176,7 @@ def test_linux_install_is_idempotent_and_upgrade_restarts(tmp_path: Path) -> Non
     )
     assert len(commands.calls) == call_count
     upgraded = install_user_service(
-        executable=Path("/new/loopguard"),
+        executable="/new/loopguard",
         home=tmp_path / "state",
         platform="linux",
         destination=destination,
@@ -207,7 +207,7 @@ def test_installer_refuses_to_overwrite_unrelated_service(tmp_path: Path) -> Non
 
     with pytest.raises(ServiceInstallError, match="not LoopGuard-owned"):
         install_user_service(
-            executable=Path("/opt/loopguard"),
+            executable="/opt/loopguard",
             home=tmp_path / "state",
             platform="linux",
             destination=destination,
@@ -226,7 +226,7 @@ def test_installer_does_not_create_files_through_a_symlinked_parent(tmp_path: Pa
 
     with pytest.raises(ServiceInstallError, match="symlink"):
         install_user_service(
-            executable=Path("/opt/loopguard"),
+            executable="/opt/loopguard",
             home=tmp_path / "state",
             platform="linux",
             destination=link / "nested" / "loopguardd.service",
@@ -239,7 +239,7 @@ def test_installer_does_not_create_files_through_a_symlinked_parent(tmp_path: Pa
 def test_failed_upgrade_restores_previous_definition(tmp_path: Path) -> None:
     destination = tmp_path / "loopguardd.service"
     install_user_service(
-        executable=Path("/old/loopguard"),
+        executable="/old/loopguard",
         home=tmp_path / "state",
         platform="linux",
         destination=destination,
@@ -249,7 +249,7 @@ def test_failed_upgrade_restores_previous_definition(tmp_path: Path) -> None:
 
     with pytest.raises(ServiceInstallError, match="service command failed"):
         install_user_service(
-            executable=Path("/new/loopguard"),
+            executable="/new/loopguard",
             home=tmp_path / "state",
             platform="linux",
             destination=destination,
@@ -267,7 +267,7 @@ def test_uninstall_removes_only_owned_service_and_retains_data(tmp_path: Path) -
     data = home / "events.db"
     data.write_text("keep")
     install_user_service(
-        executable=Path("/opt/loopguard"),
+        executable="/opt/loopguard",
         home=home,
         platform="linux",
         destination=destination,

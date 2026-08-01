@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from importlib.resources import files
-from pathlib import Path, PureWindowsPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Callable, Sequence
 from xml.sax.saxutils import escape
 
@@ -635,7 +635,7 @@ def _validate_value(value: str, label: str) -> None:
 def _is_absolute(value: str, platform: str) -> bool:
     if platform == "win32":
         return PureWindowsPath(value).is_absolute()
-    return Path(value).expanduser().is_absolute()
+    return PurePosixPath(value).is_absolute()
 
 
 def _systemd_quote(value: str) -> str:

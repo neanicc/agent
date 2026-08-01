@@ -161,7 +161,8 @@ def test_service_marks_context_lost_after_broker_or_daemon_restart(tmp_path: Pat
         )
         assert lease.status == "active"
         state = tmp_path / "browser-leases.json"
-        assert stat.S_IMODE(state.stat().st_mode) == 0o600
+        if os.name == "posix":
+            assert stat.S_IMODE(state.stat().st_mode) == 0o600
         assert "c" * 64 not in state.read_text()
         assert factory.current is not None
         factory.current.exit()

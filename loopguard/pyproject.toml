@@ -77,6 +77,9 @@ where = ["src"]
 [tool.setuptools.package-data]
 loopguard = ["demo_projects/**/*", "adapters/templates/*", "router/*.toml", "preferences/*.toml"]
 
+[tool.setuptools.exclude-package-data]
+"*" = ["*.py[cod]", "__pycache__/*", "**/__pycache__/*"]
+
 [tool.ruff]
 line-length = 100
 src = ["src", "tests", "examples"]

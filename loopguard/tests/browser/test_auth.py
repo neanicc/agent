@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import stat
 from pathlib import Path
 
 import pytest
 
+import loopguard.browser.auth as browser_auth_module
 from loopguard.browser.auth import BrowserAuthStore
 from loopguard.browser.client import BrowserResult
 from loopguard.browser.service import BrowserService
@@ -13,6 +15,26 @@ from loopguard.control.crypto import InMemoryKeyStore, MissingKeyError
 
 
 SECRET = b'{"cookies":[{"name":"token","value":"cookie-secret"}]}'
+
+
+def test_encrypted_state_write_handles_partial_binary_writes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_write = browser_auth_module.os.write
+
+    def partial_write(descriptor: int, body: bytes | memoryview) -> int:
+        raw = bytes(body)
+        return original_write(descriptor, raw[: max(1, len(raw) // 2)])
+
+    monkeypatch.setattr(browser_auth_module.os, "write", partial_write)
+    store = BrowserAuthStore.for_test(
+        tmp_path / "auth",
+        plaintext_directory=tmp_path / "browser" / "auth-plaintext",
+    )
+    store.save(repo_id="repo", profile="admin", environment="test", body=SECRET)
+
+    assert store.load("repo", "admin", "test") is not None
+    store.close()
 
 
 def test_storage_state_is_scoped_to_user_repo_profile_environment_and_origins(
@@ -66,7 +88,11 @@ def test_storage_state_is_scoped_to_user_repo_profile_environment_and_origins(
     persisted = b"".join(path.read_bytes() for path in (tmp_path / "auth").rglob("*") if path.is_file())
     assert SECRET not in persisted
     assert b"cookie-secret" not in persisted
-    assert all(stat.S_IMODE(path.stat().st_mode) == 0o600 for path in (tmp_path / "auth").rglob("*.state"))
+    if os.name == "posix":
+        assert all(
+            stat.S_IMODE(path.stat().st_mode) == 0o600
+            for path in (tmp_path / "auth").rglob("*.state")
+        )
     store.close()
 
 
@@ -78,7 +104,8 @@ def test_materialized_state_is_owner_only_and_release_removes_secret(tmp_path: P
     assert reference is not None and reference.key == key
     lease = store.materialize(reference)
     assert lease.path.read_bytes() == SECRET
-    assert stat.S_IMODE(lease.path.stat().st_mode) == 0o600
+    if os.name == "posix":
+        assert stat.S_IMODE(lease.path.stat().st_mode) == 0o600
     store.release(lease)
     assert not lease.path.exists()
     assert b"cookie-secret" not in _directory_bytes(plaintext)

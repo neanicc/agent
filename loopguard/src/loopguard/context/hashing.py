@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import os
-import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+
+from loopguard.context.git_runtime import resolve_git_runtime
 
 
 _IGNORED_PARTS = {
@@ -171,17 +172,24 @@ class ContextHasher:
         return decoded
 
     def _head_blob(self, path: str) -> str | None:
-        git = shutil.which("git", path=os.defpath)
-        if git is None:
+        runtime = resolve_git_runtime()
+        if runtime is None:
             raise FileNotFoundError("Git is unavailable")
         try:
             result = subprocess.run(
-                [git, "-C", str(self.repository), "rev-parse", "--verify", f"HEAD:{path}"],
+                [
+                    runtime.executable,
+                    "-C",
+                    str(self.repository),
+                    "rev-parse",
+                    "--verify",
+                    f"HEAD:{path}",
+                ],
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 check=False,
                 timeout=10,
-                env={"PATH": os.defpath, "LC_ALL": "C", "LANG": "C"},
+                env=runtime.environment,
             )
         except (OSError, subprocess.SubprocessError) as exc:
             raise FileNotFoundError("Git object lookup failed") from exc
@@ -244,18 +252,18 @@ class ContextHasher:
         return data
 
     def _git(self, arguments: list[str], *, input_bytes: bytes | None = None) -> bytes:
-        git = shutil.which("git", path=os.defpath)
-        if git is None:
+        runtime = resolve_git_runtime()
+        if runtime is None:
             raise FileNotFoundError("Git is unavailable")
         try:
             result = subprocess.run(
-                [git, "-C", str(self.repository), *arguments],
+                [runtime.executable, "-C", str(self.repository), *arguments],
                 input=input_bytes,
                 stdin=None if input_bytes is not None else subprocess.DEVNULL,
                 capture_output=True,
                 check=False,
                 timeout=10,
-                env={"PATH": os.defpath, "LC_ALL": "C", "LANG": "C"},
+                env=runtime.environment,
             )
         except (OSError, subprocess.SubprocessError) as exc:
             raise FileNotFoundError("Git context command failed") from exc

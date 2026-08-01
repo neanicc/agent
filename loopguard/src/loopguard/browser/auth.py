@@ -197,11 +197,15 @@ class BrowserAuthStore:
         path = self.plaintext_directory / f"{lease_id}.json"
         descriptor = os.open(
             path,
-            os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0),
+            os.O_CREAT
+            | os.O_EXCL
+            | os.O_WRONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_BINARY", 0),
             0o600,
         )
         try:
-            os.write(descriptor, body)
+            _write_all(descriptor, body)
             os.fsync(descriptor)
             if os.name == "posix":
                 os.fchmod(descriptor, 0o600)
@@ -304,7 +308,10 @@ def _aad(reference: AuthStateReference) -> bytes:
 
 def _safe_read(path: Path, *, maximum: int) -> bytes:
     try:
-        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        descriptor = os.open(
+            path,
+            os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0),
+        )
     except OSError as exc:
         raise ValueError("browser auth state path is unsafe") from exc
     try:
@@ -337,11 +344,15 @@ def _atomic_write(path: Path, body: bytes) -> None:
     temporary = path.with_name(f".{path.name}.{os.getpid()}.{os.urandom(8).hex()}.tmp")
     descriptor = os.open(
         temporary,
-        os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0),
+        os.O_CREAT
+        | os.O_EXCL
+        | os.O_WRONLY
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_BINARY", 0),
         0o600,
     )
     try:
-        os.write(descriptor, body)
+        _write_all(descriptor, body)
         os.fsync(descriptor)
         if os.name == "posix":
             os.fchmod(descriptor, 0o600)
@@ -367,7 +378,10 @@ def _secure_unlink(path: Path, *, root: Path) -> None:
         return
     if not stat.S_ISREG(status.st_mode):
         raise ValueError("browser auth plaintext lease is not a regular file")
-    descriptor = os.open(path, os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0))
+    descriptor = os.open(
+        path,
+        os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0),
+    )
     try:
         remaining = status.st_size
         zeros = b"\0" * min(64 * 1024, max(1, remaining))
@@ -382,6 +396,16 @@ def _secure_unlink(path: Path, *, root: Path) -> None:
         os.close(descriptor)
     path.unlink(missing_ok=True)
     _fsync_directory(root)
+
+
+def _write_all(descriptor: int, body: bytes) -> None:
+    view = memoryview(body)
+    written = 0
+    while written < len(view):
+        count = os.write(descriptor, view[written:])
+        if count <= 0:
+            raise OSError("browser auth write stalled")
+        written += count
 
 
 def _fsync_directory(path: Path) -> None:
