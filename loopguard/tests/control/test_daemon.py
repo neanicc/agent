@@ -107,7 +107,10 @@ def test_wrong_peer_is_closed_before_frame_processing(tmp_path):
                 assert closed == b""
                 assert store.count() == 0
                 writer.close()
-                await writer.wait_closed()
+                try:
+                    await writer.wait_closed()
+                except ConnectionResetError:
+                    pass
             finally:
                 await daemon.close()
                 store.close()
