@@ -30,6 +30,8 @@ staging or human exercise.
 | Enterprise OIDC/SAML and SCIM | Identity / Security | enterprise identity tests and support guide | Automated domain/token/provisioning tests; real IdP/deprovision outage exercise pending | Every identity-provider change |
 | Consent-bound support and break glass | Support / Security | support access tests and support guide | Automated scope/preview/dual-approval tests; abuse tabletop pending | Quarterly and every support-policy change |
 | Public docs, accessibility, and generated references | Developer Experience | docs unit/e2e tests, generated OpenAPI/CLI/docs indexes | Automated per build; public-link crawl pending | Every docs or contract change |
+| First-party dependency and source scanning | Security | `security.yml`, npm audits, pip-audit, Bandit | Production web/bridges report zero npm vulnerabilities; Python dependencies report none; Bandit reports no high findings. Eight reviewed medium heuristics remain (bounded/internal XML parsing, allowlisted SQL identifiers, and intentional container tmpfs) | Every dependency/source change; medium review before GA |
+| Deprecated Expo compatibility fallback | Client / Security | `cloud-app/README.md`, compatibility test and bundle build | Build/test pass, but the frozen Expo 51 dependency graph reports 28 advisories (1 critical, 14 high, 12 moderate, 1 low). It is excluded from production artifacts and must not process untrusted/public traffic | Remove or complete a separately tested framework upgrade before distributing this fallback |
 | License, terms, privacy notice, trademark | Owner / Legal | No license exists | `awaiting_owner_legal_choice` | Blocking before distribution/billing |
 
 ## Tabletop status
@@ -75,13 +77,15 @@ All sign-offs are `awaiting_human_signoff`:
 
 1. Implement durable transactional enterprise identity, support-access, billing, quota, and workflow
    adapters and prove hosted startup with them.
-2. Run all release gates with PostgreSQL, Docker, k6, Terraform, Helm, browser, and iOS tooling.
-3. Deploy signed digests to an authorized production-equivalent staging account.
-4. Complete load, restore, migration, provider outage, support abuse, and regional failover/failback
+2. Remove the deprecated Expo fallback or upgrade it onto an advisory-clean supported framework;
+   never include its current dependency graph in a public artifact.
+3. Run all release gates with PostgreSQL, Docker, k6, Terraform, Helm, browser, and iOS tooling.
+4. Deploy signed digests to an authorized production-equivalent staging account.
+5. Complete load, restore, migration, provider outage, support abuse, and regional failover/failback
    exercises with dated non-sensitive evidence.
-5. Resolve every critical/high finding and repeat failed exercises.
-6. Obtain legal terms and all named sign-offs.
-7. Activate a bounded cohort, collect the product thresholds in the master plan, and promote only if
+6. Resolve every critical/high finding and repeat failed exercises.
+7. Obtain legal terms and all named sign-offs.
+8. Activate a bounded cohort, collect the product thresholds in the master plan, and promote only if
    the observed evidence passes.
 
 No implementation agent may self-sign, apply production infrastructure, promote a database, switch

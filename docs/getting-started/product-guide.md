@@ -4,6 +4,9 @@ LoopGuard is a circuit breaker and control room for AI coding agents. It notices
 repeating work, stores a privacy-safe record, asks for approval before risky actions, and can prove
 a proposed pipeline repair before opening a draft pull request.
 
+In one sentence for a friend: **it is a seat belt and flight recorder for coding agents—it stops
+obvious loops, records what happened safely, and requires proof before risky changes move forward.**
+
 ## What changed
 
 The repository now has four connected product layers:
@@ -50,7 +53,8 @@ loopguard daemon start --foreground
 
 Review the setup preview and repository trust request before accepting them. Installation is
 idempotent: rerunning it updates the managed block without duplicating hooks. Use
-`loopguard setup uninstall` to remove only LoopGuard-managed configuration.
+`loopguard integrations uninstall codex` or `loopguard integrations uninstall claude` to remove
+only LoopGuard-managed configuration for that agent.
 
 If the doctor says an adapter is unsupported, local guard protection remains available through the
 documented foreground path. LoopGuard does not silently claim an unverified integration.
@@ -93,6 +97,9 @@ staging load, restore, regional failover/failback, signed release, real identity
 integration, production infrastructure validation, legal terms, and named human sign-offs remain
 external gates. In-memory enterprise identity and support stores are test adapters; hosted startup
 requires durable injected adapters.
+
+The old `cloud-app` Expo client is a one-release local/demo fallback and is not a production
+artifact. Use the authenticated web console or native iOS client for the implemented product.
 
 See [production readiness](../operations/production-readiness.md) for the evidence ledger and
 [pricing and limits](../product/pricing-and-limits.md) for what is and is not activated.
