@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from click import unstyle
 from typer.testing import CliRunner
 
 from .cli import app
@@ -60,6 +61,12 @@ _COMMANDS = (
 )
 
 
+def _normalize_help(value: str) -> str:
+    """Make captured terminal help deterministic across runners and platforms."""
+
+    return "\n".join(line.rstrip() for line in unstyle(value).splitlines())
+
+
 def render_cli_reference() -> str:
     runner = CliRunner()
     sections = [
@@ -79,7 +86,7 @@ def render_cli_reference() -> str:
         )
         if result.exit_code != 0:
             raise RuntimeError(f"could not render help for {label}")
-        help_text = "\n".join(line.rstrip() for line in result.stdout.splitlines())
+        help_text = _normalize_help(result.stdout)
         sections.extend((f"## `{label}`", "", "```text", help_text, "```", ""))
     return "\n".join(sections).rstrip() + "\n"
 
