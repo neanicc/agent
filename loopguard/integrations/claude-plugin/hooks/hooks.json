@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "SessionStart": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/loopguard-hook", "args": ["SessionStart"], "timeout": 1, "statusMessage": "LoopGuard: SessionStart"}]}],
+    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/loopguard-hook", "args": ["UserPromptSubmit"], "timeout": 1, "statusMessage": "LoopGuard: UserPromptSubmit"}]}],
+    "PreToolUse": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/loopguard-hook", "args": ["PreToolUse"], "timeout": 1, "statusMessage": "LoopGuard: PreToolUse"}], "matcher": "*"}],
+    "PermissionRequest": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/loopguard-hook", "args": ["PermissionRequest"], "timeout": 1, "statusMessage": "LoopGuard: PermissionRequest"}], "matcher": "*"}],
+    "PostToolUse": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/loopguard-hook", "args": ["PostToolUse"], "timeout": 1, "statusMessage": "LoopGuard: PostToolUse"}], "matcher": "*"}],
+    "PostToolUseFailure": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/loopguard-hook", "args": ["PostToolUseFailure"], "timeout": 1, "statusMessage": "LoopGuard: PostToolUseFailure"}], "matcher": "*"}],
+    "FileChanged": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/loopguard-hook", "args": ["FileChanged"], "timeout": 1, "statusMessage": "LoopGuard: FileChanged"}], "matcher": ".env|.envrc|CLAUDE.md"}],
+    "PreCompact": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/loopguard-hook", "args": ["PreCompact"], "timeout": 1, "statusMessage": "LoopGuard: PreCompact"}]}],
+    "Stop": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/loopguard-hook", "args": ["Stop"], "timeout": 1, "statusMessage": "LoopGuard: Stop"}]}]
+  }
+}

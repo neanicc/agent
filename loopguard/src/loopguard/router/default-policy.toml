@@ -1,0 +1,81 @@
+version = "deterministic-v1"
+
+[[rules]]
+name = "migration-verify"
+priority = 500
+phases = ["verify"]
+task_types = ["migration"]
+risks = ["high"]
+allowed_model_tags = ["standard"]
+effort = "high"
+max_input_cost_per_million = "50"
+max_output_cost_per_million = "100"
+fallback_rule = "high-quality-fallback"
+
+[[rules]]
+name = "migration-plan"
+priority = 490
+phases = ["plan"]
+task_types = ["migration"]
+risks = ["high"]
+allowed_model_tags = ["deep"]
+effort = "high"
+max_input_cost_per_million = "50"
+max_output_cost_per_million = "100"
+fallback_rule = "high-quality-fallback"
+
+[[rules]]
+name = "search-low"
+priority = 400
+phases = ["plan", "implement", "verify", "repair"]
+task_types = ["search"]
+risks = ["low"]
+allowed_model_tags = ["fast"]
+effort = "low"
+max_input_cost_per_million = "10"
+max_output_cost_per_million = "20"
+fallback_rule = "balanced-fallback"
+
+[[rules]]
+name = "edit-medium"
+priority = 390
+phases = ["plan", "implement", "verify", "repair"]
+task_types = ["edit", "ui"]
+risks = ["medium"]
+allowed_model_tags = ["standard"]
+effort = "medium"
+max_input_cost_per_million = "50"
+max_output_cost_per_million = "100"
+fallback_rule = "balanced-fallback"
+
+[[rules]]
+name = "high-risk"
+priority = 300
+phases = ["plan", "implement", "verify", "repair"]
+risks = ["high"]
+allowed_model_tags = ["deep"]
+effort = "high"
+max_input_cost_per_million = "50"
+max_output_cost_per_million = "100"
+fallback_rule = "high-quality-fallback"
+
+[[rules]]
+name = "high-quality-fallback"
+priority = 20
+phases = ["plan", "implement", "verify", "repair"]
+task_types = ["review"]
+allowed_model_tags = ["standard"]
+effort = "high"
+max_input_cost_per_million = "50"
+max_output_cost_per_million = "100"
+fallback_rule = "__current__"
+
+[[rules]]
+name = "balanced-fallback"
+priority = 10
+phases = ["plan", "implement", "verify", "repair"]
+allowed_model_tags = ["standard"]
+effort = "medium"
+max_input_cost_per_million = "50"
+max_output_cost_per_million = "100"
+fallback_rule = "__current__"

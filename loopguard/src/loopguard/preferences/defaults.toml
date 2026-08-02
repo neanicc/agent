@@ -1,0 +1,48 @@
+schema_version = 1
+
+[[rules]]
+id = "wcag-contrast"
+source = "safety"
+severity = "block"
+statement = "Web interfaces must satisfy the configured WCAG color-contrast threshold"
+scopes = ["web"]
+evaluator = "axe-accessibility"
+
+[[rules]]
+id = "accessible-name"
+source = "safety"
+severity = "block"
+statement = "Interactive controls must expose an accessible name"
+scopes = ["web", "ios"]
+evaluator = "accessibility-name"
+
+[[rules]]
+id = "dynamic-type"
+source = "safety"
+severity = "block"
+statement = "iOS text must support Dynamic Type without clipping required content"
+scopes = ["ios"]
+evaluator = "dynamic-type"
+
+[[rules]]
+id = "reduced-motion"
+source = "safety"
+severity = "warn"
+statement = "Motion must respect the platform reduced-motion preference"
+scopes = ["web", "ios"]
+evaluator = "reduced-motion"
+
+[[rules]]
+id = "use-design-tokens"
+source = "repository"
+severity = "warn"
+statement = "Use declared design tokens instead of unrelated literals"
+scopes = ["web", "ios"]
+evaluator = "design-token-literals"
+
+[[rules]]
+id = "density"
+source = "repository"
+severity = "inform"
+statement = "Use the product's established interface density"
+scopes = ["web", "ios"]

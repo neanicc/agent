@@ -1,0 +1,19 @@
+global:
+  environment: production
+  apiDomain: api.loopguard.example
+  webDomain: app.loopguard.example
+controlApi:
+  replicas: 3
+  autoscaling:
+    minReplicas: 3
+    maxReplicas: 12
+web:
+  replicas: 3
+  autoscaling:
+    minReplicas: 3
+    maxReplicas: 8
+worker:
+  replicas: 2
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 10

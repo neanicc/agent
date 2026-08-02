@@ -176,7 +176,10 @@ def normalize_hook(vendor: str, hook_name: str, raw: dict) -> ControlEvent:
         "PostToolUse": EventKind.TOOL_RESULT,
         "PostToolUseFailure": EventKind.TOOL_RESULT,
         "FileChanged": EventKind.FILE_CHANGED,
-        "Stop": EventKind.SESSION_STOPPED,
+        # Stop is turn completion, not session termination. SessionEnd is the only
+        # attached hook that maps to SESSION_STOPPED on a surface that exposes it.
+        "Stop": EventKind.TURN_COMPLETED,
+        "SessionEnd": EventKind.SESSION_STOPPED,
     }[hook_name]
     # Resolve repo identity from the canonical Git root, not cwd text alone.
 ```

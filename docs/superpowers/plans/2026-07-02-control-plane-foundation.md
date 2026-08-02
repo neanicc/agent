@@ -109,6 +109,7 @@ from pydantic import BaseModel, Field
 class EventKind(StrEnum):
     SESSION_STARTED = "session.started"
     SESSION_STOPPED = "session.stopped"
+    TURN_COMPLETED = "turn.completed"
     PROMPT_SUBMITTED = "prompt.submitted"
     TOOL_CALL = "tool.call"
     TOOL_RESULT = "tool.result"
@@ -190,6 +191,10 @@ class ActionRequest(BaseModel):
     nonce: str
     expires_at: datetime
 ```
+
+The base `ActionRequest` is the expiring request contract for local and attached flows. Remote
+intake must never accept this unsigned base type; it uses the later proof-bearing
+`SignedActionRequest` subtype that requires device and cloud proof.
 
 Reject unsupported schema versions at every boundary. Compatibility means accepting documented
 older versions through explicit migrations, not letting Pydantic ignore unknown semantics. Add

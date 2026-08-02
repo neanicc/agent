@@ -34,7 +34,7 @@ class _LoopingProvider:
 def test_agent_loops_and_guard_stops_it(tmp_path):
     guard = LoopGuard(LoopGuardConfig(action="warn", enable_budget=False))
     provider = _LoopingProvider()
-    result = run_agent(
+    run_agent(
         provider,
         system="find package.json",
         task="find package.json",

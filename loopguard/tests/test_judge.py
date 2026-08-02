@@ -1,4 +1,4 @@
-from loopguard.judge import JudgeVerdict, LLMJudge
+from loopguard.judge import LLMJudge
 from loopguard.providers.base import LLMResult
 
 from conftest import tool_event

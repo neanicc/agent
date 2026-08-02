@@ -1,0 +1,67 @@
+{{- if .Values.canary.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-control-api-canary
+  labels:
+    {{- include "loopguard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-api-canary
+spec:
+  replicas: {{ .Values.canary.replicas }}
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      {{- include "loopguard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: control-api-canary
+  template:
+    metadata:
+      labels:
+        {{- include "loopguard.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: control-api-canary
+    spec:
+      serviceAccountName: {{ .Values.controlApi.serviceAccount.name }}
+      automountServiceAccountToken: true
+      securityContext:
+        {{- include "loopguard.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: control-api
+          image: {{ include "loopguard.image" (list .Values.images.controlApi.repository (required "canary.controlApiDigest is required" .Values.canary.controlApiDigest)) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - { name: http, containerPort: 8000, protocol: TCP }
+          env:
+            - { name: LOOPGUARD_API_ENVIRONMENT, value: {{ .Values.global.environment | quote }} }
+            - { name: LOOPGUARD_API_BUILD_SHA, value: {{ required "global.buildSha is required" .Values.global.buildSha | quote }} }
+          envFrom:
+            - secretRef: { name: {{ .Values.global.runtimeSecret }} }
+          securityContext:
+            {{- include "loopguard.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.controlApi.resources | nindent 12 }}
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-control-api-canary
+spec:
+  selector:
+    {{- include "loopguard.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: control-api-canary
+  ports:
+    - { name: http, port: 8000, targetPort: http }
+{{- end }}

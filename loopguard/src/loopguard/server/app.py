@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import threading
 import uuid
+from contextlib import asynccontextmanager
 from importlib.metadata import PackageNotFoundError, version
 from typing import Callable
 
@@ -25,7 +26,27 @@ except PackageNotFoundError:  # pragma: no cover - not installed as a dist
 
 def create_app(provider_factory: Callable | None = None,
                judge_factory: Callable | None = None) -> FastAPI:
-    app = FastAPI(title="LoopGuard Cloud")
+    registry = RunRegistry()
+    subscribers: dict[str, set[WebSocket]] = {}
+    state: dict = {"loop": None, "closing": False}
+    broadcast_tasks: set[asyncio.Task] = set()
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        state["loop"] = asyncio.get_running_loop()
+        state["closing"] = False
+        try:
+            yield
+        finally:
+            state["closing"] = True
+            state["loop"] = None
+            tasks = list(broadcast_tasks)
+            for task in tasks:
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+
+    app = FastAPI(title="LoopGuard Cloud", lifespan=lifespan)
     # The mobile app and Expo web run on a different origin; allow them through.
     app.add_middleware(
         CORSMiddleware,
@@ -33,26 +54,40 @@ def create_app(provider_factory: Callable | None = None,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    registry = RunRegistry()
-    subscribers: dict[str, set[WebSocket]] = {}
-    state: dict = {"loop": None}
-
     make_prov = provider_factory or (lambda model, provider: make_provider(model, provider))
     make_judge = judge_factory or (lambda provider, context=None: LLMJudge(provider, context=context))
 
     def _ensure_loop() -> None:
         # Capture the running loop the first time any request is handled, so the
         # worker thread can schedule broadcasts onto it (robust without lifespan).
-        if state["loop"] is None:
+        loop = state["loop"]
+        if loop is None or loop.is_closed() or not loop.is_running():
             state["loop"] = asyncio.get_running_loop()
+            state["closing"] = False
 
     def emit_for(run_id: str) -> Callable[[dict], None]:
         # Thread-safe: schedule the broadcast on the app's event loop.
         def emit(message: dict) -> None:
             loop = state["loop"]
-            if loop is None:
+            if loop is None or state["closing"] or loop.is_closed():
                 return
-            asyncio.run_coroutine_threadsafe(_broadcast(run_id, message), loop)
+
+            def enqueue() -> None:
+                if state["closing"] or not subscribers.get(run_id):
+                    return
+                broadcast = _broadcast(run_id, message)
+                try:
+                    task = loop.create_task(broadcast)
+                except RuntimeError:
+                    broadcast.close()
+                    return
+                broadcast_tasks.add(task)
+                task.add_done_callback(broadcast_tasks.discard)
+
+            try:
+                loop.call_soon_threadsafe(enqueue)
+            except RuntimeError:
+                return
 
         return emit
 

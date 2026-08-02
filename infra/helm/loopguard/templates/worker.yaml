@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.worker.namespace }}
+  labels:
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: loopguard-repair-worker
+  namespace: {{ .Values.worker.namespace }}
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-repair-worker
+  namespace: {{ .Values.worker.namespace }}
+  labels:
+    {{- include "loopguard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: repair-worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      {{- include "loopguard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: repair-worker
+  template:
+    metadata:
+      labels:
+        {{- include "loopguard.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: repair-worker
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/repair-worker: runtime/default
+    spec:
+      serviceAccountName: loopguard-repair-worker
+      automountServiceAccountToken: false
+      runtimeClassName: {{ required "worker.runtimeClassName is required" .Values.worker.runtimeClassName }}
+      enableServiceLinks: false
+      nodeSelector:
+        workload: repair
+        isolation: gvisor
+      tolerations:
+        - { key: loopguard.dev/repair, operator: Equal, value: "true", effect: NoSchedule }
+      securityContext:
+        {{- include "loopguard.podSecurityContext" . | nindent 8 }}
+      topologySpreadConstraints:
+        {{- include "loopguard.topologySpread" . | nindent 8 }}
+      containers:
+        - name: repair-worker
+          image: {{ include "loopguard.image" (list .Values.images.worker.repository .Values.images.worker.digest) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          command: ["python", "-m", "loopguard_api.worker"]
+          env:
+            - { name: LOOPGUARD_API_ENVIRONMENT, value: {{ .Values.global.environment | quote }} }
+            - { name: LOOPGUARD_API_BUILD_SHA, value: {{ required "global.buildSha is required" .Values.global.buildSha | quote }} }
+            - { name: LOOPGUARD_REPAIR_TASK_QUEUE, value: {{ .Values.worker.taskQueue | quote }} }
+          envFrom:
+            - secretRef: { name: {{ .Values.global.runtimeSecret }} }
+          securityContext:
+            {{- include "loopguard.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          readinessProbe:
+            exec:
+              command: ["python", "-m", "loopguard_api.worker", "--check"]
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["python", "-m", "loopguard_api.worker", "--check"]
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - { name: work, mountPath: /work }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: work
+          emptyDir: { sizeLimit: 20Gi }
+        - name: tmp
+          emptyDir: { sizeLimit: 2Gi }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-repair-worker
+  namespace: {{ .Values.worker.namespace }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "loopguard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: repair-worker
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-repair-worker
+  namespace: {{ .Values.worker.namespace }}
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: {{ .Release.Name }}-repair-worker }
+  minReplicas: {{ .Values.worker.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.worker.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: {{ .Values.worker.autoscaling.targetCPUUtilizationPercentage }} }

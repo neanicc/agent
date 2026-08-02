@@ -1,0 +1,5 @@
+.derivedData*/
+build/
+LoopGuard.xcodeproj/
+*.xcresult
+xcuserdata/

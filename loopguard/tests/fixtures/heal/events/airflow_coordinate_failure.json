@@ -1,0 +1,24 @@
+{
+  "dag_id": "coordinate_pipeline",
+  "task_id": "normalize_coordinates",
+  "run_id": "scheduled__2026-07-30T12:00:00+00:00",
+  "repository": "rh_coordinates",
+  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "exception": {
+    "type": "TypeError",
+    "message": "could not convert string to float: 'north'",
+    "frames": [
+      {
+        "file": "/workspace/repository/src/coordinates.py",
+        "function": "parse_coordinate",
+        "line": 44
+      }
+    ]
+  },
+  "schema": {
+    "latitude": "string",
+    "longitude": "float"
+  },
+  "log_artifact_id": "artifact-airflow-stack",
+  "fixture_artifact_id": "artifact-coordinate-fixture"
+}

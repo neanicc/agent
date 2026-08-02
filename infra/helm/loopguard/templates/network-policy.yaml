@@ -1,0 +1,111 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-default-deny
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "loopguard.selectorLabels" . | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-control-api
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "loopguard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: control-api
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - ports:
+        - { port: 8000, protocol: TCP }
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.dnsNamespaceLabel | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.dnsPodLabel | nindent 14 }}
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    - to:
+        - ipBlock: { cidr: {{ .Values.global.database.cidr }} }
+      ports:
+        - { port: {{ .Values.global.database.port }}, protocol: TCP }
+    - to:
+        - ipBlock: { cidr: {{ .Values.global.temporal.cidr }} }
+      ports:
+        - { port: {{ .Values.global.temporal.port }}, protocol: TCP }
+    - ports:
+        - { port: 443, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-web
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "loopguard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - ports:
+        - { port: 3000, protocol: TCP }
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.dnsNamespaceLabel | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.dnsPodLabel | nindent 14 }}
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    - ports:
+        - { port: 443, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-repair-default-deny
+  namespace: {{ .Values.worker.namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-repair-egress
+  namespace: {{ .Values.worker.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "loopguard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: repair-worker
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.dnsNamespaceLabel | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.dnsPodLabel | nindent 14 }}
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    - to:
+        - ipBlock: { cidr: {{ .Values.global.temporal.cidr }} }
+      ports:
+        - { port: {{ .Values.global.temporal.port }}, protocol: TCP }
+    - to:
+        - ipBlock: { cidr: {{ .Values.worker.apiEgressCidr }} }
+      ports:
+        - { port: {{ .Values.worker.apiEgressPort }}, protocol: TCP }

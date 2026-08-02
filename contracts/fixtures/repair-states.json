@@ -1,0 +1,140 @@
+[
+  {
+    "id": "018f0000-0000-7000-8000-000000000301",
+    "repository_id": "018f0000-0000-7000-8000-000000000401",
+    "state": "intake",
+    "failure_fingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
+    "created_at": "2026-07-30T12:00:00Z",
+    "updated_at": "2026-07-30T12:00:01Z",
+    "state_version": 0,
+    "state_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "reproduction": {},
+    "candidates": [],
+    "ranking": {},
+    "rollback": "Revert the repair commit and rerun the original pipeline.",
+    "publication": {"status": "not_started"},
+    "capability": {"available": true, "reason": "workflow_registered"}
+  },
+  {
+    "id": "018f0000-0000-7000-8000-000000000302",
+    "repository_id": "018f0000-0000-7000-8000-000000000401",
+    "state": "reproducing",
+    "failure_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
+    "created_at": "2026-07-30T12:01:00Z",
+    "updated_at": "2026-07-30T12:01:30Z",
+    "state_version": 2,
+    "state_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "reproduction": {"status": "running", "attempts": 1, "artifact_id": "artifact-reproduction-running"},
+    "candidates": [],
+    "ranking": {},
+    "rollback": "Revert the repair commit and rerun the original pipeline.",
+    "publication": {"status": "not_started"},
+    "capability": {"available": true, "reason": "workflow_registered"}
+  },
+  {
+    "id": "018f0000-0000-7000-8000-000000000303",
+    "repository_id": "018f0000-0000-7000-8000-000000000401",
+    "state": "generating",
+    "failure_fingerprint": "3333333333333333333333333333333333333333333333333333333333333333",
+    "created_at": "2026-07-30T12:02:00Z",
+    "updated_at": "2026-07-30T12:03:00Z",
+    "state_version": 4,
+    "state_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "reproduction": {"status": "reproduced", "attempts": 1, "artifact_id": "artifact-reproduction"},
+    "candidates": [],
+    "ranking": {},
+    "rollback": "Revert the repair commit and rerun the original pipeline.",
+    "publication": {"status": "not_started"},
+    "capability": {"available": true, "reason": "workflow_registered"}
+  },
+  {
+    "id": "018f0000-0000-7000-8000-000000000304",
+    "repository_id": "018f0000-0000-7000-8000-000000000401",
+    "state": "evaluating",
+    "failure_fingerprint": "4444444444444444444444444444444444444444444444444444444444444444",
+    "created_at": "2026-07-30T12:04:00Z",
+    "updated_at": "2026-07-30T12:05:00Z",
+    "state_version": 5,
+    "state_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "reproduction": {"status": "reproduced", "attempts": 1, "artifact_id": "artifact-reproduction"},
+    "candidates": [
+      {
+        "id": "candidate-1",
+        "strategy": "normalize ingestion boundary",
+        "changed_files": ["src/coordinates.py"],
+        "changed_lines": 8,
+        "evaluation": {"replay": "passed", "regression": "inconclusive", "security": "inconclusive", "contract_breaking": false}
+      }
+    ],
+    "ranking": {},
+    "rollback": "Revert the repair commit and rerun the original pipeline.",
+    "publication": {"status": "not_started"},
+    "capability": {"available": true, "reason": "workflow_registered"}
+  },
+  {
+    "id": "018f0000-0000-7000-8000-000000000305",
+    "repository_id": "018f0000-0000-7000-8000-000000000401",
+    "state": "awaiting_publication",
+    "failure_fingerprint": "5555555555555555555555555555555555555555555555555555555555555555",
+    "created_at": "2026-07-30T12:06:00Z",
+    "updated_at": "2026-07-30T12:07:00Z",
+    "state_version": 8,
+    "state_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "reproduction": {"status": "reproduced", "attempts": 1, "artifact_id": "artifact-reproduction", "assurance": "hosted_isolated"},
+    "candidates": [
+      {
+        "id": "candidate-1",
+        "strategy": "normalize ingestion boundary",
+        "changed_files": ["src/coordinates.py"],
+        "changed_lines": 8,
+        "diff": "@@ -42,1 +42,2 @@\n- return float(value)\n+ normalized = value.strip()\n+ return float(normalized)",
+        "evaluation": {"replay": "passed", "regression": "passed", "security": "passed", "contract_breaking": false, "contract_changes": []}
+      },
+      {
+        "id": "candidate-2",
+        "strategy": "coerce downstream",
+        "changed_files": ["src/export.py"],
+        "changed_lines": 19,
+        "evaluation": {"replay": "passed", "regression": "failed", "security": "passed", "contract_breaking": false}
+      }
+    ],
+    "ranking": {"winning_candidate_id": "candidate-1", "reason": "Smallest fully verified compatible patch."},
+    "rollback": "Revert the draft repair commit and rerun the original pipeline.",
+    "publication": {"status": "waiting_for_approval"},
+    "capability": {"available": true, "reason": "workflow_registered"},
+    "winning_candidate_id": "candidate-1"
+  },
+  {
+    "id": "018f0000-0000-7000-8000-000000000306",
+    "repository_id": "018f0000-0000-7000-8000-000000000401",
+    "state": "completed",
+    "failure_fingerprint": "6666666666666666666666666666666666666666666666666666666666666666",
+    "created_at": "2026-07-30T12:08:00Z",
+    "updated_at": "2026-07-30T12:10:00Z",
+    "state_version": 9,
+    "state_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "reproduction": {"status": "reproduced", "attempts": 1, "artifact_id": "artifact-reproduction"},
+    "candidates": [{"id": "candidate-1", "strategy": "normalize ingestion boundary", "changed_files": ["src/coordinates.py"], "changed_lines": 8, "evaluation": {"replay": "passed", "regression": "passed", "security": "passed", "contract_breaking": false}}],
+    "ranking": {"winning_candidate_id": "candidate-1", "reason": "Smallest fully verified compatible patch."},
+    "rollback": "Revert the draft repair commit and rerun the original pipeline.",
+    "publication": {"status": "draft_published", "pull_request_url": "https://github.com/loopguard/example/pull/42", "artifact_id": "artifact-publication"},
+    "capability": {"available": true, "reason": "workflow_registered"},
+    "winning_candidate_id": "candidate-1"
+  },
+  {
+    "id": "018f0000-0000-7000-8000-000000000307",
+    "repository_id": "018f0000-0000-7000-8000-000000000401",
+    "state": "failed",
+    "failure_fingerprint": "7777777777777777777777777777777777777777777777777777777777777777",
+    "created_at": "2026-07-30T12:11:00Z",
+    "updated_at": "2026-07-30T12:12:00Z",
+    "state_version": 5,
+    "state_hash": "9999999999999999999999999999999999999999999999999999999999999999",
+    "reproduction": {"status": "reproduced", "attempts": 1, "artifact_id": "artifact-reproduction"},
+    "candidates": [{"id": "candidate-1", "strategy": "normalize ingestion boundary", "changed_files": ["src/coordinates.py"], "changed_lines": 8, "evaluation": {"replay": "passed", "regression": "failed", "security": "passed", "contract_breaking": false}}],
+    "ranking": {"reason": "No candidate passed every required deterministic check."},
+    "rollback": "No patch was published. Delete isolated resources after evidence retention.",
+    "publication": {"status": "failed", "reason": "no_verified_candidate"},
+    "capability": {"available": true, "reason": "workflow_registered"}
+  }
+]

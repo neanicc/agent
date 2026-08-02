@@ -2,5 +2,12 @@
 .claude/
 .gstack/
 .venv/
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
 AGENTS.md
 .DS_Store
+.worktrees/
+.superpowers/sdd/

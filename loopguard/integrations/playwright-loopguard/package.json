@@ -1,0 +1,26 @@
+{
+  "name": "@loopguard/playwright",
+  "version": "0.1.0",
+  "description": "Opt-in Playwright Test fixtures for LoopGuard's isolated warm-browser broker.",
+  "type": "module",
+  "exports": {
+    ".": "./src/fixture.ts",
+    "./config": "./src/config.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@playwright/test": "1.61.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@types/node": "24.10.1",
+    "tsx": "4.23.1",
+    "typescript": "5.9.3"
+  }
+}

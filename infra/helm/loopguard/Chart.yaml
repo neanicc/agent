@@ -1,0 +1,7 @@
+apiVersion: v2
+name: loopguard
+description: Production deployment for the LoopGuard control plane and isolated repair worker
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.30.0-0"

@@ -1,0 +1,318 @@
+name: client-release
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Publish the web image and upload the iOS build to TestFlight
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: client-release-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 24.18.0
+  WEB_DIRECTORY: apps/web
+  IOS_DIRECTORY: apps/ios
+
+jobs:
+  web-verification:
+    name: Web tests and OCI package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install dependencies
+        working-directory: ${{ env.WEB_DIRECTORY }}
+        run: npm ci
+      - name: Unit tests
+        working-directory: ${{ env.WEB_DIRECTORY }}
+        run: npm test
+      - name: Type check
+        working-directory: ${{ env.WEB_DIRECTORY }}
+        run: npm run typecheck
+      - name: Lint
+        working-directory: ${{ env.WEB_DIRECTORY }}
+        run: npm run lint
+      - name: Production build
+        working-directory: ${{ env.WEB_DIRECTORY }}
+        env:
+          BUILD_SHA: ${{ github.sha }}
+        run: npm run build
+      - name: Verify read-only production container
+        run: |
+          docker build \
+            --build-arg BUILD_SHA="${GITHUB_SHA}" \
+            --tag loopguard-web:verification \
+            apps/web
+          container="$(
+            docker run \
+              --detach \
+              --read-only \
+              --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+              --publish 127.0.0.1:3000:3000 \
+              loopguard-web:verification
+          )"
+          trap 'docker rm --force "${container}" >/dev/null' EXIT
+          attempt=0
+          until [ "${attempt}" -ge 30 ]; do
+            if curl --fail --silent http://127.0.0.1:3000/health \
+              | grep --fixed-strings "\"build_sha\":\"${GITHUB_SHA}\""; then
+              exit 0
+            fi
+            attempt=$((attempt + 1))
+            sleep 1
+          done
+          docker logs "${container}"
+          exit 1
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - name: Build OCI verification artifact
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: apps/web
+          build-args: BUILD_SHA=${{ github.sha }}
+          outputs: type=oci,dest=${{ runner.temp }}/loopguard-web.oci.tar
+          provenance: mode=max
+          sbom: true
+      - name: Record immutable prospective image reference
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          test -n "${IMAGE_DIGEST}"
+          repository="$(printf '%s' "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          printf 'ghcr.io/%s/web@%s\n' "${repository}" "${IMAGE_DIGEST}" \
+            > "${RUNNER_TEMP}/web-image-reference.txt"
+          cd "${RUNNER_TEMP}"
+          shasum -a 256 loopguard-web.oci.tar > SHA256SUMS.web
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web-verification-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/loopguard-web.oci.tar
+            ${{ runner.temp }}/web-image-reference.txt
+            ${{ runner.temp }}/SHA256SUMS.web
+
+  ios-verification:
+    name: iOS tests and unsigned archive
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        working-directory: ${{ env.IOS_DIRECTORY }}
+        run: xcodegen generate
+      - name: Unit and UI tests
+        working-directory: ${{ env.IOS_DIRECTORY }}
+        run: |
+          xcodebuild test \
+            -project LoopGuard.xcodeproj \
+            -scheme LoopGuard \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            -derivedDataPath "${RUNNER_TEMP}/LoopGuardDerivedData"
+      - name: Create unsigned verification archive
+        working-directory: ${{ env.IOS_DIRECTORY }}
+        run: |
+          xcodebuild archive \
+            -project LoopGuard.xcodeproj \
+            -scheme LoopGuard \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/LoopGuard.xcarchive \
+            CODE_SIGNING_ALLOWED=NO
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/LoopGuard.xcarchive \
+            "${RUNNER_TEMP}/LoopGuard-verification.xcarchive.zip"
+          cd "${RUNNER_TEMP}"
+          shasum -a 256 LoopGuard-verification.xcarchive.zip > SHA256SUMS.ios
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ios-verification-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/LoopGuard-verification.xcarchive.zip
+            ${{ runner.temp }}/SHA256SUMS.ios
+
+  verify-artifacts:
+    name: Verify release evidence
+    needs: [web-verification, ios-verification]
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: web-verification-${{ github.sha }}
+          path: artifacts/client-release
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ios-verification-${{ github.sha }}
+          path: artifacts/client-release
+      - name: Restore and verify artifacts
+        run: |
+          mkdir -p apps/ios/build
+          ditto -x -k \
+            artifacts/client-release/LoopGuard-verification.xcarchive.zip \
+            apps/ios/build
+          cat \
+            artifacts/client-release/SHA256SUMS.web \
+            artifacts/client-release/SHA256SUMS.ios \
+            > artifacts/client-release/SHA256SUMS
+          scripts/verify_client_release.sh
+
+  release-web:
+    name: Publish signed web image
+    if: github.event_name == 'workflow_dispatch' && inputs.release
+    needs: verify-artifacts
+    runs-on: ubuntu-latest
+    environment: client-web-production
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve registry name
+        id: image
+        run: |
+          repository="$(printf '%s' "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          printf 'reference=ghcr.io/%s/web\n' "${repository}" >> "${GITHUB_OUTPUT}"
+      - name: Build and publish
+        id: publish
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: apps/web
+          build-args: BUILD_SHA=${{ github.sha }}
+          tags: ${{ steps.image.outputs.reference }}:${{ github.sha }}
+          push: true
+          provenance: mode=max
+          sbom: true
+      - uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
+      - name: Sign immutable image digest
+        env:
+          DIGEST: ${{ steps.publish.outputs.digest }}
+          IMAGE: ${{ steps.image.outputs.reference }}
+        run: |
+          test -n "${DIGEST}"
+          cosign sign --yes "${IMAGE}@${DIGEST}"
+          printf '%s@%s\n' "${IMAGE}" "${DIGEST}" > web-image-reference.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web-release-reference-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 90
+          path: web-image-reference.txt
+
+  release-ios:
+    name: Upload signed build to TestFlight
+    if: github.event_name == 'workflow_dispatch' && inputs.release
+    needs: verify-artifacts
+    runs-on: macos-26
+    environment: client-ios-production
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install XcodeGen and certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APP_STORE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APP_STORE_CERTIFICATE_PASSWORD }}
+        run: |
+          brew install xcodegen
+          certificate="${RUNNER_TEMP}/distribution.p12"
+          keychain="${RUNNER_TEMP}/loopguard.keychain-db"
+          printf '%s' "${CERTIFICATE_BASE64}" | base64 --decode > "${certificate}"
+          security create-keychain -p "${CERTIFICATE_PASSWORD}" "${keychain}"
+          security set-keychain-settings -lut 21600 "${keychain}"
+          security unlock-keychain -p "${CERTIFICATE_PASSWORD}" "${keychain}"
+          security import "${certificate}" \
+            -P "${CERTIFICATE_PASSWORD}" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "${keychain}"
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -k "${CERTIFICATE_PASSWORD}" \
+            "${keychain}"
+          security list-keychains -d user -s "${keychain}"
+      - name: Install App Store Connect API key
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+        run: |
+          mkdir -p "${HOME}/private_keys"
+          printf '%s' "${API_PRIVATE_KEY}" > "${HOME}/private_keys/AuthKey_${API_KEY_ID}.p8"
+          chmod 600 "${HOME}/private_keys/AuthKey_${API_KEY_ID}.p8"
+      - name: Archive and export signed app
+        working-directory: ${{ env.IOS_DIRECTORY }}
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcodegen generate
+          xcodebuild archive \
+            -project LoopGuard.xcodeproj \
+            -scheme LoopGuard \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/LoopGuard.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${HOME}/private_keys/AuthKey_${API_KEY_ID}.p8" \
+            -authenticationKeyID "${API_KEY_ID}" \
+            -authenticationKeyIssuerID "${API_ISSUER_ID}" \
+            DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}"
+          xcodebuild -exportArchive \
+            -archivePath build/LoopGuard.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "${HOME}/private_keys/AuthKey_${API_KEY_ID}.p8" \
+            -authenticationKeyID "${API_KEY_ID}" \
+            -authenticationKeyIssuerID "${API_ISSUER_ID}"
+      - name: Upload to TestFlight only
+        working-directory: ${{ env.IOS_DIRECTORY }}
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+        run: |
+          ipa="$(find build/export -maxdepth 1 -name '*.ipa' -print -quit)"
+          test -n "${ipa}"
+          xcrun iTMSTransporter \
+            -m upload \
+            -assetFile "${ipa}" \
+            -apiKey "${API_KEY_ID}" \
+            -apiIssuer "${API_ISSUER_ID}"

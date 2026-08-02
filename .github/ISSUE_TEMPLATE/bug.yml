@@ -1,0 +1,71 @@
+name: Bug report
+description: Report a reproducible LoopGuard defect without exposing private data
+title: "[Bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report vulnerabilities here. Use the private process in SECURITY.md.
+        Remove prompts, source, credentials, tenant IDs, and production URLs.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0 or full commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - Local CLI or daemon
+        - Agent integration
+        - Hosted API or worker
+        - Web console or docs
+        - iOS app
+        - Repair workflow
+        - Deployment or operations
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: OS, architecture, browser/device, and relevant runtime versions
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Minimal numbered steps using synthetic data
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Redacted doctor output
+      description: Paste `loopguard doctor --json` only after reviewing every field
+      render: json
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: I reviewed this report and removed prompts, source, secrets, personal data, and production identifiers.
+          required: true

@@ -1,0 +1,10 @@
+{"kind":"metadata","codex_cli_version":"0.144.0","protocol":"stable","client_info":{"name":"loopguard","title":"LoopGuard","version":"0.1.0"}}
+{"kind":"method","method":"initialize","schema":"v1/InitializeParams.json","required":["clientInfo"]}
+{"kind":"method","method":"model/list","schema":"v2/ModelListParams.json","required":[]}
+{"kind":"method","method":"modelProvider/capabilities/read","schema":"v2/ModelProviderCapabilitiesReadParams.json","required":[]}
+{"kind":"method","method":"thread/start","schema":"v2/ThreadStartParams.json","required":[]}
+{"kind":"method","method":"thread/resume","schema":"v2/ThreadResumeParams.json","required":["threadId"]}
+{"kind":"method","method":"turn/start","schema":"v2/TurnStartParams.json","required":["input","threadId"]}
+{"kind":"method","method":"turn/steer","schema":"v2/TurnSteerParams.json","required":["expectedTurnId","input","threadId"]}
+{"kind":"method","method":"thread/inject_items","schema":"v2/ThreadInjectItemsParams.json","required":["items","threadId"]}
+{"kind":"method","method":"turn/interrupt","schema":"v2/TurnInterruptParams.json","required":["threadId","turnId"]}

@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "SessionStart": [],
+    "UserPromptSubmit": [],
+    "PreToolUse": [],
+    "PermissionRequest": [],
+    "PostToolUse": [],
+    "PostToolUseFailure": [],
+    "FileChanged": [],
+    "PreCompact": [],
+    "Stop": []
+  }
+}

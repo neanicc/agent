@@ -1,0 +1,86 @@
+global:
+  environment: staging
+  buildSha: ""
+  imagePullPolicy: IfNotPresent
+  clusterName: ""
+  certificateArn: ""
+  apiDomain: api.staging.example.invalid
+  webDomain: app.staging.example.invalid
+  runtimeSecret: loopguard-runtime
+  database:
+    cidr: 10.0.0.0/8
+    port: 5432
+  temporal:
+    cidr: 10.0.0.0/8
+    port: 7233
+
+images:
+  controlApi:
+    repository: example.invalid/loopguard/control-api
+    digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  web:
+    repository: example.invalid/loopguard/web
+    digest: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  worker:
+    repository: example.invalid/loopguard/worker
+    digest: sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+controlApi:
+  replicas: 2
+  serviceAccount:
+    name: loopguard-control-api
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { cpu: "1", memory: 1Gi }
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 12
+    targetCPUUtilizationPercentage: 65
+
+web:
+  replicas: 2
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 750m, memory: 768Mi }
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+
+worker:
+  namespace: loopguard-repair
+  replicas: 1
+  taskQueue: loopguard-repair-v1
+  runtimeClassName: gvisor
+  apiEgressCidr: 10.0.0.0/8
+  apiEgressPort: 443
+  resources:
+    requests: { cpu: "1", memory: 2Gi }
+    limits: { cpu: "4", memory: 8Gi }
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 60
+
+migration:
+  imageDigest: ""
+  activeDeadlineSeconds: 900
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+
+ingress:
+  enabled: true
+  scheme: internet-facing
+  groupName: loopguard
+
+canary:
+  enabled: false
+  controlApiDigest: ""
+  replicas: 1
+
+networkPolicy:
+  dnsNamespaceLabel:
+    kubernetes.io/metadata.name: kube-system
+  dnsPodLabel:
+    k8s-app: kube-dns

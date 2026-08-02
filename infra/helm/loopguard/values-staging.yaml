@@ -1,0 +1,12 @@
+global:
+  environment: staging
+  apiDomain: api.staging.loopguard.example
+  webDomain: app.staging.loopguard.example
+controlApi:
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 4
+worker:
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 2

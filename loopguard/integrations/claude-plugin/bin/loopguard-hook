@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+event=${1:-}
+case "$event" in
+  SessionStart|UserPromptSubmit|PreToolUse|PermissionRequest|PostToolUse|PostToolUseFailure|FileChanged|PreCompact|Stop) ;;
+  *) printf '%s\n' 'LoopGuard: unsupported Claude hook event' >&2; exit 0 ;;
+esac
+exec loopguard hook-entry claude "$event" --integration-version 1

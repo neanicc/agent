@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.controlApi.serviceAccount.name }}
+  labels:
+    {{- include "loopguard.labels" . | nindent 4 }}
+  annotations:
+    eks.amazonaws.com/sts-regional-endpoints: "true"
+automountServiceAccountToken: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-control-api
+  labels:
+    {{- include "loopguard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-api
+spec:
+  replicas: {{ .Values.controlApi.replicas }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "loopguard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: control-api
+  template:
+    metadata:
+      labels:
+        {{- include "loopguard.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: control-api
+    spec:
+      serviceAccountName: {{ .Values.controlApi.serviceAccount.name }}
+      automountServiceAccountToken: true
+      securityContext:
+        {{- include "loopguard.podSecurityContext" . | nindent 8 }}
+      topologySpreadConstraints:
+        {{- include "loopguard.topologySpread" . | nindent 8 }}
+      containers:
+        - name: control-api
+          image: {{ include "loopguard.image" (list .Values.images.controlApi.repository .Values.images.controlApi.digest) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - { name: http, containerPort: 8000, protocol: TCP }
+          env:
+            - { name: LOOPGUARD_API_ENVIRONMENT, value: {{ .Values.global.environment | quote }} }
+            - { name: LOOPGUARD_API_BUILD_SHA, value: {{ required "global.buildSha is required" .Values.global.buildSha | quote }} }
+          envFrom:
+            - secretRef: { name: {{ .Values.global.runtimeSecret }} }
+          securityContext:
+            {{- include "loopguard.containerSecurityContext" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.controlApi.resources | nindent 12 }}
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            failureThreshold: 24
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-control-api
+  labels:
+    {{- include "loopguard.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "loopguard.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: control-api
+  ports:
+    - { name: http, port: 8000, targetPort: http }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-control-api
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "loopguard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: control-api
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-control-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}-control-api
+  minReplicas: {{ .Values.controlApi.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.controlApi.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.controlApi.autoscaling.targetCPUUtilizationPercentage }}

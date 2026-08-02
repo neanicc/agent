@@ -1,0 +1,110 @@
+name: LoopGuard
+options:
+  bundleIdPrefix: dev.loopguard
+  deploymentTarget:
+    iOS: "26.0"
+  developmentLanguage: en
+  generateEmptyDirectories: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED: YES
+    DEAD_CODE_STRIPPING: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+targets:
+  LoopGuard:
+    type: application
+    platform: iOS
+    sources:
+      - path: LoopGuard
+      - path: LoopGuardShared
+    dependencies:
+      - target: LoopGuardWidgets
+        embed: true
+    settings:
+      base:
+        CODE_SIGN_ENTITLEMENTS: LoopGuard/LoopGuard.entitlements
+        APS_ENVIRONMENT: development
+        CURRENT_PROJECT_VERSION: 1
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: LoopGuard/Info.plist
+        LOOPGUARD_OIDC_AUTHORIZATION_ENDPOINT: https://identity.loopguard.invalid/authorize
+        LOOPGUARD_OIDC_CLIENT_ID: loopguard-ios
+        LOOPGUARD_OIDC_ISSUER: https://identity.loopguard.invalid
+        LOOPGUARD_OIDC_JWKS_ENDPOINT: https://identity.loopguard.invalid/.well-known/jwks.json
+        LOOPGUARD_OIDC_TOKEN_ENDPOINT: https://identity.loopguard.invalid/token
+        MARKETING_VERSION: 0.1.0
+        PRODUCT_BUNDLE_IDENTIFIER: dev.loopguard.ios
+        PRODUCT_NAME: LoopGuard
+        SUPPORTS_MACCATALYST: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+      configs:
+        Release:
+          APS_ENVIRONMENT: production
+  LoopGuardWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: LoopGuardWidgets
+      - path: LoopGuardShared
+    info:
+      path: LoopGuardWidgets/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDisplayName: LoopGuard
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        NSSupportsLiveActivities: true
+    settings:
+      base:
+        APPLICATION_EXTENSION_API_ONLY: YES
+        CODE_SIGN_ENTITLEMENTS: LoopGuardWidgets/LoopGuardWidgets.entitlements
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 0.1.0
+        PRODUCT_BUNDLE_IDENTIFIER: dev.loopguard.ios.widgets
+        PRODUCT_NAME: LoopGuardWidgets
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+  LoopGuardTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: LoopGuardTests
+    dependencies:
+      - target: LoopGuard
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.loopguard.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
+  LoopGuardUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: LoopGuardUITests
+    dependencies:
+      - target: LoopGuard
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.loopguard.ios.ui-tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  LoopGuard:
+    build:
+      targets:
+        LoopGuard: all
+        LoopGuardWidgets: all
+        LoopGuardTests: [test]
+        LoopGuardUITests: [test]
+    test:
+      gatherCoverageData: true
+      targets:
+        - name: LoopGuardTests
+          parallelizable: false
+        - name: LoopGuardUITests
+          parallelizable: false
+      environmentVariables:
+        LOOPGUARD_TEST_MODE: "1"
