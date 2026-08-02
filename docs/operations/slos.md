@@ -1,8 +1,8 @@
 # Production service-level objectives
 
-Window: rolling 30 days unless noted  
-Paging owner: Production Operations  
-Product owner: Control Plane  
+Window: rolling 30 days unless noted
+Paging owner: Production Operations
+Product owner: Control Plane
 Measurement source: server/worker metrics plus synthetic probes; never client-only analytics
 
 | Capability | SLI | Objective | Error budget | Alert owner |

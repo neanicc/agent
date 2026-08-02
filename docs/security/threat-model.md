@@ -1,8 +1,8 @@
 # LoopGuard production threat model
 
-Status: enforced baseline for staged production work  
-Method: STRIDE-style abuse cases mapped to code owners and regression tests  
-Security owner: Security Engineering  
+Status: enforced baseline for staged production work
+Method: STRIDE-style abuse cases mapped to code owners and regression tests
+Security owner: Security Engineering
 Accepted critical/high risk: none
 
 ## Scope and security objectives

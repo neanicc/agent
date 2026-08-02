@@ -2,7 +2,7 @@
 
 > Generated from `contracts/control-api.openapi.json`. Do not edit by hand.
 
-Contract version: `1.0.0`  
+Contract version: `1.0.0`
 Contract build: `contract-test`
 
 ## Authentication and request integrity

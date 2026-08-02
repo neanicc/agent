@@ -1,7 +1,7 @@
 """initial
 
 Revision ID: 0001
-Revises: 
+Revises:
 Create Date: 2026-07-21 16:21:03.183899
 """
 from typing import Sequence, Union

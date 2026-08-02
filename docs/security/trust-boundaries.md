@@ -1,7 +1,7 @@
 # LoopGuard trust boundaries
 
-Status: enforced production baseline  
-Owner: Security Engineering  
+Status: enforced production baseline
+Owner: Security Engineering
 Review cadence: every behavior-changing release and at least quarterly
 
 LoopGuard treats every transition below as an authenticated, validated boundary. A deployment

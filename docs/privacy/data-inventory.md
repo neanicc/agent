@@ -1,7 +1,7 @@
 # LoopGuard data inventory
 
-Owner: Privacy Engineering  
-Default policy source: `loopguard_api.retention.DEFAULT_RETENTION_DAYS`  
+Owner: Privacy Engineering
+Default policy source: `loopguard_api.retention.DEFAULT_RETENTION_DAYS`
 Deletion workflow owner: Control Plane
 
 | Data/object | Purpose | Classification | Source/processor | Default retention | Export | Tenant deletion |

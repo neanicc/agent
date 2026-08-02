@@ -100,7 +100,7 @@ def render_reference(schema: dict[str, Any]) -> str:
         "",
         "> Generated from `contracts/control-api.openapi.json`. Do not edit by hand.",
         "",
-        f"Contract version: `{schema['x-loopguard-contract-version']}`  ",
+        f"Contract version: `{schema['x-loopguard-contract-version']}`",
         f"Contract build: `{schema['x-loopguard-build-sha']}`",
         "",
         "## Authentication and request integrity",
