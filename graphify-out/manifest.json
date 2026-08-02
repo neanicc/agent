@@ -1,0 +1,3697 @@
+{
+  "apps/ios/LoopGuard/API/APIModels.swift": {
+    "mtime": 1785631258.8625503,
+    "ast_hash": "d92544bf0a0a2c95a9e363ff15a54cff",
+    "semantic_hash": "d92544bf0a0a2c95a9e363ff15a54cff"
+  },
+  "apps/ios/LoopGuard/API/ControlAPI.swift": {
+    "mtime": 1785631258.8628027,
+    "ast_hash": "803bb66f1b2fd94819626be17bdbd8ff",
+    "semantic_hash": "803bb66f1b2fd94819626be17bdbd8ff"
+  },
+  "apps/ios/LoopGuard/App/AppModel.swift": {
+    "mtime": 1785631258.8630939,
+    "ast_hash": "53644f6ebd79e8f149a95cef68d4b35d",
+    "semantic_hash": "53644f6ebd79e8f149a95cef68d4b35d"
+  },
+  "apps/ios/LoopGuard/App/LoopGuardApp.swift": {
+    "mtime": 1785631258.8633168,
+    "ast_hash": "4345751ba45200a1e4d57d9e3bce5a1e",
+    "semantic_hash": "4345751ba45200a1e4d57d9e3bce5a1e"
+  },
+  "apps/ios/LoopGuard/App/MainTabView.swift": {
+    "mtime": 1785631258.8635268,
+    "ast_hash": "0fad06fee05ae7f8e0324ebc6411b5cb",
+    "semantic_hash": "0fad06fee05ae7f8e0324ebc6411b5cb"
+  },
+  "apps/ios/LoopGuard/DesignSystem/AsyncStateView.swift": {
+    "mtime": 1785631258.863758,
+    "ast_hash": "06059310a9327f17b40abe4eb093b999",
+    "semantic_hash": "06059310a9327f17b40abe4eb093b999"
+  },
+  "apps/ios/LoopGuard/DesignSystem/ControlStyle.swift": {
+    "mtime": 1785631258.8639505,
+    "ast_hash": "83d3e9b7a0381272b5e79f43eeeb9d81",
+    "semantic_hash": "83d3e9b7a0381272b5e79f43eeeb9d81"
+  },
+  "apps/ios/LoopGuard/DesignSystem/SemanticColor.swift": {
+    "mtime": 1785631258.8641415,
+    "ast_hash": "ae524d4d9fe496127d581acfe78309f6",
+    "semantic_hash": "ae524d4d9fe496127d581acfe78309f6"
+  },
+  "apps/ios/LoopGuard/DesignSystem/StatusBadge.swift": {
+    "mtime": 1785631258.8643246,
+    "ast_hash": "baf6bd8ac0fca74acae887246042455d",
+    "semantic_hash": "baf6bd8ac0fca74acae887246042455d"
+  },
+  "apps/ios/LoopGuard/DesignSystem/Typography.swift": {
+    "mtime": 1785631258.8645144,
+    "ast_hash": "7e60b279ef0bc0fbbe40e256185bbc98",
+    "semantic_hash": "7e60b279ef0bc0fbbe40e256185bbc98"
+  },
+  "apps/ios/LoopGuard/Features/Actions/ActionReviewView.swift": {
+    "mtime": 1785631258.864777,
+    "ast_hash": "6480c5d8598e3e0369a6311d427a234b",
+    "semantic_hash": "6480c5d8598e3e0369a6311d427a234b"
+  },
+  "apps/ios/LoopGuard/Features/Actions/ActionViewModel.swift": {
+    "mtime": 1785631258.8650222,
+    "ast_hash": "9fcb8d4a88581e960846c7a077e936a2",
+    "semantic_hash": "9fcb8d4a88581e960846c7a077e936a2"
+  },
+  "apps/ios/LoopGuard/Features/Authentication/AuthSession.swift": {
+    "mtime": 1785631258.865291,
+    "ast_hash": "de833c1ce5ff5736646cd3319abc151d",
+    "semantic_hash": "de833c1ce5ff5736646cd3319abc151d"
+  },
+  "apps/ios/LoopGuard/Features/Authentication/OIDCIDTokenValidator.swift": {
+    "mtime": 1785631258.8657897,
+    "ast_hash": "daf4367050da97d13d65466a34bcadf2",
+    "semantic_hash": "daf4367050da97d13d65466a34bcadf2"
+  },
+  "apps/ios/LoopGuard/Features/Authentication/SignInView.swift": {
+    "mtime": 1785631258.8660054,
+    "ast_hash": "3af06b5178a362ea36aab0a1ab54d429",
+    "semantic_hash": "3af06b5178a362ea36aab0a1ab54d429"
+  },
+  "apps/ios/LoopGuard/Features/Changes/ChangeDetailView.swift": {
+    "mtime": 1785631258.8662314,
+    "ast_hash": "2fe521d6923960f4a9e5c10916b2f94b",
+    "semantic_hash": "2fe521d6923960f4a9e5c10916b2f94b"
+  },
+  "apps/ios/LoopGuard/Features/Changes/ChangeListView.swift": {
+    "mtime": 1785631258.8663867,
+    "ast_hash": "dc9442ed7b14792a797e06c1a0da0e81",
+    "semantic_hash": "dc9442ed7b14792a797e06c1a0da0e81"
+  },
+  "apps/ios/LoopGuard/Features/Devices/DevicePairingView.swift": {
+    "mtime": 1785631258.866944,
+    "ast_hash": "13fd55be85b1c43f685aa834a0479602",
+    "semantic_hash": "13fd55be85b1c43f685aa834a0479602"
+  },
+  "apps/ios/LoopGuard/Features/Inbox/InboxView.swift": {
+    "mtime": 1785631258.8671927,
+    "ast_hash": "b1b8d9e7936b6af33e0527ad25fd9046",
+    "semantic_hash": "b1b8d9e7936b6af33e0527ad25fd9046"
+  },
+  "apps/ios/LoopGuard/Features/Inbox/InboxViewModel.swift": {
+    "mtime": 1785631258.867307,
+    "ast_hash": "f658db0762751343ad2d2b46d2c3746d",
+    "semantic_hash": "f658db0762751343ad2d2b46d2c3746d"
+  },
+  "apps/ios/LoopGuard/Features/Repairs/RepairDetailView.swift": {
+    "mtime": 1785631258.867517,
+    "ast_hash": "c548719302edebd93bc45a789d356416",
+    "semantic_hash": "c548719302edebd93bc45a789d356416"
+  },
+  "apps/ios/LoopGuard/Features/Repairs/RepairListView.swift": {
+    "mtime": 1785631258.8676662,
+    "ast_hash": "c5a654d21765ba62635fcfec0505cdd0",
+    "semantic_hash": "c5a654d21765ba62635fcfec0505cdd0"
+  },
+  "apps/ios/LoopGuard/Features/Runs/RunDetailView.swift": {
+    "mtime": 1785631258.8677888,
+    "ast_hash": "ca85513c3b3d6d909c4e2ed68fb0afc7",
+    "semantic_hash": "ca85513c3b3d6d909c4e2ed68fb0afc7"
+  },
+  "apps/ios/LoopGuard/Features/Runs/RunListView.swift": {
+    "mtime": 1785631258.8680797,
+    "ast_hash": "8ffeadafba677f3cbd465cff14a425a9",
+    "semantic_hash": "8ffeadafba677f3cbd465cff14a425a9"
+  },
+  "apps/ios/LoopGuard/Features/Runs/TimelineReducer.swift": {
+    "mtime": 1785631258.8681765,
+    "ast_hash": "db1d9c562f1f87b457fc23eb1ea27628",
+    "semantic_hash": "db1d9c562f1f87b457fc23eb1ea27628"
+  },
+  "apps/ios/LoopGuard/Features/Settings/DeviceListView.swift": {
+    "mtime": 1785631258.868297,
+    "ast_hash": "4005e457984ff305ff9989654217848b",
+    "semantic_hash": "4005e457984ff305ff9989654217848b"
+  },
+  "apps/ios/LoopGuard/Features/Settings/HostIntegrationListView.swift": {
+    "mtime": 1785631258.8683968,
+    "ast_hash": "1cf0488a6457d514bc793310c6914e07",
+    "semantic_hash": "1cf0488a6457d514bc793310c6914e07"
+  },
+  "apps/ios/LoopGuard/Features/Settings/SettingsView.swift": {
+    "mtime": 1785631258.8685648,
+    "ast_hash": "abdcbaa083aa243128b4db5622e21dbb",
+    "semantic_hash": "abdcbaa083aa243128b4db5622e21dbb"
+  },
+  "apps/ios/LoopGuard/Notifications/NotificationManager.swift": {
+    "mtime": 1785631258.8690593,
+    "ast_hash": "efa3002ed8ebc1e76f6d950b9e533b4a",
+    "semantic_hash": "efa3002ed8ebc1e76f6d950b9e533b4a"
+  },
+  "apps/ios/LoopGuard/Security/Base64URL.swift": {
+    "mtime": 1785631258.8704224,
+    "ast_hash": "c181b8473881a5cb22351d01e7d022a8",
+    "semantic_hash": "c181b8473881a5cb22351d01e7d022a8"
+  },
+  "apps/ios/LoopGuard/Security/DeviceKeyStore.swift": {
+    "mtime": 1785631258.8706098,
+    "ast_hash": "9b9cff24161075215f0ef9e0f7b463a1",
+    "semantic_hash": "9b9cff24161075215f0ef9e0f7b463a1"
+  },
+  "apps/ios/LoopGuard/Security/KeychainStore.swift": {
+    "mtime": 1785631258.870787,
+    "ast_hash": "e3210086211f84c7faeae0155cc5445e",
+    "semantic_hash": "e3210086211f84c7faeae0155cc5445e"
+  },
+  "apps/ios/LoopGuardShared/Activities/RunActivityAttributes.swift": {
+    "mtime": 1785631258.8710213,
+    "ast_hash": "2bc704b5a0e873dc6619a5eae845da84",
+    "semantic_hash": "2bc704b5a0e873dc6619a5eae845da84"
+  },
+  "apps/ios/LoopGuardTests/ActionSigningTests.swift": {
+    "mtime": 1785631258.8712444,
+    "ast_hash": "a8b6ab13cebcef0dd97514b4e3ec65ed",
+    "semantic_hash": "a8b6ab13cebcef0dd97514b4e3ec65ed"
+  },
+  "apps/ios/LoopGuardTests/ActionViewModelTests.swift": {
+    "mtime": 1785631258.8723607,
+    "ast_hash": "e2eca832c3a52ab21b26f98b15d36b28",
+    "semantic_hash": "e2eca832c3a52ab21b26f98b15d36b28"
+  },
+  "apps/ios/LoopGuardTests/AppModelRouteTests.swift": {
+    "mtime": 1785631258.8725648,
+    "ast_hash": "1065a7d037ea0c76f5de655d71ee86d0",
+    "semantic_hash": "1065a7d037ea0c76f5de655d71ee86d0"
+  },
+  "apps/ios/LoopGuardTests/AuthSessionTests.swift": {
+    "mtime": 1785631258.8734868,
+    "ast_hash": "6aeaf20b677925d12322031f7e69954d",
+    "semantic_hash": "6aeaf20b677925d12322031f7e69954d"
+  },
+  "apps/ios/LoopGuardTests/ControlAPITests.swift": {
+    "mtime": 1785631258.873709,
+    "ast_hash": "7fc2db45c506221f20e57cff8587be33",
+    "semantic_hash": "7fc2db45c506221f20e57cff8587be33"
+  },
+  "apps/ios/LoopGuardTests/DesignSystemTests.swift": {
+    "mtime": 1785631258.8738818,
+    "ast_hash": "9ba4ece333f9b9f36276627c50475123",
+    "semantic_hash": "9ba4ece333f9b9f36276627c50475123"
+  },
+  "apps/ios/LoopGuardTests/DevicePairingTests.swift": {
+    "mtime": 1785631258.8740542,
+    "ast_hash": "7b8c0080145e2d42a77d9cac2bec09b0",
+    "semantic_hash": "7b8c0080145e2d42a77d9cac2bec09b0"
+  },
+  "apps/ios/LoopGuardTests/InboxOrderingTests.swift": {
+    "mtime": 1785631258.8741987,
+    "ast_hash": "23f91a1e4b18f8f4559f614424d6f057",
+    "semantic_hash": "23f91a1e4b18f8f4559f614424d6f057"
+  },
+  "apps/ios/LoopGuardTests/KeychainStoreTests.swift": {
+    "mtime": 1785631258.8743696,
+    "ast_hash": "3439b0d639fe425e5f82147a976e6464",
+    "semantic_hash": "3439b0d639fe425e5f82147a976e6464"
+  },
+  "apps/ios/LoopGuardTests/NotificationManagerTests.swift": {
+    "mtime": 1785631258.8744779,
+    "ast_hash": "95b510bc29b183f2b39bdd9d179174ce",
+    "semantic_hash": "95b510bc29b183f2b39bdd9d179174ce"
+  },
+  "apps/ios/LoopGuardTests/RepairCapabilityTests.swift": {
+    "mtime": 1785631258.8745933,
+    "ast_hash": "fd0f633efd2de9b1b39c37592734a227",
+    "semantic_hash": "fd0f633efd2de9b1b39c37592734a227"
+  },
+  "apps/ios/LoopGuardTests/TimelineReducerTests.swift": {
+    "mtime": 1785631258.8747606,
+    "ast_hash": "2d43a9c04980115f1c40fcfd6f996fe0",
+    "semantic_hash": "2d43a9c04980115f1c40fcfd6f996fe0"
+  },
+  "apps/ios/LoopGuardUITests/AccessibilityUITests.swift": {
+    "mtime": 1785631258.87496,
+    "ast_hash": "6b05fdbc4585798a5fcc007faadb48f2",
+    "semantic_hash": "6b05fdbc4585798a5fcc007faadb48f2"
+  },
+  "apps/ios/LoopGuardUITests/ActionReviewUITests.swift": {
+    "mtime": 1785631258.875133,
+    "ast_hash": "b45061a4d768c08aebbf9096d1ad882c",
+    "semantic_hash": "b45061a4d768c08aebbf9096d1ad882c"
+  },
+  "apps/ios/LoopGuardUITests/InboxUITests.swift": {
+    "mtime": 1785631258.8752832,
+    "ast_hash": "c4124b0b537533dda04329aa84c502c8",
+    "semantic_hash": "c4124b0b537533dda04329aa84c502c8"
+  },
+  "apps/ios/LoopGuardUITests/NavigationUITests.swift": {
+    "mtime": 1785631258.8754437,
+    "ast_hash": "a357216ffd78c456cdb0cc66e8f4089f",
+    "semantic_hash": "a357216ffd78c456cdb0cc66e8f4089f"
+  },
+  "apps/ios/LoopGuardUITests/RepairFlowUITests.swift": {
+    "mtime": 1785631258.8760214,
+    "ast_hash": "f10f2b8ea247bacaa99d72b667a91a4c",
+    "semantic_hash": "f10f2b8ea247bacaa99d72b667a91a4c"
+  },
+  "apps/ios/LoopGuardUITests/VisualStateUITests.swift": {
+    "mtime": 1785631258.8762138,
+    "ast_hash": "10f40b879ede074700f1a65f868e9c0f",
+    "semantic_hash": "10f40b879ede074700f1a65f868e9c0f"
+  },
+  "apps/ios/LoopGuardWidgets/LoopGuardWidgets.swift": {
+    "mtime": 1785631258.8768213,
+    "ast_hash": "2662c71844d9b0bd8cbf12e31bfefea1",
+    "semantic_hash": "2662c71844d9b0bd8cbf12e31bfefea1"
+  },
+  "apps/ios/LoopGuardWidgets/RunLiveActivity.swift": {
+    "mtime": 1785631258.8769557,
+    "ast_hash": "2bb352a43b898f177b176b26ca28c8bd",
+    "semantic_hash": "2bb352a43b898f177b176b26ca28c8bd"
+  },
+  "apps/web/e2e/accessibility.spec.ts": {
+    "mtime": 1785631258.878118,
+    "ast_hash": "2da8f8f8482fef49cdd15d6172075b75",
+    "semantic_hash": "2da8f8f8482fef49cdd15d6172075b75"
+  },
+  "apps/web/e2e/action-expiry.spec.ts": {
+    "mtime": 1785631258.8787253,
+    "ast_hash": "662905929c145be2cd996aebda1e178c",
+    "semantic_hash": "662905929c145be2cd996aebda1e178c"
+  },
+  "apps/web/e2e/design-system.spec.ts": {
+    "mtime": 1785631258.878939,
+    "ast_hash": "0de0254cbe57f7589b307aaeaba5a4f7",
+    "semantic_hash": "0de0254cbe57f7589b307aaeaba5a4f7"
+  },
+  "apps/web/e2e/docs.spec.ts": {
+    "mtime": 1785631258.8791292,
+    "ast_hash": "06a07e9eec9782f82905ee0e24ce6487",
+    "semantic_hash": "06a07e9eec9782f82905ee0e24ce6487"
+  },
+  "apps/web/e2e/first-run-integrations.spec.ts": {
+    "mtime": 1785631258.8793087,
+    "ast_hash": "e1cba5e2c34bcf0d09d2132b061e06d7",
+    "semantic_hash": "e1cba5e2c34bcf0d09d2132b061e06d7"
+  },
+  "apps/web/e2e/fixtures.ts": {
+    "mtime": 1785631258.8795016,
+    "ast_hash": "8a79f72ce9b987f50b65e347a6c7a172",
+    "semantic_hash": "8a79f72ce9b987f50b65e347a6c7a172"
+  },
+  "apps/web/e2e/repair-capability.spec.ts": {
+    "mtime": 1785631258.879678,
+    "ast_hash": "a76cdb5ef0454026e7b1c7ca5a07b7aa",
+    "semantic_hash": "a76cdb5ef0454026e7b1c7ca5a07b7aa"
+  },
+  "apps/web/e2e/responsive-navigation.spec.ts": {
+    "mtime": 1785631258.8801396,
+    "ast_hash": "a04b55c45bcf618ad72ea5a5a9c2f4ff",
+    "semantic_hash": "a04b55c45bcf618ad72ea5a5a9c2f4ff"
+  },
+  "apps/web/e2e/session-reconnect.spec.ts": {
+    "mtime": 1785631258.880312,
+    "ast_hash": "64394561fd7b8cb0bf1136d1994d05e4",
+    "semantic_hash": "64394561fd7b8cb0bf1136d1994d05e4"
+  },
+  "apps/web/e2e/tenant-boundaries.spec.ts": {
+    "mtime": 1785631258.880956,
+    "ast_hash": "2b37380265f8270b241da95f840e3155",
+    "semantic_hash": "2b37380265f8270b241da95f840e3155"
+  },
+  "apps/web/e2e/visual.spec.ts": {
+    "mtime": 1785631258.8810782,
+    "ast_hash": "56e9927c62838cd979641a00b14b110b",
+    "semantic_hash": "56e9927c62838cd979641a00b14b110b"
+  },
+  "apps/web/eslint.config.mjs": {
+    "mtime": 1785631258.892399,
+    "ast_hash": "032a929422847fb7548d62c18c74f1d4",
+    "semantic_hash": "032a929422847fb7548d62c18c74f1d4"
+  },
+  "apps/web/next-env.d.ts": {
+    "mtime": 1785631258.8930154,
+    "ast_hash": "2a74d3909800ca5467fa83b0ab4a4890",
+    "semantic_hash": "2a74d3909800ca5467fa83b0ab4a4890"
+  },
+  "apps/web/next.config.ts": {
+    "mtime": 1785631258.893207,
+    "ast_hash": "fd82a561d4b3f63c5dde3f8b987d649a",
+    "semantic_hash": "fd82a561d4b3f63c5dde3f8b987d649a"
+  },
+  "apps/web/package.json": {
+    "mtime": 1785631258.8958054,
+    "ast_hash": "cda67f1a675534c94b88607d311f96c2",
+    "semantic_hash": "cda67f1a675534c94b88607d311f96c2"
+  },
+  "apps/web/playwright.config.ts": {
+    "mtime": 1785631258.896033,
+    "ast_hash": "0b8ff11d8addb626bc8021d309410039",
+    "semantic_hash": "0b8ff11d8addb626bc8021d309410039"
+  },
+  "apps/web/scripts/generate-docs-index.mjs": {
+    "mtime": 1785631258.8962736,
+    "ast_hash": "c418e31da1c28a2c1be32a4408d642b8",
+    "semantic_hash": "c418e31da1c28a2c1be32a4408d642b8"
+  },
+  "apps/web/scripts/patch-redocly-js-yaml.mjs": {
+    "mtime": 1785631258.8964796,
+    "ast_hash": "c0da6331cb048e94768365bd76e91ef1",
+    "semantic_hash": "c0da6331cb048e94768365bd76e91ef1"
+  },
+  "apps/web/scripts/validate-docs.mjs": {
+    "mtime": 1785631258.8966866,
+    "ast_hash": "421eb0c9b807214a359e0c9c69d10eb0",
+    "semantic_hash": "421eb0c9b807214a359e0c9c69d10eb0"
+  },
+  "apps/web/src/app/(console)/audit/page.tsx": {
+    "mtime": 1785631258.8969862,
+    "ast_hash": "ba12b58911d8bef7a9e12e99d1dd4538",
+    "semantic_hash": "ba12b58911d8bef7a9e12e99d1dd4538"
+  },
+  "apps/web/src/app/(console)/changes/[id]/page.tsx": {
+    "mtime": 1785631258.8973587,
+    "ast_hash": "f47763a9508d0ef26d77dd9a2021c366",
+    "semantic_hash": "f47763a9508d0ef26d77dd9a2021c366"
+  },
+  "apps/web/src/app/(console)/changes/page.tsx": {
+    "mtime": 1785631258.8975215,
+    "ast_hash": "3e185b12065ddcf674d68060267197d2",
+    "semantic_hash": "3e185b12065ddcf674d68060267197d2"
+  },
+  "apps/web/src/app/(console)/costs/page.tsx": {
+    "mtime": 1785631258.8981264,
+    "ast_hash": "a23e5611555c154f226e8dd7143edf36",
+    "semantic_hash": "a23e5611555c154f226e8dd7143edf36"
+  },
+  "apps/web/src/app/(console)/devices/page.tsx": {
+    "mtime": 1785631258.8983257,
+    "ast_hash": "b6dc2e88fb9fd62a2e2916effc8cee43",
+    "semantic_hash": "b6dc2e88fb9fd62a2e2916effc8cee43"
+  },
+  "apps/web/src/app/(console)/hosts/[id]/page.tsx": {
+    "mtime": 1785631258.898469,
+    "ast_hash": "4f9152d745db0b4382a738859a055a74",
+    "semantic_hash": "4f9152d745db0b4382a738859a055a74"
+  },
+  "apps/web/src/app/(console)/hosts/page.tsx": {
+    "mtime": 1785631258.898554,
+    "ast_hash": "fad1c54e9ae6151b1ce63904f462683d",
+    "semantic_hash": "fad1c54e9ae6151b1ce63904f462683d"
+  },
+  "apps/web/src/app/(console)/inbox/page.tsx": {
+    "mtime": 1785631258.8986726,
+    "ast_hash": "717487b9b50737c846231c68e9789288",
+    "semantic_hash": "717487b9b50737c846231c68e9789288"
+  },
+  "apps/web/src/app/(console)/layout.tsx": {
+    "mtime": 1785631258.898776,
+    "ast_hash": "c88c95d061f1c1b81032bcf06e07a004",
+    "semantic_hash": "c88c95d061f1c1b81032bcf06e07a004"
+  },
+  "apps/web/src/app/(console)/policies/page.tsx": {
+    "mtime": 1785631258.8989108,
+    "ast_hash": "57e30756af906589ed3327bd13935de4",
+    "semantic_hash": "57e30756af906589ed3327bd13935de4"
+  },
+  "apps/web/src/app/(console)/repairs/[id]/page.tsx": {
+    "mtime": 1785631258.8991315,
+    "ast_hash": "b2eb2a738c422facc5dfd24350de5594",
+    "semantic_hash": "b2eb2a738c422facc5dfd24350de5594"
+  },
+  "apps/web/src/app/(console)/repairs/page.tsx": {
+    "mtime": 1785631258.8993068,
+    "ast_hash": "b6444bfebea1c9f79973a4099d6d5a21",
+    "semantic_hash": "b6444bfebea1c9f79973a4099d6d5a21"
+  },
+  "apps/web/src/app/(console)/runs/[id]/page.tsx": {
+    "mtime": 1785631258.8994484,
+    "ast_hash": "a4dedf9964114ebe121c7d86edc4df6a",
+    "semantic_hash": "a4dedf9964114ebe121c7d86edc4df6a"
+  },
+  "apps/web/src/app/(console)/runs/page.tsx": {
+    "mtime": 1785631258.8995483,
+    "ast_hash": "5f230ec3cdd34d61f2930ba08e30c938",
+    "semantic_hash": "5f230ec3cdd34d61f2930ba08e30c938"
+  },
+  "apps/web/src/app/(console)/verification/[id]/page.tsx": {
+    "mtime": 1785631258.899714,
+    "ast_hash": "87994bfadbc0c07ff1d516ca8021e358",
+    "semantic_hash": "87994bfadbc0c07ff1d516ca8021e358"
+  },
+  "apps/web/src/app/(console)/verification/page.tsx": {
+    "mtime": 1785631258.8998065,
+    "ast_hash": "848f9b9223cebca439b4f1da3c9bd405",
+    "semantic_hash": "848f9b9223cebca439b4f1da3c9bd405"
+  },
+  "apps/web/src/app/(docs)/docs/[[...slug]]/page.tsx": {
+    "mtime": 1785631258.9000773,
+    "ast_hash": "c909c9b2bc25061cd8f9906c664f3532",
+    "semantic_hash": "c909c9b2bc25061cd8f9906c664f3532"
+  },
+  "apps/web/src/app/(docs)/docs/search/route.test.ts": {
+    "mtime": 1785631258.900256,
+    "ast_hash": "1ebe655a1412a659b1de9025dada2c75",
+    "semantic_hash": "1ebe655a1412a659b1de9025dada2c75"
+  },
+  "apps/web/src/app/(docs)/docs/search/route.ts": {
+    "mtime": 1785631258.9010472,
+    "ast_hash": "d786ec6f5ba95a5c4d76a56f7bfe5dd0",
+    "semantic_hash": "d786ec6f5ba95a5c4d76a56f7bfe5dd0"
+  },
+  "apps/web/src/app/(public)/sign-in/page.tsx": {
+    "mtime": 1785631258.9014096,
+    "ast_hash": "ef91d3d8a0d41a7e201c05e83ee8ee1d",
+    "semantic_hash": "ef91d3d8a0d41a7e201c05e83ee8ee1d"
+  },
+  "apps/web/src/app/api/control/[...path]/route.ts": {
+    "mtime": 1785631258.901725,
+    "ast_hash": "bec6d3439f08d0383d90d7b6ae2f7120",
+    "semantic_hash": "bec6d3439f08d0383d90d7b6ae2f7120"
+  },
+  "apps/web/src/app/api/stream-ticket/route.test.ts": {
+    "mtime": 1785631258.9020576,
+    "ast_hash": "ef9612e4a969c27af26ceba009b466c0",
+    "semantic_hash": "ef9612e4a969c27af26ceba009b466c0"
+  },
+  "apps/web/src/app/api/stream-ticket/route.ts": {
+    "mtime": 1785631258.903034,
+    "ast_hash": "a6da0105540a63662ab3fbf8e011b796",
+    "semantic_hash": "a6da0105540a63662ab3fbf8e011b796"
+  },
+  "apps/web/src/app/auth/callback/route.ts": {
+    "mtime": 1785631258.9033694,
+    "ast_hash": "99f224916c912dfe075e363f66726fd5",
+    "semantic_hash": "99f224916c912dfe075e363f66726fd5"
+  },
+  "apps/web/src/app/auth/logout/route.test.ts": {
+    "mtime": 1785631258.9035408,
+    "ast_hash": "48deb9b09f39bf455e5eb77119775fda",
+    "semantic_hash": "48deb9b09f39bf455e5eb77119775fda"
+  },
+  "apps/web/src/app/auth/logout/route.ts": {
+    "mtime": 1785631258.9044743,
+    "ast_hash": "4c0dc050a037da7c5b57a9d740739014",
+    "semantic_hash": "4c0dc050a037da7c5b57a9d740739014"
+  },
+  "apps/web/src/app/auth/start/route.ts": {
+    "mtime": 1785631258.9046543,
+    "ast_hash": "f2364c237925369f68fd7d7f247d0b7b",
+    "semantic_hash": "f2364c237925369f68fd7d7f247d0b7b"
+  },
+  "apps/web/src/app/health/route.test.ts": {
+    "mtime": 1785631258.9050462,
+    "ast_hash": "82f719a1ba5d3504d424c9daf2173db4",
+    "semantic_hash": "82f719a1ba5d3504d424c9daf2173db4"
+  },
+  "apps/web/src/app/health/route.ts": {
+    "mtime": 1785631258.9052365,
+    "ast_hash": "edb12191aae2f041f90875b816f712d6",
+    "semantic_hash": "edb12191aae2f041f90875b816f712d6"
+  },
+  "apps/web/src/app/layout.tsx": {
+    "mtime": 1785631258.906141,
+    "ast_hash": "a0fb76a8b9cbf5f7926370da868ae4da",
+    "semantic_hash": "a0fb76a8b9cbf5f7926370da868ae4da"
+  },
+  "apps/web/src/app/page.tsx": {
+    "mtime": 1785631258.9063158,
+    "ast_hash": "fe5cdb8ecfdf68af17c335022f1e5b9e",
+    "semantic_hash": "fe5cdb8ecfdf68af17c335022f1e5b9e"
+  },
+  "apps/web/src/app/providers.tsx": {
+    "mtime": 1785631258.9064689,
+    "ast_hash": "8b623c2d30c9c052d0d0105fa0b27c97",
+    "semantic_hash": "8b623c2d30c9c052d0d0105fa0b27c97"
+  },
+  "apps/web/src/auth.test.ts": {
+    "mtime": 1785631258.906586,
+    "ast_hash": "6645203f839436da89333e70864cf2ae",
+    "semantic_hash": "6645203f839436da89333e70864cf2ae"
+  },
+  "apps/web/src/auth.ts": {
+    "mtime": 1785631258.9067433,
+    "ast_hash": "f3d63e1f6b290302c6a34ddd78d7ef47",
+    "semantic_hash": "f3d63e1f6b290302c6a34ddd78d7ef47"
+  },
+  "apps/web/src/components/action-sheet.test.tsx": {
+    "mtime": 1785631258.9069512,
+    "ast_hash": "efd34e271c9e95a78a33f1323b393b20",
+    "semantic_hash": "efd34e271c9e95a78a33f1323b393b20"
+  },
+  "apps/web/src/components/action-sheet.tsx": {
+    "mtime": 1785631258.9071345,
+    "ast_hash": "3758d444789a7360f7e2965ac5cc0261",
+    "semantic_hash": "3758d444789a7360f7e2965ac5cc0261"
+  },
+  "apps/web/src/components/admin-pages.tsx": {
+    "mtime": 1785631258.9076703,
+    "ast_hash": "79d9bb137b6170d8f5df18f694cba733",
+    "semantic_hash": "79d9bb137b6170d8f5df18f694cba733"
+  },
+  "apps/web/src/components/async-state.tsx": {
+    "mtime": 1785631258.9078455,
+    "ast_hash": "1547b8ac08bfe562bc0716d1cda3c4ed",
+    "semantic_hash": "1547b8ac08bfe562bc0716d1cda3c4ed"
+  },
+  "apps/web/src/components/console-shell.tsx": {
+    "mtime": 1785631258.90806,
+    "ast_hash": "e06e0f82c15d7e7d2035251ec9bbd8ae",
+    "semantic_hash": "e06e0f82c15d7e7d2035251ec9bbd8ae"
+  },
+  "apps/web/src/components/control-pages.tsx": {
+    "mtime": 1785631258.9083102,
+    "ast_hash": "da8b01cbf230dc15e0393e95604c6b3e",
+    "semantic_hash": "da8b01cbf230dc15e0393e95604c6b3e"
+  },
+  "apps/web/src/components/docs-copy-button.tsx": {
+    "mtime": 1785631258.9085097,
+    "ast_hash": "000ef573e445ca96c0b0083ae6e7e6d7",
+    "semantic_hash": "000ef573e445ca96c0b0083ae6e7e6d7"
+  },
+  "apps/web/src/components/docs-search.tsx": {
+    "mtime": 1785631258.908677,
+    "ast_hash": "8903131bce509b2ecee7a16b010bb5de",
+    "semantic_hash": "8903131bce509b2ecee7a16b010bb5de"
+  },
+  "apps/web/src/components/policy-editor.test.tsx": {
+    "mtime": 1785631258.90921,
+    "ast_hash": "08a28ed320d09b7359219a6a10c4ee3f",
+    "semantic_hash": "08a28ed320d09b7359219a6a10c4ee3f"
+  },
+  "apps/web/src/components/policy-editor.tsx": {
+    "mtime": 1785631258.9099302,
+    "ast_hash": "ab012fe10f57285cae9e82e0129e84dd",
+    "semantic_hash": "ab012fe10f57285cae9e82e0129e84dd"
+  },
+  "apps/web/src/components/repair-candidate-matrix.test.tsx": {
+    "mtime": 1785631258.910135,
+    "ast_hash": "5d5291cacf3a62e5b3b7239f74a186e5",
+    "semantic_hash": "5d5291cacf3a62e5b3b7239f74a186e5"
+  },
+  "apps/web/src/components/repair-candidate-matrix.tsx": {
+    "mtime": 1785631258.9102955,
+    "ast_hash": "5e2cedbc7377650a5f46a921445f6c3e",
+    "semantic_hash": "5e2cedbc7377650a5f46a921445f6c3e"
+  },
+  "apps/web/src/components/repair-pages.tsx": {
+    "mtime": 1785631258.9110198,
+    "ast_hash": "1c3c01c619c92e62b021096ba41a71c6",
+    "semantic_hash": "1c3c01c619c92e62b021096ba41a71c6"
+  },
+  "apps/web/src/components/session-timeline.test.tsx": {
+    "mtime": 1785631258.9112012,
+    "ast_hash": "394f39cc7934348cf13d41207fa722ff",
+    "semantic_hash": "394f39cc7934348cf13d41207fa722ff"
+  },
+  "apps/web/src/components/session-timeline.tsx": {
+    "mtime": 1785631258.911364,
+    "ast_hash": "63e37513edd36b38c34f9e2a9f7988fa",
+    "semantic_hash": "63e37513edd36b38c34f9e2a9f7988fa"
+  },
+  "apps/web/src/components/status-label.tsx": {
+    "mtime": 1785631258.9119155,
+    "ast_hash": "a0b6caea30dd3c49039cafb688dae971",
+    "semantic_hash": "a0b6caea30dd3c49039cafb688dae971"
+  },
+  "apps/web/src/components/verification-proof.tsx": {
+    "mtime": 1785631258.9121118,
+    "ast_hash": "cdeba12a3506b16927ba3cc35ea0bf62",
+    "semantic_hash": "cdeba12a3506b16927ba3cc35ea0bf62"
+  },
+  "apps/web/src/generated/docs-index.json": {
+    "mtime": 1785631258.9146278,
+    "ast_hash": "7225661fc53775f85375d6a246939657",
+    "semantic_hash": "7225661fc53775f85375d6a246939657"
+  },
+  "apps/web/src/lib/api/browser-client.ts": {
+    "mtime": 1785631258.9149148,
+    "ast_hash": "4d3bf32b31473c024f595bc185785d17",
+    "semantic_hash": "4d3bf32b31473c024f595bc185785d17"
+  },
+  "apps/web/src/lib/api/client.test.ts": {
+    "mtime": 1785631258.9150813,
+    "ast_hash": "a6332f9071baecae89fcd07288fd5103",
+    "semantic_hash": "a6332f9071baecae89fcd07288fd5103"
+  },
+  "apps/web/src/lib/api/errors.ts": {
+    "mtime": 1785631258.9156952,
+    "ast_hash": "9c30f4824bf9f919c16f41eeb3952a25",
+    "semantic_hash": "9c30f4824bf9f919c16f41eeb3952a25"
+  },
+  "apps/web/src/lib/api/generated.ts": {
+    "mtime": 1785631258.9164703,
+    "ast_hash": "81550c78b40bbf19bc59a6e0de65720c",
+    "semantic_hash": "81550c78b40bbf19bc59a6e0de65720c"
+  },
+  "apps/web/src/lib/api/server-client.ts": {
+    "mtime": 1785631258.91667,
+    "ast_hash": "3acbbca83b0ba969813b79cc6e237a93",
+    "semantic_hash": "3acbbca83b0ba969813b79cc6e237a93"
+  },
+  "apps/web/src/lib/api/session-stream.ts": {
+    "mtime": 1785631258.9168372,
+    "ast_hash": "a6604f487077c38a240d03af9a151d8f",
+    "semantic_hash": "a6604f487077c38a240d03af9a151d8f"
+  },
+  "apps/web/src/lib/api/use-control-query.ts": {
+    "mtime": 1785631258.9169447,
+    "ast_hash": "76e75fedaef9307d6808e6127b586dba",
+    "semantic_hash": "76e75fedaef9307d6808e6127b586dba"
+  },
+  "apps/web/src/lib/docs.test.ts": {
+    "mtime": 1785631258.9171288,
+    "ast_hash": "a22d109260e106cb9b29787f0ca9efeb",
+    "semantic_hash": "a22d109260e106cb9b29787f0ca9efeb"
+  },
+  "apps/web/src/lib/docs.tsx": {
+    "mtime": 1785631258.9173071,
+    "ast_hash": "aa0e950c05c8257978fa27b19151daaa",
+    "semantic_hash": "aa0e950c05c8257978fa27b19151daaa"
+  },
+  "apps/web/src/proxy.ts": {
+    "mtime": 1785631258.9178538,
+    "ast_hash": "28e042466e2ecbb8f94b869c82ecc9a4",
+    "semantic_hash": "28e042466e2ecbb8f94b869c82ecc9a4"
+  },
+  "apps/web/src/security/webauthn-browser.ts": {
+    "mtime": 1785631258.9181156,
+    "ast_hash": "9c3cea5018adb3dc952e1a76831dc8b6",
+    "semantic_hash": "9c3cea5018adb3dc952e1a76831dc8b6"
+  },
+  "apps/web/src/security/webauthn.test.ts": {
+    "mtime": 1785631258.9188802,
+    "ast_hash": "6176fb1a9dd38daac633dc30857f60e4",
+    "semantic_hash": "6176fb1a9dd38daac633dc30857f60e4"
+  },
+  "apps/web/src/security/webauthn.ts": {
+    "mtime": 1785631258.9189777,
+    "ast_hash": "aa839daf35f4f93f8b5d0aed59fc76b6",
+    "semantic_hash": "aa839daf35f4f93f8b5d0aed59fc76b6"
+  },
+  "apps/web/src/test/server-only.ts": {
+    "mtime": 1785631258.9203134,
+    "ast_hash": "f2065e3ad7dea066e788666fd013b9e4",
+    "semantic_hash": "f2065e3ad7dea066e788666fd013b9e4"
+  },
+  "apps/web/src/test/setup.ts": {
+    "mtime": 1785631258.9204774,
+    "ast_hash": "58c0b154a542e6897b37e93ade29c3da",
+    "semantic_hash": "58c0b154a542e6897b37e93ade29c3da"
+  },
+  "apps/web/tsconfig.json": {
+    "mtime": 1785631258.9206603,
+    "ast_hash": "0b8360c4ed0a5b5d786038abb12ffe33",
+    "semantic_hash": "0b8360c4ed0a5b5d786038abb12ffe33"
+  },
+  "apps/web/vitest.config.ts": {
+    "mtime": 1785631258.9208472,
+    "ast_hash": "3a86774affbe79737b0176a8c17896a7",
+    "semantic_hash": "3a86774affbe79737b0176a8c17896a7"
+  },
+  "cloud-app/.expo/devices.json": {
+    "mtime": 1782579968.2706034,
+    "ast_hash": "e5f6eb13c875f326cfd5915d3364614f",
+    "semantic_hash": "e5f6eb13c875f326cfd5915d3364614f"
+  },
+  "cloud-app/.hallmark/log.json": {
+    "mtime": 1782835326.3307362,
+    "ast_hash": "811ce7b9c52255cba8e9e07a1d0d81b9",
+    "semantic_hash": "811ce7b9c52255cba8e9e07a1d0d81b9"
+  },
+  "cloud-app/.hallmark/preflight.json": {
+    "mtime": 1782835326.2416797,
+    "ast_hash": "e2b600b23fb9dd085dd313cb51ce9c24",
+    "semantic_hash": "e2b600b23fb9dd085dd313cb51ce9c24"
+  },
+  "cloud-app/App.tsx": {
+    "mtime": 1782836169.0354834,
+    "ast_hash": "6d7dc9a2af3fe140a5957b262ef53255",
+    "semantic_hash": "6d7dc9a2af3fe140a5957b262ef53255"
+  },
+  "cloud-app/app.json": {
+    "mtime": 1782835326.4204383,
+    "ast_hash": "090ca24d159395fcfefc00270a90d6e4",
+    "semantic_hash": "090ca24d159395fcfefc00270a90d6e4"
+  },
+  "cloud-app/babel.config.js": {
+    "mtime": 1782575547.9231837,
+    "ast_hash": "3fc9bc130f8fc42ba783bfc7b6870b08",
+    "semantic_hash": "3fc9bc130f8fc42ba783bfc7b6870b08"
+  },
+  "cloud-app/jest.config.js": {
+    "mtime": 1782575547.923271,
+    "ast_hash": "85e1922ef8704443331908a0062c9239",
+    "semantic_hash": "85e1922ef8704443331908a0062c9239"
+  },
+  "cloud-app/package.json": {
+    "mtime": 1782835224.6724598,
+    "ast_hash": "a5fc062220bdb4d5083fd0ce4ee48989",
+    "semantic_hash": "a5fc062220bdb4d5083fd0ce4ee48989"
+  },
+  "cloud-app/src/__tests__/runReducer.test.ts": {
+    "mtime": 1782585300.2818022,
+    "ast_hash": "1d7707f779918e3c129cc7fc0fc6046f",
+    "semantic_hash": "1d7707f779918e3c129cc7fc0fc6046f"
+  },
+  "cloud-app/src/client.ts": {
+    "mtime": 1782585300.2821565,
+    "ast_hash": "9a2a6967349b0fa0b7a2ccb2812064f4",
+    "semantic_hash": "9a2a6967349b0fa0b7a2ccb2812064f4"
+  },
+  "cloud-app/src/components/AppIcon.tsx": {
+    "mtime": 1782836694.6840703,
+    "ast_hash": "52224aa2188ced9fac96ba327256ae3a",
+    "semantic_hash": "52224aa2188ced9fac96ba327256ae3a"
+  },
+  "cloud-app/src/components/DecisionCard.tsx": {
+    "mtime": 1782835528.0860777,
+    "ast_hash": "e6a6f4215e4640e19edfd0462373bedc",
+    "semantic_hash": "e6a6f4215e4640e19edfd0462373bedc"
+  },
+  "cloud-app/src/components/EventRow.tsx": {
+    "mtime": 1782835528.000395,
+    "ast_hash": "9c89bf8325aff8fda130c47eef11fb8d",
+    "semantic_hash": "9c89bf8325aff8fda130c47eef11fb8d"
+  },
+  "cloud-app/src/components/Meter.tsx": {
+    "mtime": 1782836798.0143878,
+    "ast_hash": "5667b53d8730d72c15b56d9c2c4d83bf",
+    "semantic_hash": "5667b53d8730d72c15b56d9c2c4d83bf"
+  },
+  "cloud-app/src/components/TabBar.tsx": {
+    "mtime": 1782836513.197716,
+    "ast_hash": "636dd93b3e50781a4be33e472f33f6cb",
+    "semantic_hash": "636dd93b3e50781a4be33e472f33f6cb"
+  },
+  "cloud-app/src/components/ui.tsx": {
+    "mtime": 1782836694.7728386,
+    "ast_hash": "be1202f5dafd9ddda71e8553b922dba0",
+    "semantic_hash": "be1202f5dafd9ddda71e8553b922dba0"
+  },
+  "cloud-app/src/runReducer.ts": {
+    "mtime": 1782585300.2851067,
+    "ast_hash": "5f3a5065c1f0e25fc5c3a99bae53f87d",
+    "semantic_hash": "5f3a5065c1f0e25fc5c3a99bae53f87d"
+  },
+  "cloud-app/src/screens/AllowlistScreen.tsx": {
+    "mtime": 1782836431.2267365,
+    "ast_hash": "6e5981730bce55543c8868f0d5c3c661",
+    "semantic_hash": "6e5981730bce55543c8868f0d5c3c661"
+  },
+  "cloud-app/src/screens/AutoFixScreen.tsx": {
+    "mtime": 1782836431.1110172,
+    "ast_hash": "6cdadfd9003c998f93909b6772b9b521",
+    "semantic_hash": "6cdadfd9003c998f93909b6772b9b521"
+  },
+  "cloud-app/src/screens/ConnectScreen.tsx": {
+    "mtime": 1782836694.8609128,
+    "ast_hash": "4ec3b5e56d8c9335cea0bbbb0586ded1",
+    "semantic_hash": "4ec3b5e56d8c9335cea0bbbb0586ded1"
+  },
+  "cloud-app/src/screens/DashboardScreen.tsx": {
+    "mtime": 1782836513.2958035,
+    "ast_hash": "c6afb9be0f1edaa4ec306e5f25725253",
+    "semantic_hash": "c6afb9be0f1edaa4ec306e5f25725253"
+  },
+  "cloud-app/src/screens/HistoryScreen.tsx": {
+    "mtime": 1782836798.1066494,
+    "ast_hash": "b35e32ff2cade3b71f3247388cbb1157",
+    "semantic_hash": "b35e32ff2cade3b71f3247388cbb1157"
+  },
+  "cloud-app/src/screens/MissionControlScreen.tsx": {
+    "mtime": 1782835923.1456294,
+    "ast_hash": "1d2b262220c66019a5611858274bfa10",
+    "semantic_hash": "1d2b262220c66019a5611858274bfa10"
+  },
+  "cloud-app/src/storage.ts": {
+    "mtime": 1782585300.2893825,
+    "ast_hash": "209c12700a6b4bcc3f575701e673d6a5",
+    "semantic_hash": "209c12700a6b4bcc3f575701e673d6a5"
+  },
+  "cloud-app/src/theme.ts": {
+    "mtime": 1782835326.5077786,
+    "ast_hash": "ac38d611aa95c95bda8718c518aa40e7",
+    "semantic_hash": "ac38d611aa95c95bda8718c518aa40e7"
+  },
+  "cloud-app/tsconfig.json": {
+    "mtime": 1782575547.927484,
+    "ast_hash": "a5df9ddad82c56de332cbb7d00dd294b",
+    "semantic_hash": "a5df9ddad82c56de332cbb7d00dd294b"
+  },
+  "contracts/control-api.openapi.json": {
+    "mtime": 1785631258.9218767,
+    "ast_hash": "6bce6e9f20b916eda0b08a6f40d47fe1",
+    "semantic_hash": "6bce6e9f20b916eda0b08a6f40d47fe1"
+  },
+  "contracts/fixtures/action-states.json": {
+    "mtime": 1785631258.9221702,
+    "ast_hash": "694a17ae362ed20af6fd42a4f55be648",
+    "semantic_hash": "694a17ae362ed20af6fd42a4f55be648"
+  },
+  "contracts/fixtures/effective-capabilities.json": {
+    "mtime": 1785631258.9223328,
+    "ast_hash": "12fe55e1304705a457e0e6229b808e8c",
+    "semantic_hash": "12fe55e1304705a457e0e6229b808e8c"
+  },
+  "contracts/fixtures/host-integration-health.json": {
+    "mtime": 1785631258.9225044,
+    "ast_hash": "0fe7376e8bf7a9c582816547dee02e62",
+    "semantic_hash": "0fe7376e8bf7a9c582816547dee02e62"
+  },
+  "contracts/fixtures/repair-states.json": {
+    "mtime": 1785631258.922674,
+    "ast_hash": "c72f162c518c0ee0d221fecaacfab878",
+    "semantic_hash": "c72f162c518c0ee0d221fecaacfab878"
+  },
+  "infra/terraform/environments/production-dr/main.tf": {
+    "mtime": 1785631258.9352083,
+    "ast_hash": "ff4ba4a761b7d8b26ac4c8791c46472b",
+    "semantic_hash": "ff4ba4a761b7d8b26ac4c8791c46472b"
+  },
+  "infra/terraform/environments/production/main.tf": {
+    "mtime": 1785631258.9354756,
+    "ast_hash": "a59fd9518a0427b372daf3b049c15ea4",
+    "semantic_hash": "a59fd9518a0427b372daf3b049c15ea4"
+  },
+  "infra/terraform/environments/staging/main.tf": {
+    "mtime": 1785631258.9362223,
+    "ast_hash": "13347cfcaadbe95fd963df299c1d2d39",
+    "semantic_hash": "13347cfcaadbe95fd963df299c1d2d39"
+  },
+  "infra/terraform/modules/control-plane/main.tf": {
+    "mtime": 1785631258.9365072,
+    "ast_hash": "4e80010fb7f35d9101eb68089cfccc24",
+    "semantic_hash": "4e80010fb7f35d9101eb68089cfccc24"
+  },
+  "infra/terraform/modules/control-plane/outputs.tf": {
+    "mtime": 1785631258.936619,
+    "ast_hash": "343130c0fdd173b63ae37ba860ebffe5",
+    "semantic_hash": "343130c0fdd173b63ae37ba860ebffe5"
+  },
+  "infra/terraform/modules/control-plane/variables.tf": {
+    "mtime": 1785631258.9367537,
+    "ast_hash": "dcc6b58ba81b36d5dc2427bb798bd044",
+    "semantic_hash": "dcc6b58ba81b36d5dc2427bb798bd044"
+  },
+  "infra/terraform/modules/control-plane/versions.tf": {
+    "mtime": 1785631258.9368658,
+    "ast_hash": "8750fde9cc3f6345623775cad94da8d7",
+    "semantic_hash": "8750fde9cc3f6345623775cad94da8d7"
+  },
+  "infra/tests/test_rendered_manifests.py": {
+    "mtime": 1785631258.937021,
+    "ast_hash": "5eba5fd2f82287588f60d7849700b734",
+    "semantic_hash": "5eba5fd2f82287588f60d7849700b734"
+  },
+  "loopguard/examples/broken_agent.py": {
+    "mtime": 1782523062.0299327,
+    "ast_hash": "56879c514ab7012987ddc0b0d5a2d3e8",
+    "semantic_hash": "56879c514ab7012987ddc0b0d5a2d3e8"
+  },
+  "loopguard/examples/broken_multi_agent.py": {
+    "mtime": 1782523062.030058,
+    "ast_hash": "f369a06d846fea0eed08c569049bcf5f",
+    "semantic_hash": "f369a06d846fea0eed08c569049bcf5f"
+  },
+  "loopguard/examples/cerebras_tool_loop_demo.py": {
+    "mtime": 1782588880.9645507,
+    "ast_hash": "d1c6aedfa525a39d3d015ab137926241",
+    "semantic_hash": "d1c6aedfa525a39d3d015ab137926241"
+  },
+  "loopguard/examples/litellm_example.py": {
+    "mtime": 1782523062.030307,
+    "ast_hash": "005774091e9328d07408f2772d410baa",
+    "semantic_hash": "005774091e9328d07408f2772d410baa"
+  },
+  "loopguard/examples/litellm_guarded_agent.py": {
+    "mtime": 1782575547.929088,
+    "ast_hash": "f2b40aaeb3d72006dae66f1534d395c4",
+    "semantic_hash": "f2b40aaeb3d72006dae66f1534d395c4"
+  },
+  "loopguard/examples/manual_wrapper_example.py": {
+    "mtime": 1782523062.030416,
+    "ast_hash": "3ce6a5085985e5eba5ad3fe730aeac2d",
+    "semantic_hash": "3ce6a5085985e5eba5ad3fe730aeac2d"
+  },
+  "loopguard/integrations/browser-broker/package.json": {
+    "mtime": 1785631258.939434,
+    "ast_hash": "5dfce78cc550504288d64d70d39079c0",
+    "semantic_hash": "5dfce78cc550504288d64d70d39079c0"
+  },
+  "loopguard/integrations/browser-broker/src/broker.test.ts": {
+    "mtime": 1785631258.9399025,
+    "ast_hash": "f0b363a8b8fa8c92e255eaf889903446",
+    "semantic_hash": "f0b363a8b8fa8c92e255eaf889903446"
+  },
+  "loopguard/integrations/browser-broker/src/broker.ts": {
+    "mtime": 1785631258.9401884,
+    "ast_hash": "fb11935c31d09a1e1e417c06b1ef40bc",
+    "semantic_hash": "fb11935c31d09a1e1e417c06b1ef40bc"
+  },
+  "loopguard/integrations/browser-broker/src/protocol.test.ts": {
+    "mtime": 1785631258.9408076,
+    "ast_hash": "cddcf0b2383d3b6750f487480c237100",
+    "semantic_hash": "cddcf0b2383d3b6750f487480c237100"
+  },
+  "loopguard/integrations/browser-broker/src/protocol.ts": {
+    "mtime": 1785631258.940924,
+    "ast_hash": "fced3271e3546441418cc888561700c4",
+    "semantic_hash": "fced3271e3546441418cc888561700c4"
+  },
+  "loopguard/integrations/browser-broker/src/security.test.ts": {
+    "mtime": 1785631258.941036,
+    "ast_hash": "e235eccf8fedf70c96c75c71b053ccb4",
+    "semantic_hash": "e235eccf8fedf70c96c75c71b053ccb4"
+  },
+  "loopguard/integrations/browser-broker/src/server.ts": {
+    "mtime": 1785631258.9411466,
+    "ast_hash": "a965446667ff176a6b4acb0166a8577a",
+    "semantic_hash": "a965446667ff176a6b4acb0166a8577a"
+  },
+  "loopguard/integrations/browser-broker/src/storage.test.ts": {
+    "mtime": 1785631258.9413426,
+    "ast_hash": "9ca3a491d7eef6ad7a79f5e2c5e7a5f6",
+    "semantic_hash": "9ca3a491d7eef6ad7a79f5e2c5e7a5f6"
+  },
+  "loopguard/integrations/browser-broker/src/storage.ts": {
+    "mtime": 1785631258.941466,
+    "ast_hash": "cc84e57719ab6c6fdda4b3cf887ee10f",
+    "semantic_hash": "cc84e57719ab6c6fdda4b3cf887ee10f"
+  },
+  "loopguard/integrations/browser-broker/src/testing.ts": {
+    "mtime": 1785631258.9415674,
+    "ast_hash": "b91c9661bfc74d142515f46ff9253e81",
+    "semantic_hash": "b91c9661bfc74d142515f46ff9253e81"
+  },
+  "loopguard/integrations/browser-broker/src/transport.ts": {
+    "mtime": 1785631258.941732,
+    "ast_hash": "519dd2640820afb6a76188e6bfd92a52",
+    "semantic_hash": "519dd2640820afb6a76188e6bfd92a52"
+  },
+  "loopguard/integrations/browser-broker/tsconfig.json": {
+    "mtime": 1785631258.9418936,
+    "ast_hash": "86180ab84d80a596eb8f94820e119100",
+    "semantic_hash": "86180ab84d80a596eb8f94820e119100"
+  },
+  "loopguard/integrations/claude-bridge/package.json": {
+    "mtime": 1785631258.943573,
+    "ast_hash": "a9830c4c0f98077a4d0f58805211ca3f",
+    "semantic_hash": "a9830c4c0f98077a4d0f58805211ca3f"
+  },
+  "loopguard/integrations/claude-bridge/src/index.test.ts": {
+    "mtime": 1785631258.9438019,
+    "ast_hash": "2c43d5a7b30a5cc81f28d5d1141b62f4",
+    "semantic_hash": "2c43d5a7b30a5cc81f28d5d1141b62f4"
+  },
+  "loopguard/integrations/claude-bridge/src/index.ts": {
+    "mtime": 1785631258.945047,
+    "ast_hash": "29d66113e4babdeb3afaf173b7e70d1b",
+    "semantic_hash": "29d66113e4babdeb3afaf173b7e70d1b"
+  },
+  "loopguard/integrations/claude-bridge/tsconfig.json": {
+    "mtime": 1785631258.9451196,
+    "ast_hash": "86180ab84d80a596eb8f94820e119100",
+    "semantic_hash": "86180ab84d80a596eb8f94820e119100"
+  },
+  "loopguard/integrations/claude-plugin/.claude-plugin/plugin.json": {
+    "mtime": 1785631258.9453728,
+    "ast_hash": "25eb57db588109dc32036455da84f883",
+    "semantic_hash": "25eb57db588109dc32036455da84f883"
+  },
+  "loopguard/integrations/claude-plugin/bin/loopguard-hook": {
+    "mtime": 1785631258.9456213,
+    "ast_hash": "606b422bcae349dff91b14f3c9f790f4",
+    "semantic_hash": "606b422bcae349dff91b14f3c9f790f4"
+  },
+  "loopguard/integrations/claude-plugin/hooks/hooks.json": {
+    "mtime": 1785631258.946528,
+    "ast_hash": "e61066028961a8177ac3b4f12daf38f6",
+    "semantic_hash": "e61066028961a8177ac3b4f12daf38f6"
+  },
+  "loopguard/integrations/codex-plugin/.codex-plugin/plugin.json": {
+    "mtime": 1785631258.9467816,
+    "ast_hash": "33ea6502f4401f406fc7501e87840714",
+    "semantic_hash": "33ea6502f4401f406fc7501e87840714"
+  },
+  "loopguard/integrations/codex-plugin/bin/loopguard-hook": {
+    "mtime": 1785631258.946971,
+    "ast_hash": "f96c6d480a1314ee2924833207cdffbf",
+    "semantic_hash": "f96c6d480a1314ee2924833207cdffbf"
+  },
+  "loopguard/integrations/codex-plugin/hooks/hooks.json": {
+    "mtime": 1785631258.9483097,
+    "ast_hash": "7f215c7066a1847a898ca55025063290",
+    "semantic_hash": "7f215c7066a1847a898ca55025063290"
+  },
+  "loopguard/integrations/playwright-loopguard/package.json": {
+    "mtime": 1785631258.9492826,
+    "ast_hash": "6849177447b19f2694fdc5e70300fb37",
+    "semantic_hash": "6849177447b19f2694fdc5e70300fb37"
+  },
+  "loopguard/integrations/playwright-loopguard/src/config.ts": {
+    "mtime": 1785631258.9494066,
+    "ast_hash": "cab1921b29d949c66d1a092609f03ff4",
+    "semantic_hash": "cab1921b29d949c66d1a092609f03ff4"
+  },
+  "loopguard/integrations/playwright-loopguard/src/fixture.test.ts": {
+    "mtime": 1785631258.9495082,
+    "ast_hash": "180c89542d96b1d8c0d26d9f301f5370",
+    "semantic_hash": "180c89542d96b1d8c0d26d9f301f5370"
+  },
+  "loopguard/integrations/playwright-loopguard/src/fixture.ts": {
+    "mtime": 1785631258.949623,
+    "ast_hash": "5620338990d4a59fa9955576b130f1b4",
+    "semantic_hash": "5620338990d4a59fa9955576b130f1b4"
+  },
+  "loopguard/integrations/playwright-loopguard/src/integration.test.ts": {
+    "mtime": 1785631258.9497318,
+    "ast_hash": "a2c37c892cff11238223ddf06f00b6b3",
+    "semantic_hash": "a2c37c892cff11238223ddf06f00b6b3"
+  },
+  "loopguard/integrations/playwright-loopguard/tsconfig.json": {
+    "mtime": 1785631258.9498093,
+    "ast_hash": "86180ab84d80a596eb8f94820e119100",
+    "semantic_hash": "86180ab84d80a596eb8f94820e119100"
+  },
+  "loopguard/pyproject.toml": {
+    "mtime": 1785631258.9500475,
+    "ast_hash": "d0dc560776fc451e59edf9427ffc982e",
+    "semantic_hash": "d0dc560776fc451e59edf9427ffc982e"
+  },
+  "loopguard/scripts/playwright_manifest.test.ts": {
+    "mtime": 1785631258.9502664,
+    "ast_hash": "92dddedeca5a47e0886df9a379e86cf8",
+    "semantic_hash": "92dddedeca5a47e0886df9a379e86cf8"
+  },
+  "loopguard/scripts/playwright_manifest.ts": {
+    "mtime": 1785631258.9504433,
+    "ast_hash": "365d9b4838621802bba52b496bc6b88b",
+    "semantic_hash": "365d9b4838621802bba52b496bc6b88b"
+  },
+  "loopguard/src/loopguard/__init__.py": {
+    "mtime": 1785631258.9512053,
+    "ast_hash": "79977ef318ed15066218f13da8cfb344",
+    "semantic_hash": "79977ef318ed15066218f13da8cfb344"
+  },
+  "loopguard/src/loopguard/adapters/__init__.py": {
+    "mtime": 1785631258.951381,
+    "ast_hash": "e39a4f89f69343599ab4b26229a91f15",
+    "semantic_hash": "e39a4f89f69343599ab4b26229a91f15"
+  },
+  "loopguard/src/loopguard/adapters/base.py": {
+    "mtime": 1785631258.9515429,
+    "ast_hash": "e7b1c683d728688f5809f3829b5889cf",
+    "semantic_hash": "e7b1c683d728688f5809f3829b5889cf"
+  },
+  "loopguard/src/loopguard/adapters/claude_bridge.py": {
+    "mtime": 1785631258.9517024,
+    "ast_hash": "1122b5f3688d60fb41509cf0190cb1f6",
+    "semantic_hash": "1122b5f3688d60fb41509cf0190cb1f6"
+  },
+  "loopguard/src/loopguard/adapters/claude_hooks.py": {
+    "mtime": 1785631258.9519374,
+    "ast_hash": "d2f4114db4b55ad7b369345f7580bcc9",
+    "semantic_hash": "d2f4114db4b55ad7b369345f7580bcc9"
+  },
+  "loopguard/src/loopguard/adapters/claude_managed.py": {
+    "mtime": 1785631258.9521863,
+    "ast_hash": "0a948541024dc185dca30cf3e7723dbf",
+    "semantic_hash": "0a948541024dc185dca30cf3e7723dbf"
+  },
+  "loopguard/src/loopguard/adapters/cloud_hook_client.py": {
+    "mtime": 1785631258.9523625,
+    "ast_hash": "dc723e3d13b43da4e7384e1fdcaefcba",
+    "semantic_hash": "dc723e3d13b43da4e7384e1fdcaefcba"
+  },
+  "loopguard/src/loopguard/adapters/codex_hooks.py": {
+    "mtime": 1785631258.9536905,
+    "ast_hash": "eb04cef5659955a4be85f7694bd000c8",
+    "semantic_hash": "eb04cef5659955a4be85f7694bd000c8"
+  },
+  "loopguard/src/loopguard/adapters/codex_managed.py": {
+    "mtime": 1785631258.9539907,
+    "ast_hash": "9ab5fe577415d6a44e610f3372a05cde",
+    "semantic_hash": "9ab5fe577415d6a44e610f3372a05cde"
+  },
+  "loopguard/src/loopguard/adapters/doctor.py": {
+    "mtime": 1785631258.9542844,
+    "ast_hash": "ea9e4cf33d7b52b7460e9352f7883117",
+    "semantic_hash": "ea9e4cf33d7b52b7460e9352f7883117"
+  },
+  "loopguard/src/loopguard/adapters/hook_client.py": {
+    "mtime": 1785631258.9544487,
+    "ast_hash": "634ce4cc7842ebc9ee5f50e96c647806",
+    "semantic_hash": "634ce4cc7842ebc9ee5f50e96c647806"
+  },
+  "loopguard/src/loopguard/adapters/hook_entry.py": {
+    "mtime": 1785631258.9546304,
+    "ast_hash": "b349063ea13cb4ffa92161b01c5cd499",
+    "semantic_hash": "b349063ea13cb4ffa92161b01c5cd499"
+  },
+  "loopguard/src/loopguard/adapters/jsonrpc.py": {
+    "mtime": 1785631258.9547892,
+    "ast_hash": "801d9a697a535e650aeb4394f2bf0a6f",
+    "semantic_hash": "801d9a697a535e650aeb4394f2bf0a6f"
+  },
+  "loopguard/src/loopguard/adapters/normalize_hook.py": {
+    "mtime": 1785631258.954987,
+    "ast_hash": "e42a8e889c1bd00c9440e86115e18a8e",
+    "semantic_hash": "e42a8e889c1bd00c9440e86115e18a8e"
+  },
+  "loopguard/src/loopguard/adapters/service_install.py": {
+    "mtime": 1785631258.9552052,
+    "ast_hash": "445478b17dec758589a0e40cb1d4792b",
+    "semantic_hash": "445478b17dec758589a0e40cb1d4792b"
+  },
+  "loopguard/src/loopguard/adapters/setup.py": {
+    "mtime": 1785631258.9554036,
+    "ast_hash": "4adac8e31d55b07b03d44a4e8ef7720c",
+    "semantic_hash": "4adac8e31d55b07b03d44a4e8ef7720c"
+  },
+  "loopguard/src/loopguard/adapters/templates/claude-settings-fallback.json": {
+    "mtime": 1785631258.9555979,
+    "ast_hash": "d71d8b312656376af023f99e24d22d2f",
+    "semantic_hash": "d71d8b312656376af023f99e24d22d2f"
+  },
+  "loopguard/src/loopguard/adapters/templates/codex-hook-fallback": {
+    "mtime": 1785631258.9557498,
+    "ast_hash": "b7e1a33961cfc938c2227ae945634093",
+    "semantic_hash": "b7e1a33961cfc938c2227ae945634093"
+  },
+  "loopguard/src/loopguard/adapters/templates/codex-hooks-fallback.json": {
+    "mtime": 1785631258.955831,
+    "ast_hash": "141224a2bdf9a0c60b615cdec8f6fe40",
+    "semantic_hash": "141224a2bdf9a0c60b615cdec8f6fe40"
+  },
+  "loopguard/src/loopguard/agent.py": {
+    "mtime": 1782585300.292479,
+    "ast_hash": "8b985631c419f068c405f9a28e0cb539",
+    "semantic_hash": "8b985631c419f068c405f9a28e0cb539"
+  },
+  "loopguard/src/loopguard/browser/__init__.py": {
+    "mtime": 1785631258.9577641,
+    "ast_hash": "56d1354235c87cb793bedee5757d1786",
+    "semantic_hash": "56d1354235c87cb793bedee5757d1786"
+  },
+  "loopguard/src/loopguard/browser/auth.py": {
+    "mtime": 1785631258.957968,
+    "ast_hash": "18c2e0818a04fa9b6de30ce31a07e216",
+    "semantic_hash": "18c2e0818a04fa9b6de30ce31a07e216"
+  },
+  "loopguard/src/loopguard/browser/client.py": {
+    "mtime": 1785631258.958104,
+    "ast_hash": "1c31b9cc66ee6daf0e8e93f2893b1184",
+    "semantic_hash": "1c31b9cc66ee6daf0e8e93f2893b1184"
+  },
+  "loopguard/src/loopguard/browser/execution.py": {
+    "mtime": 1785631258.9582095,
+    "ast_hash": "329d797f19fe4f1efccee40dfb5d9c46",
+    "semantic_hash": "329d797f19fe4f1efccee40dfb5d9c46"
+  },
+  "loopguard/src/loopguard/browser/manifest.py": {
+    "mtime": 1785631258.958318,
+    "ast_hash": "18f494c25aa042377e4afa9d91dbafb4",
+    "semantic_hash": "18f494c25aa042377e4afa9d91dbafb4"
+  },
+  "loopguard/src/loopguard/browser/metrics.py": {
+    "mtime": 1785631258.9584842,
+    "ast_hash": "8fe9ff010dabc3db67694fc5a0a0e62b",
+    "semantic_hash": "8fe9ff010dabc3db67694fc5a0a0e62b"
+  },
+  "loopguard/src/loopguard/browser/selection.py": {
+    "mtime": 1785631258.9585931,
+    "ast_hash": "7f3cbd8f3b95bebed18ae748f8dc86c2",
+    "semantic_hash": "7f3cbd8f3b95bebed18ae748f8dc86c2"
+  },
+  "loopguard/src/loopguard/browser/service.py": {
+    "mtime": 1785631258.9587975,
+    "ast_hash": "2bd526f901dd0026e6b72e844d667063",
+    "semantic_hash": "2bd526f901dd0026e6b72e844d667063"
+  },
+  "loopguard/src/loopguard/cli.py": {
+    "mtime": 1785631258.959689,
+    "ast_hash": "003aacac62dbfd7e031e448cbf1f2b41",
+    "semantic_hash": "003aacac62dbfd7e031e448cbf1f2b41"
+  },
+  "loopguard/src/loopguard/cli_docs.py": {
+    "mtime": 1785631258.959885,
+    "ast_hash": "fecf6f80087433c98a5d53bb12a20988",
+    "semantic_hash": "fecf6f80087433c98a5d53bb12a20988"
+  },
+  "loopguard/src/loopguard/config.py": {
+    "mtime": 1785631258.9600973,
+    "ast_hash": "b8907a2a282f449f996198f14259e1b3",
+    "semantic_hash": "b8907a2a282f449f996198f14259e1b3"
+  },
+  "loopguard/src/loopguard/configuration.py": {
+    "mtime": 1785631258.9602714,
+    "ast_hash": "74f27568c09121575d4f2ce8df3f0948",
+    "semantic_hash": "74f27568c09121575d4f2ce8df3f0948"
+  },
+  "loopguard/src/loopguard/context/__init__.py": {
+    "mtime": 1785631258.9604645,
+    "ast_hash": "267ae5580c732546bc34720d9348087b",
+    "semantic_hash": "267ae5580c732546bc34720d9348087b"
+  },
+  "loopguard/src/loopguard/context/capability.py": {
+    "mtime": 1785631258.9607277,
+    "ast_hash": "801a8e2a0b456fcb28ca2262b034715d",
+    "semantic_hash": "801a8e2a0b456fcb28ca2262b034715d"
+  },
+  "loopguard/src/loopguard/context/digest.py": {
+    "mtime": 1785631258.961122,
+    "ast_hash": "b5e485a28d5d74095842083399617d87",
+    "semantic_hash": "b5e485a28d5d74095842083399617d87"
+  },
+  "loopguard/src/loopguard/context/git_runtime.py": {
+    "mtime": 1785631258.961482,
+    "ast_hash": "63e89b42428d2dd53876a50e66b82e57",
+    "semantic_hash": "63e89b42428d2dd53876a50e66b82e57"
+  },
+  "loopguard/src/loopguard/context/git_state.py": {
+    "mtime": 1785631258.961715,
+    "ast_hash": "7d6c55991d0809f3ba9c4be0a160b85e",
+    "semantic_hash": "7d6c55991d0809f3ba9c4be0a160b85e"
+  },
+  "loopguard/src/loopguard/context/handoff.py": {
+    "mtime": 1785631258.962037,
+    "ast_hash": "4881d90358c20078d0a04a7ac4654f5f",
+    "semantic_hash": "4881d90358c20078d0a04a7ac4654f5f"
+  },
+  "loopguard/src/loopguard/context/hashing.py": {
+    "mtime": 1785631258.9624135,
+    "ast_hash": "a04851b576b4541c6c9fe0d0fccc4a19",
+    "semantic_hash": "a04851b576b4541c6c9fe0d0fccc4a19"
+  },
+  "loopguard/src/loopguard/context/index.py": {
+    "mtime": 1785631258.9626133,
+    "ast_hash": "9cf866f02fff4b28feeaa520a2ca81f7",
+    "semantic_hash": "9cf866f02fff4b28feeaa520a2ca81f7"
+  },
+  "loopguard/src/loopguard/context/journal.py": {
+    "mtime": 1785631258.9628417,
+    "ast_hash": "5b13d194455c91b6a51205c4b83bc7b2",
+    "semantic_hash": "5b13d194455c91b6a51205c4b83bc7b2"
+  },
+  "loopguard/src/loopguard/context/leases.py": {
+    "mtime": 1785631258.9630475,
+    "ast_hash": "157c22990a3dea1a4c1eb6d631a2a09c",
+    "semantic_hash": "157c22990a3dea1a4c1eb6d631a2a09c"
+  },
+  "loopguard/src/loopguard/context/mcp_server.py": {
+    "mtime": 1785631258.9636548,
+    "ast_hash": "db2cd3bb29ea89ba58b19f7b6a28ef56",
+    "semantic_hash": "db2cd3bb29ea89ba58b19f7b6a28ef56"
+  },
+  "loopguard/src/loopguard/context/models.py": {
+    "mtime": 1785631258.9638698,
+    "ast_hash": "c4522502f8e114ddae2181b5057f7473",
+    "semantic_hash": "c4522502f8e114ddae2181b5057f7473"
+  },
+  "loopguard/src/loopguard/context/symbols.py": {
+    "mtime": 1785631258.9640493,
+    "ast_hash": "5f846b2b2f67f416b019b2bc438271a5",
+    "semantic_hash": "5f846b2b2f67f416b019b2bc438271a5"
+  },
+  "loopguard/src/loopguard/context/watcher.py": {
+    "mtime": 1785631258.9641829,
+    "ast_hash": "d61034d3baa39ce9807f9f3349501704",
+    "semantic_hash": "d61034d3baa39ce9807f9f3349501704"
+  },
+  "loopguard/src/loopguard/context/worktrees.py": {
+    "mtime": 1785631258.964422,
+    "ast_hash": "7ce53069856b7d2ba42427f9cf5eee2d",
+    "semantic_hash": "7ce53069856b7d2ba42427f9cf5eee2d"
+  },
+  "loopguard/src/loopguard/control/__init__.py": {
+    "mtime": 1785631258.9646313,
+    "ast_hash": "e8abb5e1100aa19b2baead321f157715",
+    "semantic_hash": "e8abb5e1100aa19b2baead321f157715"
+  },
+  "loopguard/src/loopguard/control/actions.py": {
+    "mtime": 1785631258.9648209,
+    "ast_hash": "291386c7a11508af1a352573e2d39e17",
+    "semantic_hash": "291386c7a11508af1a352573e2d39e17"
+  },
+  "loopguard/src/loopguard/control/cloud_relay.py": {
+    "mtime": 1785631258.9649906,
+    "ast_hash": "0dfcd9c62324641aac2cde8c01e374a2",
+    "semantic_hash": "0dfcd9c62324641aac2cde8c01e374a2"
+  },
+  "loopguard/src/loopguard/control/crypto.py": {
+    "mtime": 1785631258.9652126,
+    "ast_hash": "9176d8751d581c60ceffa078e72498d0",
+    "semantic_hash": "9176d8751d581c60ceffa078e72498d0"
+  },
+  "loopguard/src/loopguard/control/daemon.py": {
+    "mtime": 1785631258.9655466,
+    "ast_hash": "558db47684210e5eaf6bee33bbda887c",
+    "semantic_hash": "558db47684210e5eaf6bee33bbda887c"
+  },
+  "loopguard/src/loopguard/control/decisions.py": {
+    "mtime": 1785631258.9658155,
+    "ast_hash": "7f9acae75e8c31b60cc29003d5e3dd08",
+    "semantic_hash": "7f9acae75e8c31b60cc29003d5e3dd08"
+  },
+  "loopguard/src/loopguard/control/diagnostics.py": {
+    "mtime": 1785631258.9661822,
+    "ast_hash": "c3c4f10d1528e4c5849893e6e1e771fe",
+    "semantic_hash": "c3c4f10d1528e4c5849893e6e1e771fe"
+  },
+  "loopguard/src/loopguard/control/dispatch.py": {
+    "mtime": 1785631258.9664888,
+    "ast_hash": "61c521cb1e90c104f76b5feec3390811",
+    "semantic_hash": "61c521cb1e90c104f76b5feec3390811"
+  },
+  "loopguard/src/loopguard/control/errors.py": {
+    "mtime": 1785631258.9667726,
+    "ast_hash": "a7ccdedd49244d3eda9f76532e26e23d",
+    "semantic_hash": "a7ccdedd49244d3eda9f76532e26e23d"
+  },
+  "loopguard/src/loopguard/control/events.py": {
+    "mtime": 1785631258.9670384,
+    "ast_hash": "bf0c7dc94ceff45726b3e2253aaee6b7",
+    "semantic_hash": "bf0c7dc94ceff45726b3e2253aaee6b7"
+  },
+  "loopguard/src/loopguard/control/lifecycle.py": {
+    "mtime": 1785631258.9673269,
+    "ast_hash": "9cd01a2edb32078e670b24e47016b66d",
+    "semantic_hash": "9cd01a2edb32078e670b24e47016b66d"
+  },
+  "loopguard/src/loopguard/control/migrations.py": {
+    "mtime": 1785631258.9676285,
+    "ast_hash": "cf3413f7f17eae59c8bbebb47887fb9f",
+    "semantic_hash": "cf3413f7f17eae59c8bbebb47887fb9f"
+  },
+  "loopguard/src/loopguard/control/paths.py": {
+    "mtime": 1785631258.967921,
+    "ast_hash": "a6a22b963dc9ca6c3c8e7ed4c5ad3266",
+    "semantic_hash": "a6a22b963dc9ca6c3c8e7ed4c5ad3266"
+  },
+  "loopguard/src/loopguard/control/projection.py": {
+    "mtime": 1785631258.968204,
+    "ast_hash": "7d884b37823512220223f458fe192f06",
+    "semantic_hash": "7d884b37823512220223f458fe192f06"
+  },
+  "loopguard/src/loopguard/control/protocol.py": {
+    "mtime": 1785631258.9684942,
+    "ast_hash": "06d9ae022335c89142ebbd71eee58fac",
+    "semantic_hash": "06d9ae022335c89142ebbd71eee58fac"
+  },
+  "loopguard/src/loopguard/control/redaction.py": {
+    "mtime": 1785631258.968805,
+    "ast_hash": "040aaa10205f30643e30d23cfc660d6d",
+    "semantic_hash": "040aaa10205f30643e30d23cfc660d6d"
+  },
+  "loopguard/src/loopguard/control/store.py": {
+    "mtime": 1785631258.96912,
+    "ast_hash": "a0e6d1d65cc40c3cbb049c445e0acdc7",
+    "semantic_hash": "a0e6d1d65cc40c3cbb049c445e0acdc7"
+  },
+  "loopguard/src/loopguard/control/transport.py": {
+    "mtime": 1785631258.9693317,
+    "ast_hash": "cc5c9406adb172193d391fba1734fcfb",
+    "semantic_hash": "cc5c9406adb172193d391fba1734fcfb"
+  },
+  "loopguard/src/loopguard/decision.py": {
+    "mtime": 1782575547.9300294,
+    "ast_hash": "09ddc3538a4aee674ff24092cb861195",
+    "semantic_hash": "09ddc3538a4aee674ff24092cb861195"
+  },
+  "loopguard/src/loopguard/demo_projects/config-hunt/app.py": {
+    "mtime": 1782585300.2932312,
+    "ast_hash": "c52e4f21532ca7c32ed6780ed081752c",
+    "semantic_hash": "c52e4f21532ca7c32ed6780ed081752c"
+  },
+  "loopguard/src/loopguard/demo_projects/config-hunt/config.json": {
+    "mtime": 1782585300.2935212,
+    "ast_hash": "f577c12233778600953f0f97d3830ffb",
+    "semantic_hash": "f577c12233778600953f0f97d3830ffb"
+  },
+  "loopguard/src/loopguard/demo_projects/npm-manifest/pyproject.toml": {
+    "mtime": 1782585300.2938528,
+    "ast_hash": "934c0438723169927fe11580cd43450d",
+    "semantic_hash": "934c0438723169927fe11580cd43450d"
+  },
+  "loopguard/src/loopguard/demo_projects/npm-manifest/src/acme.py": {
+    "mtime": 1782585300.29403,
+    "ast_hash": "b54ba86693c5f10718d19f92e26e220c",
+    "semantic_hash": "b54ba86693c5f10718d19f92e26e220c"
+  },
+  "loopguard/src/loopguard/demo_projects/sandbox/config.json": {
+    "mtime": 1782585300.2945447,
+    "ast_hash": "c2f6e1d35782c2d601f07ccc00523a6e",
+    "semantic_hash": "c2f6e1d35782c2d601f07ccc00523a6e"
+  },
+  "loopguard/src/loopguard/demo_projects/sandbox/pyproject.toml": {
+    "mtime": 1782585300.2948484,
+    "ast_hash": "03bd79f5fc1183884d5bb64037b98217",
+    "semantic_hash": "03bd79f5fc1183884d5bb64037b98217"
+  },
+  "loopguard/src/loopguard/demo_projects/sandbox/src/pipeline.py": {
+    "mtime": 1782585300.2949927,
+    "ast_hash": "f9ed95344d1b8599450ae2c143679039",
+    "semantic_hash": "f9ed95344d1b8599450ae2c143679039"
+  },
+  "loopguard/src/loopguard/demos.py": {
+    "mtime": 1782575547.9302008,
+    "ast_hash": "d8df21ffc6ba5ea898d01f425cb66183",
+    "semantic_hash": "d8df21ffc6ba5ea898d01f425cb66183"
+  },
+  "loopguard/src/loopguard/detectors/__init__.py": {
+    "mtime": 1782523062.0314152,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "loopguard/src/loopguard/detectors/budget.py": {
+    "mtime": 1782523062.0316164,
+    "ast_hash": "6887eaa04a2970255418cc4f34e85135",
+    "semantic_hash": "6887eaa04a2970255418cc4f34e85135"
+  },
+  "loopguard/src/loopguard/detectors/exact.py": {
+    "mtime": 1782523062.0317357,
+    "ast_hash": "c093167aa9a6a6f49b977b0d6279b40d",
+    "semantic_hash": "c093167aa9a6a6f49b977b0d6279b40d"
+  },
+  "loopguard/src/loopguard/detectors/pingpong.py": {
+    "mtime": 1782523062.031853,
+    "ast_hash": "1a1bd9b156011bdea6368973e346fc58",
+    "semantic_hash": "1a1bd9b156011bdea6368973e346fc58"
+  },
+  "loopguard/src/loopguard/detectors/semantic.py": {
+    "mtime": 1782523062.0319674,
+    "ast_hash": "6d122f3740fceb96dfdda118d7969a05",
+    "semantic_hash": "6d122f3740fceb96dfdda118d7969a05"
+  },
+  "loopguard/src/loopguard/diff.py": {
+    "mtime": 1782523062.0320816,
+    "ast_hash": "1030608f8a0e72d4e0933dc1247764e3",
+    "semantic_hash": "1030608f8a0e72d4e0933dc1247764e3"
+  },
+  "loopguard/src/loopguard/embeddings/__init__.py": {
+    "mtime": 1782523062.0321484,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "loopguard/src/loopguard/embeddings/base.py": {
+    "mtime": 1782523062.0323262,
+    "ast_hash": "f78d65f1c4a469a457064110add2e4c1",
+    "semantic_hash": "f78d65f1c4a469a457064110add2e4c1"
+  },
+  "loopguard/src/loopguard/embeddings/local_hashing.py": {
+    "mtime": 1782523062.0324488,
+    "ast_hash": "b484640e5ddacb371862061ed46dd9e6",
+    "semantic_hash": "b484640e5ddacb371862061ed46dd9e6"
+  },
+  "loopguard/src/loopguard/event.py": {
+    "mtime": 1782523062.0325682,
+    "ast_hash": "77e00215ed56f853ad195f1b538389e8",
+    "semantic_hash": "77e00215ed56f853ad195f1b538389e8"
+  },
+  "loopguard/src/loopguard/exceptions.py": {
+    "mtime": 1782523062.0326872,
+    "ast_hash": "95f66582ddb500b1383345f4eb041a1a",
+    "semantic_hash": "95f66582ddb500b1383345f4eb041a1a"
+  },
+  "loopguard/src/loopguard/guard.py": {
+    "mtime": 1785631258.96968,
+    "ast_hash": "b102d50bab69f2d8f751d60fb2cecdbf",
+    "semantic_hash": "b102d50bab69f2d8f751d60fb2cecdbf"
+  },
+  "loopguard/src/loopguard/heal/__init__.py": {
+    "mtime": 1785631258.9698715,
+    "ast_hash": "6a6e5679e5f2ed3b71fcdcd1b05773c9",
+    "semantic_hash": "6a6e5679e5f2ed3b71fcdcd1b05773c9"
+  },
+  "loopguard/src/loopguard/heal/candidates.py": {
+    "mtime": 1785631258.9701686,
+    "ast_hash": "1cae93102d00589d6db3d6cfd2e81a40",
+    "semantic_hash": "1cae93102d00589d6db3d6cfd2e81a40"
+  },
+  "loopguard/src/loopguard/heal/docker.py": {
+    "mtime": 1785631258.9707,
+    "ast_hash": "c6615df39f1e6bdf2e4ab4c64f389424",
+    "semantic_hash": "c6615df39f1e6bdf2e4ab4c64f389424"
+  },
+  "loopguard/src/loopguard/heal/evaluate.py": {
+    "mtime": 1785631258.9709573,
+    "ast_hash": "a95e5fbc09c9af140c2d4b570a5398c8",
+    "semantic_hash": "a95e5fbc09c9af140c2d4b570a5398c8"
+  },
+  "loopguard/src/loopguard/heal/fingerprint.py": {
+    "mtime": 1785631258.9711685,
+    "ast_hash": "5d3ada190faaaab02e6deca8ae43c618",
+    "semantic_hash": "5d3ada190faaaab02e6deca8ae43c618"
+  },
+  "loopguard/src/loopguard/heal/fixtures.py": {
+    "mtime": 1785631258.9714062,
+    "ast_hash": "938e38d3959af915b09b17e8ba59edaa",
+    "semantic_hash": "938e38d3959af915b09b17e8ba59edaa"
+  },
+  "loopguard/src/loopguard/heal/generator.py": {
+    "mtime": 1785631258.9716651,
+    "ast_hash": "2c621224f15283b32d60592d7cf5ffb0",
+    "semantic_hash": "2c621224f15283b32d60592d7cf5ffb0"
+  },
+  "loopguard/src/loopguard/heal/github.py": {
+    "mtime": 1785631258.9718378,
+    "ast_hash": "431714a9c25fdf3dff6ef7cbe2c8e4b2",
+    "semantic_hash": "431714a9c25fdf3dff6ef7cbe2c8e4b2"
+  },
+  "loopguard/src/loopguard/heal/intake.py": {
+    "mtime": 1785631258.972012,
+    "ast_hash": "6a9e3d0b912f89e7a36cefe20b8af169",
+    "semantic_hash": "6a9e3d0b912f89e7a36cefe20b8af169"
+  },
+  "loopguard/src/loopguard/heal/integrations/__init__.py": {
+    "mtime": 1785631258.9723012,
+    "ast_hash": "1e26982847fcb4500e75f8e9d8fd753f",
+    "semantic_hash": "1e26982847fcb4500e75f8e9d8fd753f"
+  },
+  "loopguard/src/loopguard/heal/integrations/airflow.py": {
+    "mtime": 1785631258.9733384,
+    "ast_hash": "309e0dc6e97b390f807e07aba7293f8e",
+    "semantic_hash": "309e0dc6e97b390f807e07aba7293f8e"
+  },
+  "loopguard/src/loopguard/heal/integrations/github_actions.py": {
+    "mtime": 1785631258.9735298,
+    "ast_hash": "2a38206aa5b24dc892e72b4dbad58353",
+    "semantic_hash": "2a38206aa5b24dc892e72b4dbad58353"
+  },
+  "loopguard/src/loopguard/heal/integrations/openlineage.py": {
+    "mtime": 1785631258.9736311,
+    "ast_hash": "6215dd576d9cb8edd2ce5a2dbaff86b9",
+    "semantic_hash": "6215dd576d9cb8edd2ce5a2dbaff86b9"
+  },
+  "loopguard/src/loopguard/heal/integrations/webhook.py": {
+    "mtime": 1785631258.9737277,
+    "ast_hash": "c9850cbe94035149035ea9811659957e",
+    "semantic_hash": "c9850cbe94035149035ea9811659957e"
+  },
+  "loopguard/src/loopguard/heal/metrics.py": {
+    "mtime": 1785631258.973944,
+    "ast_hash": "776ec89cab5dcfcbaaf6ab6c16e24e61",
+    "semantic_hash": "776ec89cab5dcfcbaaf6ab6c16e24e61"
+  },
+  "loopguard/src/loopguard/heal/models.py": {
+    "mtime": 1785631258.974128,
+    "ast_hash": "7c26f32703c36d507ebb79d4740bd157",
+    "semantic_hash": "7c26f32703c36d507ebb79d4740bd157"
+  },
+  "loopguard/src/loopguard/heal/planner.py": {
+    "mtime": 1785631258.9743083,
+    "ast_hash": "b4e6c0c23e9dba97e3f46bdb7ad56a40",
+    "semantic_hash": "b4e6c0c23e9dba97e3f46bdb7ad56a40"
+  },
+  "loopguard/src/loopguard/heal/rank.py": {
+    "mtime": 1785631258.9744875,
+    "ast_hash": "908e9f412ae8b3c94de7eff129519c22",
+    "semantic_hash": "908e9f412ae8b3c94de7eff129519c22"
+  },
+  "loopguard/src/loopguard/heal/report.py": {
+    "mtime": 1785631258.9746532,
+    "ast_hash": "b05eaa45e81c766ed6f237fcc0c32713",
+    "semantic_hash": "b05eaa45e81c766ed6f237fcc0c32713"
+  },
+  "loopguard/src/loopguard/heal/reproduce.py": {
+    "mtime": 1785631258.9748292,
+    "ast_hash": "dc60b55d212c5d5f500dc398489cb3c5",
+    "semantic_hash": "dc60b55d212c5d5f500dc398489cb3c5"
+  },
+  "loopguard/src/loopguard/heal/sandbox.py": {
+    "mtime": 1785631258.9749696,
+    "ast_hash": "f38e1b876581d80462fc2cbc13c30bd3",
+    "semantic_hash": "f38e1b876581d80462fc2cbc13c30bd3"
+  },
+  "loopguard/src/loopguard/heal/schema.py": {
+    "mtime": 1785631258.9751291,
+    "ast_hash": "bfb6cbe0bc17301a5a4e0119782fc9bd",
+    "semantic_hash": "bfb6cbe0bc17301a5a4e0119782fc9bd"
+  },
+  "loopguard/src/loopguard/integrations/__init__.py": {
+    "mtime": 1782523062.0328982,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "loopguard/src/loopguard/integrations/cerebras_agent.py": {
+    "mtime": 1782523062.0330808,
+    "ast_hash": "ca4b77105ff8a1203414b8de37cf3b7b",
+    "semantic_hash": "ca4b77105ff8a1203414b8de37cf3b7b"
+  },
+  "loopguard/src/loopguard/integrations/cerebras_client.py": {
+    "mtime": 1782575547.930592,
+    "ast_hash": "330a9f374fc7ffd85813b3a3f7618ec2",
+    "semantic_hash": "330a9f374fc7ffd85813b3a3f7618ec2"
+  },
+  "loopguard/src/loopguard/integrations/litellm_callback.py": {
+    "mtime": 1782575547.9308133,
+    "ast_hash": "e379079c5d26d52f47f7c053bbffc767",
+    "semantic_hash": "e379079c5d26d52f47f7c053bbffc767"
+  },
+  "loopguard/src/loopguard/integrations/manual.py": {
+    "mtime": 1782523062.033411,
+    "ast_hash": "146c89b40669c7ba55c22553233589e1",
+    "semantic_hash": "146c89b40669c7ba55c22553233589e1"
+  },
+  "loopguard/src/loopguard/judge.py": {
+    "mtime": 1785631258.975425,
+    "ast_hash": "97c5af9ba365afe7d6cc38d730cff257",
+    "semantic_hash": "97c5af9ba365afe7d6cc38d730cff257"
+  },
+  "loopguard/src/loopguard/live_demo.py": {
+    "mtime": 1782575547.9309871,
+    "ast_hash": "9a79084cf9c69efdcb634ac6b29c14d5",
+    "semantic_hash": "9a79084cf9c69efdcb634ac6b29c14d5"
+  },
+  "loopguard/src/loopguard/normalize.py": {
+    "mtime": 1782575547.931109,
+    "ast_hash": "32185f6af3570f7b334b38dbd14add67",
+    "semantic_hash": "32185f6af3570f7b334b38dbd14add67"
+  },
+  "loopguard/src/loopguard/preferences/__init__.py": {
+    "mtime": 1785631258.97564,
+    "ast_hash": "ba8f4a05fe5c5242480200e7a2d8c0a9",
+    "semantic_hash": "ba8f4a05fe5c5242480200e7a2d8c0a9"
+  },
+  "loopguard/src/loopguard/preferences/accessibility.py": {
+    "mtime": 1785631258.9758017,
+    "ast_hash": "5cb79077ff50c6f23c844caa561c5fa5",
+    "semantic_hash": "5cb79077ff50c6f23c844caa561c5fa5"
+  },
+  "loopguard/src/loopguard/preferences/compiler.py": {
+    "mtime": 1785631258.976012,
+    "ast_hash": "b3817cdf7a90981da3383155aabbd877",
+    "semantic_hash": "b3817cdf7a90981da3383155aabbd877"
+  },
+  "loopguard/src/loopguard/preferences/evaluators.py": {
+    "mtime": 1785631258.9763508,
+    "ast_hash": "9730da38c6d372736558f83617e7f6b4",
+    "semantic_hash": "9730da38c6d372736558f83617e7f6b4"
+  },
+  "loopguard/src/loopguard/preferences/learning.py": {
+    "mtime": 1785631258.976529,
+    "ast_hash": "5646804810007d260b82450497ef0abb",
+    "semantic_hash": "5646804810007d260b82450497ef0abb"
+  },
+  "loopguard/src/loopguard/preferences/models.py": {
+    "mtime": 1785631258.97671,
+    "ast_hash": "8d23fe99b36eb9d6e086835433f0396e",
+    "semantic_hash": "8d23fe99b36eb9d6e086835433f0396e"
+  },
+  "loopguard/src/loopguard/preferences/service.py": {
+    "mtime": 1785631258.9769223,
+    "ast_hash": "6d07c5e208e3e923615ed3dd77573aeb",
+    "semantic_hash": "6d07c5e208e3e923615ed3dd77573aeb"
+  },
+  "loopguard/src/loopguard/preferences/store.py": {
+    "mtime": 1785631258.9771376,
+    "ast_hash": "5f1bfbfe320f22a522543c4261345996",
+    "semantic_hash": "5f1bfbfe320f22a522543c4261345996"
+  },
+  "loopguard/src/loopguard/preferences/visual_critic.py": {
+    "mtime": 1785631258.977746,
+    "ast_hash": "ca45fff076349d427002f73ad2f36273",
+    "semantic_hash": "ca45fff076349d427002f73ad2f36273"
+  },
+  "loopguard/src/loopguard/pricing.py": {
+    "mtime": 1782575547.931176,
+    "ast_hash": "2ba6c7bcea9bb1a11a0d5a0166758bf7",
+    "semantic_hash": "2ba6c7bcea9bb1a11a0d5a0166758bf7"
+  },
+  "loopguard/src/loopguard/providers/__init__.py": {
+    "mtime": 1782575547.93128,
+    "ast_hash": "bac4d011911e06ad6b0507c69f8cd51c",
+    "semantic_hash": "bac4d011911e06ad6b0507c69f8cd51c"
+  },
+  "loopguard/src/loopguard/providers/base.py": {
+    "mtime": 1782575547.931344,
+    "ast_hash": "da3a5aa80f9c67bd2ff1411b2dc658a8",
+    "semantic_hash": "da3a5aa80f9c67bd2ff1411b2dc658a8"
+  },
+  "loopguard/src/loopguard/providers/cerebras_provider.py": {
+    "mtime": 1782575547.9314141,
+    "ast_hash": "772793fa018ee6d51013d7c0382e161d",
+    "semantic_hash": "772793fa018ee6d51013d7c0382e161d"
+  },
+  "loopguard/src/loopguard/providers/litellm_provider.py": {
+    "mtime": 1782575547.9315062,
+    "ast_hash": "81bdaf5d75348db3d6c560db05193009",
+    "semantic_hash": "81bdaf5d75348db3d6c560db05193009"
+  },
+  "loopguard/src/loopguard/quickstart.py": {
+    "mtime": 1785631258.9780974,
+    "ast_hash": "d0fa7837f224f138821dd60134cdc34e",
+    "semantic_hash": "d0fa7837f224f138821dd60134cdc34e"
+  },
+  "loopguard/src/loopguard/router/__init__.py": {
+    "mtime": 1785631258.9783666,
+    "ast_hash": "865daa3c972f9cb8a7801d263a6191e4",
+    "semantic_hash": "865daa3c972f9cb8a7801d263a6191e4"
+  },
+  "loopguard/src/loopguard/router/budgets.py": {
+    "mtime": 1785631258.9785397,
+    "ast_hash": "f0d4b1e9bdcdda3b6e5290b97d29ebf5",
+    "semantic_hash": "f0d4b1e9bdcdda3b6e5290b97d29ebf5"
+  },
+  "loopguard/src/loopguard/router/catalog.py": {
+    "mtime": 1785631258.978763,
+    "ast_hash": "84e2b81e5955c3c9a3c0827ec9eccba0",
+    "semantic_hash": "84e2b81e5955c3c9a3c0827ec9eccba0"
+  },
+  "loopguard/src/loopguard/router/coordinator.py": {
+    "mtime": 1785631258.978956,
+    "ast_hash": "c90233de7533e7293d4dc2b027cbbdfa",
+    "semantic_hash": "c90233de7533e7293d4dc2b027cbbdfa"
+  },
+  "loopguard/src/loopguard/router/evaluation.py": {
+    "mtime": 1785631258.979302,
+    "ast_hash": "a8e38f184349ef1e3e2822129f24457b",
+    "semantic_hash": "a8e38f184349ef1e3e2822129f24457b"
+  },
+  "loopguard/src/loopguard/router/features.py": {
+    "mtime": 1785631258.9795055,
+    "ast_hash": "1e992b4e7dcb1fbc338a81d1ffefde49",
+    "semantic_hash": "1e992b4e7dcb1fbc338a81d1ffefde49"
+  },
+  "loopguard/src/loopguard/router/judge_cache.py": {
+    "mtime": 1785631258.9796205,
+    "ast_hash": "74e80d6e89488fc4fc4b55c5ee052d4e",
+    "semantic_hash": "74e80d6e89488fc4fc4b55c5ee052d4e"
+  },
+  "loopguard/src/loopguard/router/outcomes.py": {
+    "mtime": 1785631258.9797878,
+    "ast_hash": "008435723b50c5ddfe40552997a86c28",
+    "semantic_hash": "008435723b50c5ddfe40552997a86c28"
+  },
+  "loopguard/src/loopguard/router/policy.py": {
+    "mtime": 1785631258.9799922,
+    "ast_hash": "d4bac8fc0e877fed4e6544223d7368ac",
+    "semantic_hash": "d4bac8fc0e877fed4e6544223d7368ac"
+  },
+  "loopguard/src/loopguard/router/store.py": {
+    "mtime": 1785631258.9801722,
+    "ast_hash": "51d0d9ad001eb246e75414ce82539013",
+    "semantic_hash": "51d0d9ad001eb246e75414ce82539013"
+  },
+  "loopguard/src/loopguard/security/__init__.py": {
+    "mtime": 1785631258.9803421,
+    "ast_hash": "219fdb63f6aef7d1a2f9383a5f46654d",
+    "semantic_hash": "219fdb63f6aef7d1a2f9383a5f46654d"
+  },
+  "loopguard/src/loopguard/security/boundaries.py": {
+    "mtime": 1785631258.9805603,
+    "ast_hash": "452eefd195036bd098189bb349a6eeba",
+    "semantic_hash": "452eefd195036bd098189bb349a6eeba"
+  },
+  "loopguard/src/loopguard/security/keys.py": {
+    "mtime": 1785631258.981492,
+    "ast_hash": "9621d97b63484a4538fee54cdc334d85",
+    "semantic_hash": "9621d97b63484a4538fee54cdc334d85"
+  },
+  "loopguard/src/loopguard/security/migrate.py": {
+    "mtime": 1785631258.9817183,
+    "ast_hash": "d85606e9a83df5ee06a345594ccfe68e",
+    "semantic_hash": "d85606e9a83df5ee06a345594ccfe68e"
+  },
+  "loopguard/src/loopguard/security/permissions.py": {
+    "mtime": 1785631258.9818196,
+    "ast_hash": "96604c61fd4b6016dfaf7c5437d841b2",
+    "semantic_hash": "96604c61fd4b6016dfaf7c5437d841b2"
+  },
+  "loopguard/src/loopguard/security/update.py": {
+    "mtime": 1785631258.9819727,
+    "ast_hash": "31feb4136baafd46d4e5ea0cb6187aa6",
+    "semantic_hash": "31feb4136baafd46d4e5ea0cb6187aa6"
+  },
+  "loopguard/src/loopguard/server/__init__.py": {
+    "mtime": 1782575547.9316258,
+    "ast_hash": "b43ae3e3d5fca86aff5ac95fa6baa9ff",
+    "semantic_hash": "b43ae3e3d5fca86aff5ac95fa6baa9ff"
+  },
+  "loopguard/src/loopguard/server/app.py": {
+    "mtime": 1785631258.9821675,
+    "ast_hash": "d2a7e49c62214ef3f89f59fca4719057",
+    "semantic_hash": "d2a7e49c62214ef3f89f59fca4719057"
+  },
+  "loopguard/src/loopguard/server/projects.py": {
+    "mtime": 1782585300.2960036,
+    "ast_hash": "813ad55d83ce02a52472f5069de4f8b7",
+    "semantic_hash": "813ad55d83ce02a52472f5069de4f8b7"
+  },
+  "loopguard/src/loopguard/server/runs.py": {
+    "mtime": 1782585300.2962625,
+    "ast_hash": "81ff59588ddc42f418a0a95b5bb24699",
+    "semantic_hash": "81ff59588ddc42f418a0a95b5bb24699"
+  },
+  "loopguard/src/loopguard/server/schemas.py": {
+    "mtime": 1782585300.2964928,
+    "ast_hash": "06002419a6ee583859724d09155ecfb6",
+    "semantic_hash": "06002419a6ee583859724d09155ecfb6"
+  },
+  "loopguard/src/loopguard/storage.py": {
+    "mtime": 1782523062.0336463,
+    "ast_hash": "7cdccc73a6c8a5070985a880edeb634d",
+    "semantic_hash": "7cdccc73a6c8a5070985a880edeb634d"
+  },
+  "loopguard/src/loopguard/telemetry.py": {
+    "mtime": 1785631258.9823387,
+    "ast_hash": "03fe394ed252892d8abdad996f0e97df",
+    "semantic_hash": "03fe394ed252892d8abdad996f0e97df"
+  },
+  "loopguard/src/loopguard/tools.py": {
+    "mtime": 1782575547.9321282,
+    "ast_hash": "1cfc2f75ae209fbdee3e90fd35a0d686",
+    "semantic_hash": "1cfc2f75ae209fbdee3e90fd35a0d686"
+  },
+  "loopguard/src/loopguard/ui/__init__.py": {
+    "mtime": 1782523062.0337205,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "loopguard/src/loopguard/ui/terminal.py": {
+    "mtime": 1782575547.9322526,
+    "ast_hash": "908d4fb02a2969e20509631a44cbea24",
+    "semantic_hash": "908d4fb02a2969e20509631a44cbea24"
+  },
+  "loopguard/src/loopguard/verify/__init__.py": {
+    "mtime": 1785631258.9825335,
+    "ast_hash": "9decbe61c917e09be64987cdfd8b0b41",
+    "semantic_hash": "9decbe61c917e09be64987cdfd8b0b41"
+  },
+  "loopguard/src/loopguard/verify/artifacts.py": {
+    "mtime": 1785631258.982741,
+    "ast_hash": "70ff5b88551eff41e19403adc1e90ca0",
+    "semantic_hash": "70ff5b88551eff41e19403adc1e90ca0"
+  },
+  "loopguard/src/loopguard/verify/baseline.py": {
+    "mtime": 1785631258.9828477,
+    "ast_hash": "f5372fcc2666b4fdee4de7d9c7fddfaf",
+    "semantic_hash": "f5372fcc2666b4fdee4de7d9c7fddfaf"
+  },
+  "loopguard/src/loopguard/verify/discovery.py": {
+    "mtime": 1785631258.9830046,
+    "ast_hash": "d587c5c315f2b0c24e5e1ecf9b148a24",
+    "semantic_hash": "d587c5c315f2b0c24e5e1ecf9b148a24"
+  },
+  "loopguard/src/loopguard/verify/exec_wrapper.py": {
+    "mtime": 1785631258.98314,
+    "ast_hash": "ae63c039b9e3d2b84ff967093ef97145",
+    "semantic_hash": "ae63c039b9e3d2b84ff967093ef97145"
+  },
+  "loopguard/src/loopguard/verify/hooks.py": {
+    "mtime": 1785631258.9832995,
+    "ast_hash": "d6cba6fe076e19cedc3e48f437792bbd",
+    "semantic_hash": "d6cba6fe076e19cedc3e48f437792bbd"
+  },
+  "loopguard/src/loopguard/verify/impact.py": {
+    "mtime": 1785631258.9839785,
+    "ast_hash": "a8b677d9cfa3c07f97079f0761f7e501",
+    "semantic_hash": "a8b677d9cfa3c07f97079f0761f7e501"
+  },
+  "loopguard/src/loopguard/verify/intake.py": {
+    "mtime": 1785631258.984213,
+    "ast_hash": "a839867e6a544565b5514bacb3ee3f4c",
+    "semantic_hash": "a839867e6a544565b5514bacb3ee3f4c"
+  },
+  "loopguard/src/loopguard/verify/isolation.py": {
+    "mtime": 1785631258.984331,
+    "ast_hash": "c13ea0989e7123e74c467c3d1d808fdc",
+    "semantic_hash": "c13ea0989e7123e74c467c3d1d808fdc"
+  },
+  "loopguard/src/loopguard/verify/manifest.py": {
+    "mtime": 1785631258.9845254,
+    "ast_hash": "0e711b60214f6381523f7096be27cdb8",
+    "semantic_hash": "0e711b60214f6381523f7096be27cdb8"
+  },
+  "loopguard/src/loopguard/verify/models.py": {
+    "mtime": 1785631258.9847121,
+    "ast_hash": "b575c789e160e907668b37212595b555",
+    "semantic_hash": "b575c789e160e907668b37212595b555"
+  },
+  "loopguard/src/loopguard/verify/plugins.py": {
+    "mtime": 1785631258.9849079,
+    "ast_hash": "8aa7a67f7328471c0287079157edff92",
+    "semantic_hash": "8aa7a67f7328471c0287079157edff92"
+  },
+  "loopguard/src/loopguard/verify/runner.py": {
+    "mtime": 1785631258.9851792,
+    "ast_hash": "964f3b1187f93e0edb050ddc00911982",
+    "semantic_hash": "964f3b1187f93e0edb050ddc00911982"
+  },
+  "loopguard/src/loopguard/verify/service.py": {
+    "mtime": 1785631258.98612,
+    "ast_hash": "64c82b0fa4401a09a8925b6d006fb2e6",
+    "semantic_hash": "64c82b0fa4401a09a8925b6d006fb2e6"
+  },
+  "loopguard/src/loopguard/verify/store.py": {
+    "mtime": 1785631258.9863336,
+    "ast_hash": "65e9600be3c7f77bb29a57c3b7e33a1b",
+    "semantic_hash": "65e9600be3c7f77bb29a57c3b7e33a1b"
+  },
+  "loopguard/src/loopguard/verify/trust.py": {
+    "mtime": 1785631258.9864907,
+    "ast_hash": "e0c21005688da4c02d83f2b2adee3f17",
+    "semantic_hash": "e0c21005688da4c02d83f2b2adee3f17"
+  },
+  "loopguard/src/loopguard/verify/verdict.py": {
+    "mtime": 1785631258.9866393,
+    "ast_hash": "e2295073cfdeb01b9b0322a83b646047",
+    "semantic_hash": "e2295073cfdeb01b9b0322a83b646047"
+  },
+  "loopguard/tests/adapters/test_base.py": {
+    "mtime": 1785631258.9868288,
+    "ast_hash": "7513b75c34accf65d48c6799d0310ae6",
+    "semantic_hash": "7513b75c34accf65d48c6799d0310ae6"
+  },
+  "loopguard/tests/adapters/test_claude_install.py": {
+    "mtime": 1785631258.9870098,
+    "ast_hash": "2b7597c29862b7d3d8baee5befe0a7b2",
+    "semantic_hash": "2b7597c29862b7d3d8baee5befe0a7b2"
+  },
+  "loopguard/tests/adapters/test_claude_managed.py": {
+    "mtime": 1785631258.9871712,
+    "ast_hash": "e2f7e999fb1f72e449604083d56297e3",
+    "semantic_hash": "e2f7e999fb1f72e449604083d56297e3"
+  },
+  "loopguard/tests/adapters/test_codex_install.py": {
+    "mtime": 1785631258.9873512,
+    "ast_hash": "60992122b9d73e3230a4f8ab21cf6db9",
+    "semantic_hash": "60992122b9d73e3230a4f8ab21cf6db9"
+  },
+  "loopguard/tests/adapters/test_codex_managed.py": {
+    "mtime": 1785631258.9875414,
+    "ast_hash": "d9a427d79cda1e7c8a7f1dee12bb78a9",
+    "semantic_hash": "d9a427d79cda1e7c8a7f1dee12bb78a9"
+  },
+  "loopguard/tests/adapters/test_doctor.py": {
+    "mtime": 1785631258.9877136,
+    "ast_hash": "89c745ed1aaa8a8b596da980f6de6c67",
+    "semantic_hash": "89c745ed1aaa8a8b596da980f6de6c67"
+  },
+  "loopguard/tests/adapters/test_hook_entry.py": {
+    "mtime": 1785631258.9880135,
+    "ast_hash": "71f21e360a4348b8b4b184fd47c3af57",
+    "semantic_hash": "71f21e360a4348b8b4b184fd47c3af57"
+  },
+  "loopguard/tests/adapters/test_service_install.py": {
+    "mtime": 1785631258.9882102,
+    "ast_hash": "0e7ddebd2de2c8c65e2235a35c335cf9",
+    "semantic_hash": "0e7ddebd2de2c8c65e2235a35c335cf9"
+  },
+  "loopguard/tests/adapters/test_service_install_windows.py": {
+    "mtime": 1785631258.9883733,
+    "ast_hash": "2efe083e058fd22bdcbf93f23b8b525d",
+    "semantic_hash": "2efe083e058fd22bdcbf93f23b8b525d"
+  },
+  "loopguard/tests/adapters/test_setup.py": {
+    "mtime": 1785631258.9885478,
+    "ast_hash": "569ddba7bd4d55c28b367dc620e7a430",
+    "semantic_hash": "569ddba7bd4d55c28b367dc620e7a430"
+  },
+  "loopguard/tests/browser/test_auth.py": {
+    "mtime": 1785631258.988754,
+    "ast_hash": "649d18c20e8c4c42baae03323611161a",
+    "semantic_hash": "649d18c20e8c4c42baae03323611161a"
+  },
+  "loopguard/tests/browser/test_client.py": {
+    "mtime": 1785631258.9889126,
+    "ast_hash": "3609a07f952fc186a5b7ebc926428fba",
+    "semantic_hash": "3609a07f952fc186a5b7ebc926428fba"
+  },
+  "loopguard/tests/browser/test_execution.py": {
+    "mtime": 1785631258.9896004,
+    "ast_hash": "f202355b465936fd2a20f10270590ebb",
+    "semantic_hash": "f202355b465936fd2a20f10270590ebb"
+  },
+  "loopguard/tests/browser/test_metrics.py": {
+    "mtime": 1785631258.9897661,
+    "ast_hash": "928fc70ca5f3ccb27b9298f49c8023cc",
+    "semantic_hash": "928fc70ca5f3ccb27b9298f49c8023cc"
+  },
+  "loopguard/tests/browser/test_selection.py": {
+    "mtime": 1785631258.9899635,
+    "ast_hash": "bfc3bfb182aec67608c480b5b098a754",
+    "semantic_hash": "bfc3bfb182aec67608c480b5b098a754"
+  },
+  "loopguard/tests/conftest.py": {
+    "mtime": 1782523062.0341196,
+    "ast_hash": "2363013a5a747524af89914803d1a214",
+    "semantic_hash": "2363013a5a747524af89914803d1a214"
+  },
+  "loopguard/tests/context/__init__.py": {
+    "mtime": 1785631258.9901855,
+    "ast_hash": "8bbb8ccb18c83a8a5a09c019a9e255f8",
+    "semantic_hash": "8bbb8ccb18c83a8a5a09c019a9e255f8"
+  },
+  "loopguard/tests/context/conftest.py": {
+    "mtime": 1785631258.990382,
+    "ast_hash": "2d65916927b28794610eb6b7624dd11b",
+    "semantic_hash": "2d65916927b28794610eb6b7624dd11b"
+  },
+  "loopguard/tests/context/test_capability.py": {
+    "mtime": 1785631258.9905732,
+    "ast_hash": "61051b701a93a2e253f1198981e213a1",
+    "semantic_hash": "61051b701a93a2e253f1198981e213a1"
+  },
+  "loopguard/tests/context/test_digest.py": {
+    "mtime": 1785631258.9907482,
+    "ast_hash": "652c983622abde407b1c818075a014b6",
+    "semantic_hash": "652c983622abde407b1c818075a014b6"
+  },
+  "loopguard/tests/context/test_git_runtime.py": {
+    "mtime": 1785631258.9908466,
+    "ast_hash": "a30fea69052c5cfdf9f4338d70cb83dd",
+    "semantic_hash": "a30fea69052c5cfdf9f4338d70cb83dd"
+  },
+  "loopguard/tests/context/test_handoff.py": {
+    "mtime": 1785631258.991055,
+    "ast_hash": "93ec3f86a2007113f02b71e7ced2719b",
+    "semantic_hash": "93ec3f86a2007113f02b71e7ced2719b"
+  },
+  "loopguard/tests/context/test_journal.py": {
+    "mtime": 1785631258.9911842,
+    "ast_hash": "52d8ac96b9951ec150c03e7980ab0e5e",
+    "semantic_hash": "52d8ac96b9951ec150c03e7980ab0e5e"
+  },
+  "loopguard/tests/context/test_leases.py": {
+    "mtime": 1785631258.9913852,
+    "ast_hash": "760cbb65054ba8da8f3b3721161b7263",
+    "semantic_hash": "760cbb65054ba8da8f3b3721161b7263"
+  },
+  "loopguard/tests/context/test_mcp_server.py": {
+    "mtime": 1785631258.9915984,
+    "ast_hash": "56339753d5ff2b59cc3abe51d3e74b71",
+    "semantic_hash": "56339753d5ff2b59cc3abe51d3e74b71"
+  },
+  "loopguard/tests/context/test_symbols.py": {
+    "mtime": 1785631258.9917111,
+    "ast_hash": "178dfd91d7f89d4717fca6684aca3b94",
+    "semantic_hash": "178dfd91d7f89d4717fca6684aca3b94"
+  },
+  "loopguard/tests/context/test_watcher.py": {
+    "mtime": 1785631258.9919262,
+    "ast_hash": "17c905d2ae31aa9083755a0cf91b409d",
+    "semantic_hash": "17c905d2ae31aa9083755a0cf91b409d"
+  },
+  "loopguard/tests/context/test_worktrees.py": {
+    "mtime": 1785631258.9920874,
+    "ast_hash": "2d9ee2f07c6cfa6f8cdd6480dfd8dba4",
+    "semantic_hash": "2d9ee2f07c6cfa6f8cdd6480dfd8dba4"
+  },
+  "loopguard/tests/control/__init__.py": {
+    "mtime": 1785631258.9922965,
+    "ast_hash": "80a60a9d7de08eccca9cee6a6223f55b",
+    "semantic_hash": "80a60a9d7de08eccca9cee6a6223f55b"
+  },
+  "loopguard/tests/control/daemon_test_support.py": {
+    "mtime": 1785631258.9935007,
+    "ast_hash": "004c17d6511b8187f1f0d3066e470556",
+    "semantic_hash": "004c17d6511b8187f1f0d3066e470556"
+  },
+  "loopguard/tests/control/test_actions.py": {
+    "mtime": 1785631258.9936874,
+    "ast_hash": "fb3ee01a6203c9c0854d2c0420225fb1",
+    "semantic_hash": "fb3ee01a6203c9c0854d2c0420225fb1"
+  },
+  "loopguard/tests/control/test_cli_daemon.py": {
+    "mtime": 1785631258.9938784,
+    "ast_hash": "ba131b06612153a151ad883739fc60b6",
+    "semantic_hash": "ba131b06612153a151ad883739fc60b6"
+  },
+  "loopguard/tests/control/test_cloud_relay.py": {
+    "mtime": 1785631258.9940531,
+    "ast_hash": "8fef08d7e3bed7ee2ee35057b7a7a635",
+    "semantic_hash": "8fef08d7e3bed7ee2ee35057b7a7a635"
+  },
+  "loopguard/tests/control/test_crypto.py": {
+    "mtime": 1785631258.9942276,
+    "ast_hash": "5a2006c66cc7e0e1d00dde449c889126",
+    "semantic_hash": "5a2006c66cc7e0e1d00dde449c889126"
+  },
+  "loopguard/tests/control/test_daemon.py": {
+    "mtime": 1785631258.994433,
+    "ast_hash": "74b30ea42141d6a621d3b7a55aac0c21",
+    "semantic_hash": "74b30ea42141d6a621d3b7a55aac0c21"
+  },
+  "loopguard/tests/control/test_daemon_integration.py": {
+    "mtime": 1785631258.994643,
+    "ast_hash": "380b6600cf46f670e38655b7a295d29c",
+    "semantic_hash": "380b6600cf46f670e38655b7a295d29c"
+  },
+  "loopguard/tests/control/test_decisions.py": {
+    "mtime": 1785631258.9951103,
+    "ast_hash": "ebe2451489a1eac744a3693004b0aedc",
+    "semantic_hash": "ebe2451489a1eac744a3693004b0aedc"
+  },
+  "loopguard/tests/control/test_dispatch_store.py": {
+    "mtime": 1785631258.9952977,
+    "ast_hash": "231ce5b8d56bff215c150c0a7cb05258",
+    "semantic_hash": "231ce5b8d56bff215c150c0a7cb05258"
+  },
+  "loopguard/tests/control/test_error_contract.py": {
+    "mtime": 1785631258.9954484,
+    "ast_hash": "d57474fd05c9c0ad4f8655d71333a51e",
+    "semantic_hash": "d57474fd05c9c0ad4f8655d71333a51e"
+  },
+  "loopguard/tests/control/test_events.py": {
+    "mtime": 1785631258.9956286,
+    "ast_hash": "f9cf667df1d54edf99bde47515636e93",
+    "semantic_hash": "f9cf667df1d54edf99bde47515636e93"
+  },
+  "loopguard/tests/control/test_projection.py": {
+    "mtime": 1785631258.995813,
+    "ast_hash": "cdcdf8a38799f937a1dc020477b346ec",
+    "semantic_hash": "cdcdf8a38799f937a1dc020477b346ec"
+  },
+  "loopguard/tests/control/test_protocol_security.py": {
+    "mtime": 1785631258.9959853,
+    "ast_hash": "9f2f58ff38c53d417cc18ec8d5932606",
+    "semantic_hash": "9f2f58ff38c53d417cc18ec8d5932606"
+  },
+  "loopguard/tests/control/test_quickstart.py": {
+    "mtime": 1785631258.9962256,
+    "ast_hash": "cf4fa26287f97b16980bb1c204182864",
+    "semantic_hash": "cf4fa26287f97b16980bb1c204182864"
+  },
+  "loopguard/tests/control/test_redaction.py": {
+    "mtime": 1785631258.9964204,
+    "ast_hash": "cb54f1061c89c43e5f62e09e9b58ca50",
+    "semantic_hash": "cb54f1061c89c43e5f62e09e9b58ca50"
+  },
+  "loopguard/tests/control/test_store.py": {
+    "mtime": 1785631258.9966,
+    "ast_hash": "e80242fbde9e6160eee38dddb6839083",
+    "semantic_hash": "e80242fbde9e6160eee38dddb6839083"
+  },
+  "loopguard/tests/control/test_store_recovery.py": {
+    "mtime": 1785631258.9969125,
+    "ast_hash": "bc75e07c9b9de88da31a811fbdbac5b7",
+    "semantic_hash": "bc75e07c9b9de88da31a811fbdbac5b7"
+  },
+  "loopguard/tests/control/test_windows_transport.py": {
+    "mtime": 1785631258.9970217,
+    "ast_hash": "84e273683fe957cc25d1396af1242959",
+    "semantic_hash": "84e273683fe957cc25d1396af1242959"
+  },
+  "loopguard/tests/fixtures/context/python_repo/src/service.py": {
+    "mtime": 1785631258.997426,
+    "ast_hash": "0c09b7c8ef649dc351ce26caf422651c",
+    "semantic_hash": "0c09b7c8ef649dc351ce26caf422651c"
+  },
+  "loopguard/tests/fixtures/context/python_repo/tests/service_spec.py": {
+    "mtime": 1785631258.9975655,
+    "ast_hash": "588ea3a2c702de7338afeae2fbe5331a",
+    "semantic_hash": "588ea3a2c702de7338afeae2fbe5331a"
+  },
+  "loopguard/tests/fixtures/context/typescript_repo/src/service.test.ts": {
+    "mtime": 1785631258.997785,
+    "ast_hash": "6ead245ba7fd8784dca78b96214f589c",
+    "semantic_hash": "6ead245ba7fd8784dca78b96214f589c"
+  },
+  "loopguard/tests/fixtures/context/typescript_repo/src/service.ts": {
+    "mtime": 1785631258.9986217,
+    "ast_hash": "36a13bb4d6f189f349c0d406b3e59c8e",
+    "semantic_hash": "36a13bb4d6f189f349c0d406b3e59c8e"
+  },
+  "loopguard/tests/fixtures/heal/coordinate_pipeline/pipeline.py": {
+    "mtime": 1785631258.9988713,
+    "ast_hash": "fad3af09b78ed6c47f77c40ecc52966e",
+    "semantic_hash": "fad3af09b78ed6c47f77c40ecc52966e"
+  },
+  "loopguard/tests/fixtures/heal/coordinate_pipeline/rows.json": {
+    "mtime": 1785631258.999053,
+    "ast_hash": "2835e943b3967c9892d01f4a37be8e73",
+    "semantic_hash": "2835e943b3967c9892d01f4a37be8e73"
+  },
+  "loopguard/tests/fixtures/heal/events/airflow_coordinate_failure.json": {
+    "mtime": 1785631258.999253,
+    "ast_hash": "ba678ab89ee68ab5ea0739cc5dec5941",
+    "semantic_hash": "ba678ab89ee68ab5ea0739cc5dec5941"
+  },
+  "loopguard/tests/fixtures/heal/events/gha_failure_1.json": {
+    "mtime": 1785631258.9994082,
+    "ast_hash": "94e2ec1c2e045614c101deb17ee044c7",
+    "semantic_hash": "94e2ec1c2e045614c101deb17ee044c7"
+  },
+  "loopguard/tests/fixtures/heal/events/gha_failure_2.json": {
+    "mtime": 1785631259.0004437,
+    "ast_hash": "c90d1af5a128d78e4b9fb1218befa2d5",
+    "semantic_hash": "c90d1af5a128d78e4b9fb1218befa2d5"
+  },
+  "loopguard/tests/fixtures/heal/events/openlineage_coordinate_failure.json": {
+    "mtime": 1785631259.000546,
+    "ast_hash": "47469c5e54244f47089d71b403013a23",
+    "semantic_hash": "47469c5e54244f47089d71b403013a23"
+  },
+  "loopguard/tests/fixtures/verify/python_project/pyproject.toml": {
+    "mtime": 1785631259.0014472,
+    "ast_hash": "bdfc19df2c9bf6f3113f5cc970fee26c",
+    "semantic_hash": "bdfc19df2c9bf6f3113f5cc970fee26c"
+  },
+  "loopguard/tests/fixtures/verify/typescript_project/package.json": {
+    "mtime": 1785631259.0016553,
+    "ast_hash": "493fd8e6bb92d014f78ddc73d66d8639",
+    "semantic_hash": "493fd8e6bb92d014f78ddc73d66d8639"
+  },
+  "loopguard/tests/heal/test_candidates.py": {
+    "mtime": 1785631259.0024908,
+    "ast_hash": "201ea47d3531b12550affdadaa51a0e0",
+    "semantic_hash": "201ea47d3531b12550affdadaa51a0e0"
+  },
+  "loopguard/tests/heal/test_evaluate.py": {
+    "mtime": 1785631259.0027087,
+    "ast_hash": "f592c84f4b8ec1e4e140642087ab251d",
+    "semantic_hash": "f592c84f4b8ec1e4e140642087ab251d"
+  },
+  "loopguard/tests/heal/test_fixtures.py": {
+    "mtime": 1785631259.0029402,
+    "ast_hash": "d33225e09799a0c51b6729de704bb29e",
+    "semantic_hash": "d33225e09799a0c51b6729de704bb29e"
+  },
+  "loopguard/tests/heal/test_github.py": {
+    "mtime": 1785631259.0031226,
+    "ast_hash": "a808fd9ed925ce759c13c88873d07b0e",
+    "semantic_hash": "a808fd9ed925ce759c13c88873d07b0e"
+  },
+  "loopguard/tests/heal/test_intake.py": {
+    "mtime": 1785631259.0032146,
+    "ast_hash": "d9701d7e7b207f9a7a4b3b061286f8fd",
+    "semantic_hash": "d9701d7e7b207f9a7a4b3b061286f8fd"
+  },
+  "loopguard/tests/heal/test_metrics.py": {
+    "mtime": 1785631259.0033846,
+    "ast_hash": "717a9d1f9e9634f09abfc6cdd4cb9172",
+    "semantic_hash": "717a9d1f9e9634f09abfc6cdd4cb9172"
+  },
+  "loopguard/tests/heal/test_models.py": {
+    "mtime": 1785631259.0035446,
+    "ast_hash": "e6e7109ec59c6620d5d458f0e2f3d734",
+    "semantic_hash": "e6e7109ec59c6620d5d458f0e2f3d734"
+  },
+  "loopguard/tests/heal/test_reproduce.py": {
+    "mtime": 1785631259.0037482,
+    "ast_hash": "9717cad1976023202143383002ab6a4e",
+    "semantic_hash": "9717cad1976023202143383002ab6a4e"
+  },
+  "loopguard/tests/integration/test_airflow_repair.py": {
+    "mtime": 1785631259.0039592,
+    "ast_hash": "10db48401986f39c2313d72cee596d9b",
+    "semantic_hash": "10db48401986f39c2313d72cee596d9b"
+  },
+  "loopguard/tests/integration/test_phase_routing.py": {
+    "mtime": 1785631259.0041337,
+    "ast_hash": "c4c659e40e0adaa5aa33c2410716bbe9",
+    "semantic_hash": "c4c659e40e0adaa5aa33c2410716bbe9"
+  },
+  "loopguard/tests/integration/test_ui_preferences.py": {
+    "mtime": 1785631259.0043294,
+    "ast_hash": "84c8fa12c14d9e45c122b326cd5a695c",
+    "semantic_hash": "84c8fa12c14d9e45c122b326cd5a695c"
+  },
+  "loopguard/tests/integration/test_verified_completion.py": {
+    "mtime": 1785631259.004486,
+    "ast_hash": "ee047b0e4e0d14e84501703c325390ef",
+    "semantic_hash": "ee047b0e4e0d14e84501703c325390ef"
+  },
+  "loopguard/tests/preferences/__init__.py": {
+    "mtime": 1785631259.0049226,
+    "ast_hash": "e85c7effaf76695bba6a17f0fb2ac552",
+    "semantic_hash": "e85c7effaf76695bba6a17f0fb2ac552"
+  },
+  "loopguard/tests/preferences/conftest.py": {
+    "mtime": 1785631259.005237,
+    "ast_hash": "f4aaf7e8d35e06b1fff942dd23643307",
+    "semantic_hash": "f4aaf7e8d35e06b1fff942dd23643307"
+  },
+  "loopguard/tests/preferences/test_compiler.py": {
+    "mtime": 1785631259.0055363,
+    "ast_hash": "a84435856fe20f5080c75712e4253598",
+    "semantic_hash": "a84435856fe20f5080c75712e4253598"
+  },
+  "loopguard/tests/preferences/test_evaluators.py": {
+    "mtime": 1785631259.005818,
+    "ast_hash": "74cf083c6e360e8c0f1a443a83f81bab",
+    "semantic_hash": "74cf083c6e360e8c0f1a443a83f81bab"
+  },
+  "loopguard/tests/preferences/test_learning.py": {
+    "mtime": 1785631259.006132,
+    "ast_hash": "cca9a5b0732677e413d3c6ae9496ffbf",
+    "semantic_hash": "cca9a5b0732677e413d3c6ae9496ffbf"
+  },
+  "loopguard/tests/preferences/test_models.py": {
+    "mtime": 1785631259.0064108,
+    "ast_hash": "9f0fb1f5217e631008edf71989576aeb",
+    "semantic_hash": "9f0fb1f5217e631008edf71989576aeb"
+  },
+  "loopguard/tests/preferences/test_visual_critic.py": {
+    "mtime": 1785631259.0067377,
+    "ast_hash": "934819f45046de1fb257501057050c8f",
+    "semantic_hash": "934819f45046de1fb257501057050c8f"
+  },
+  "loopguard/tests/router/__init__.py": {
+    "mtime": 1785631259.0070317,
+    "ast_hash": "16be31972cedc5354099e99520f18dfd",
+    "semantic_hash": "16be31972cedc5354099e99520f18dfd"
+  },
+  "loopguard/tests/router/conftest.py": {
+    "mtime": 1785631259.0073466,
+    "ast_hash": "c26cb9e4eeb800c6c769bb3dda7b6c6c",
+    "semantic_hash": "c26cb9e4eeb800c6c769bb3dda7b6c6c"
+  },
+  "loopguard/tests/router/test_budgets.py": {
+    "mtime": 1785631259.0076528,
+    "ast_hash": "ee61332f12324300a823599bd1142025",
+    "semantic_hash": "ee61332f12324300a823599bd1142025"
+  },
+  "loopguard/tests/router/test_catalog.py": {
+    "mtime": 1785631259.0079737,
+    "ast_hash": "7703570844c050270510da291090a091",
+    "semantic_hash": "7703570844c050270510da291090a091"
+  },
+  "loopguard/tests/router/test_evaluation.py": {
+    "mtime": 1785631259.0081844,
+    "ast_hash": "1ea4e0654e1c61d8d1af3d433de36c38",
+    "semantic_hash": "1ea4e0654e1c61d8d1af3d433de36c38"
+  },
+  "loopguard/tests/router/test_features.py": {
+    "mtime": 1785631259.0084014,
+    "ast_hash": "92b7c3f614b43e2a8575d63df52af09f",
+    "semantic_hash": "92b7c3f614b43e2a8575d63df52af09f"
+  },
+  "loopguard/tests/router/test_judge_cache.py": {
+    "mtime": 1785631259.0085924,
+    "ast_hash": "a4ba52ec0133041258f10105fa3f501b",
+    "semantic_hash": "a4ba52ec0133041258f10105fa3f501b"
+  },
+  "loopguard/tests/router/test_outcomes.py": {
+    "mtime": 1785631259.0087664,
+    "ast_hash": "f79556000c8ec5d65c8e645e4d660014",
+    "semantic_hash": "f79556000c8ec5d65c8e645e4d660014"
+  },
+  "loopguard/tests/router/test_policy.py": {
+    "mtime": 1785631259.0089586,
+    "ast_hash": "0214c0ecf79fa3abdfb2f9c400673d9e",
+    "semantic_hash": "0214c0ecf79fa3abdfb2f9c400673d9e"
+  },
+  "loopguard/tests/security/test_local_abuse_paths.py": {
+    "mtime": 1785631259.0093305,
+    "ast_hash": "0d0e70ac280e96731981bd9da9578818",
+    "semantic_hash": "0d0e70ac280e96731981bd9da9578818"
+  },
+  "loopguard/tests/security/test_migrate.py": {
+    "mtime": 1785631259.0095406,
+    "ast_hash": "0d4f1648870b99d990e174a7a5057908",
+    "semantic_hash": "0d4f1648870b99d990e174a7a5057908"
+  },
+  "loopguard/tests/security/test_permissions.py": {
+    "mtime": 1785631259.0096838,
+    "ast_hash": "54cddf33b33cfb09e465633501449d9f",
+    "semantic_hash": "54cddf33b33cfb09e465633501449d9f"
+  },
+  "loopguard/tests/security/test_update.py": {
+    "mtime": 1785631259.009794,
+    "ast_hash": "e1d771c13ed205345d717743c25a2524",
+    "semantic_hash": "e1d771c13ed205345d717743c25a2524"
+  },
+  "loopguard/tests/test_action_modes.py": {
+    "mtime": 1782575547.932332,
+    "ast_hash": "dba2f07e47ea986d05447422c431fd1d",
+    "semantic_hash": "dba2f07e47ea986d05447422c431fd1d"
+  },
+  "loopguard/tests/test_agent.py": {
+    "mtime": 1785631259.010086,
+    "ast_hash": "0700b302aff730a87611c139dba86359",
+    "semantic_hash": "0700b302aff730a87611c139dba86359"
+  },
+  "loopguard/tests/test_budget.py": {
+    "mtime": 1782523062.0342338,
+    "ast_hash": "c785b121ac335588cc60b4c053ad3fb2",
+    "semantic_hash": "c785b121ac335588cc60b4c053ad3fb2"
+  },
+  "loopguard/tests/test_cerebras_client_mocked.py": {
+    "mtime": 1782523062.034375,
+    "ast_hash": "efcd20c985cadcd219450bb7296e823d",
+    "semantic_hash": "efcd20c985cadcd219450bb7296e823d"
+  },
+  "loopguard/tests/test_cli_docs.py": {
+    "mtime": 1785631259.010255,
+    "ast_hash": "db0dd2b4376b8b709cc9a7a425e98ce3",
+    "semantic_hash": "db0dd2b4376b8b709cc9a7a425e98ce3"
+  },
+  "loopguard/tests/test_cli_smoke.py": {
+    "mtime": 1782575547.9324636,
+    "ast_hash": "4bdba9da7c5b496afc8c04cf3a73bfc0",
+    "semantic_hash": "4bdba9da7c5b496afc8c04cf3a73bfc0"
+  },
+  "loopguard/tests/test_config_decision.py": {
+    "mtime": 1782575547.932527,
+    "ast_hash": "f09ccca40c4110cb219d5a0e2c2bee82",
+    "semantic_hash": "f09ccca40c4110cb219d5a0e2c2bee82"
+  },
+  "loopguard/tests/test_demos.py": {
+    "mtime": 1782575547.9326422,
+    "ast_hash": "a15cea53b06c47c0e984bfd88eefe71e",
+    "semantic_hash": "a15cea53b06c47c0e984bfd88eefe71e"
+  },
+  "loopguard/tests/test_engine_hooks.py": {
+    "mtime": 1782575547.9327693,
+    "ast_hash": "fa7095894bd6311720b8fb9979349d15",
+    "semantic_hash": "fa7095894bd6311720b8fb9979349d15"
+  },
+  "loopguard/tests/test_exact_detector.py": {
+    "mtime": 1782523062.0344982,
+    "ast_hash": "be3519e1a9662a01b1bbfc27238eb0e6",
+    "semantic_hash": "be3519e1a9662a01b1bbfc27238eb0e6"
+  },
+  "loopguard/tests/test_guard.py": {
+    "mtime": 1782575547.9328837,
+    "ast_hash": "8f5311f6e091b5386546acaffe2c264a",
+    "semantic_hash": "8f5311f6e091b5386546acaffe2c264a"
+  },
+  "loopguard/tests/test_judge.py": {
+    "mtime": 1785631259.0106454,
+    "ast_hash": "baeec494725cadc443c77860ee769dd4",
+    "semantic_hash": "baeec494725cadc443c77860ee769dd4"
+  },
+  "loopguard/tests/test_litellm_callback.py": {
+    "mtime": 1782575547.9330218,
+    "ast_hash": "c8672b2229709751784ea1195affb3e9",
+    "semantic_hash": "c8672b2229709751784ea1195affb3e9"
+  },
+  "loopguard/tests/test_live_demo.py": {
+    "mtime": 1782575547.9332793,
+    "ast_hash": "b81cf229f93b41723d7c6d4275482f29",
+    "semantic_hash": "b81cf229f93b41723d7c6d4275482f29"
+  },
+  "loopguard/tests/test_normalize.py": {
+    "mtime": 1782575547.9333768,
+    "ast_hash": "027e511325390415c8c5fd00fa351435",
+    "semantic_hash": "027e511325390415c8c5fd00fa351435"
+  },
+  "loopguard/tests/test_pingpong_detector.py": {
+    "mtime": 1782523062.0349631,
+    "ast_hash": "8d736180f764abf0a8212c57e5819fa9",
+    "semantic_hash": "8d736180f764abf0a8212c57e5819fa9"
+  },
+  "loopguard/tests/test_pricing.py": {
+    "mtime": 1782575547.9341264,
+    "ast_hash": "c696eca5824171dfe6f26b3d425a290d",
+    "semantic_hash": "c696eca5824171dfe6f26b3d425a290d"
+  },
+  "loopguard/tests/test_providers.py": {
+    "mtime": 1782575547.9341965,
+    "ast_hash": "82150e4ddd4956fde4702af87898db01",
+    "semantic_hash": "82150e4ddd4956fde4702af87898db01"
+  },
+  "loopguard/tests/test_semantic_detector.py": {
+    "mtime": 1782523062.0351148,
+    "ast_hash": "07b83a30a60bcc69153584e13018acad",
+    "semantic_hash": "07b83a30a60bcc69153584e13018acad"
+  },
+  "loopguard/tests/test_server_app.py": {
+    "mtime": 1785631259.010937,
+    "ast_hash": "6e51079e1203fbe4b170392782e846ff",
+    "semantic_hash": "6e51079e1203fbe4b170392782e846ff"
+  },
+  "loopguard/tests/test_server_runs.py": {
+    "mtime": 1782585300.2973115,
+    "ast_hash": "5da08332b408d0e54f0d0e3d19943163",
+    "semantic_hash": "5da08332b408d0e54f0d0e3d19943163"
+  },
+  "loopguard/tests/test_telemetry.py": {
+    "mtime": 1785631259.0111227,
+    "ast_hash": "055cf28d585ad03ca052a1c3bbfa239e",
+    "semantic_hash": "055cf28d585ad03ca052a1c3bbfa239e"
+  },
+  "loopguard/tests/test_tools.py": {
+    "mtime": 1782575547.934412,
+    "ast_hash": "b4dd232e7273a2609a344a1fd88d8484",
+    "semantic_hash": "b4dd232e7273a2609a344a1fd88d8484"
+  },
+  "loopguard/tests/verify/test_artifacts.py": {
+    "mtime": 1785631259.0113387,
+    "ast_hash": "eda3bc0686c1be128210b2c9b4bf1574",
+    "semantic_hash": "eda3bc0686c1be128210b2c9b4bf1574"
+  },
+  "loopguard/tests/verify/test_baseline.py": {
+    "mtime": 1785631259.0114923,
+    "ast_hash": "55dd61cf197139efb39c8144427981b3",
+    "semantic_hash": "55dd61cf197139efb39c8144427981b3"
+  },
+  "loopguard/tests/verify/test_discovery.py": {
+    "mtime": 1785631259.011598,
+    "ast_hash": "f6886dc1cb6ffd532da44f05954dffe9",
+    "semantic_hash": "f6886dc1cb6ffd532da44f05954dffe9"
+  },
+  "loopguard/tests/verify/test_impact.py": {
+    "mtime": 1785631259.0118363,
+    "ast_hash": "1174f916cd76047626205ca8b4960c4c",
+    "semantic_hash": "1174f916cd76047626205ca8b4960c4c"
+  },
+  "loopguard/tests/verify/test_intake_ordering.py": {
+    "mtime": 1785631259.011939,
+    "ast_hash": "9b37b6f66198c85421feb406087042d8",
+    "semantic_hash": "9b37b6f66198c85421feb406087042d8"
+  },
+  "loopguard/tests/verify/test_models.py": {
+    "mtime": 1785631259.0121026,
+    "ast_hash": "26fa079525803bc4e71f0ae7777c1e91",
+    "semantic_hash": "26fa079525803bc4e71f0ae7777c1e91"
+  },
+  "loopguard/tests/verify/test_recovery.py": {
+    "mtime": 1785631259.012392,
+    "ast_hash": "2979d941818c21e090bb0642b5d5f844",
+    "semantic_hash": "2979d941818c21e090bb0642b5d5f844"
+  },
+  "loopguard/tests/verify/test_runner.py": {
+    "mtime": 1785631259.0124974,
+    "ast_hash": "f9df4d9bb5745d8c09c6daa61367a7ca",
+    "semantic_hash": "f9df4d9bb5745d8c09c6daa61367a7ca"
+  },
+  "loopguard/tests/verify/test_service.py": {
+    "mtime": 1785631259.012678,
+    "ast_hash": "615aaf9cd60164264c4ad4119f85bba7",
+    "semantic_hash": "615aaf9cd60164264c4ad4119f85bba7"
+  },
+  "loopguard/tests/verify/test_trust.py": {
+    "mtime": 1785631259.01351,
+    "ast_hash": "92aa9a7681442d310128ed07ba02a266",
+    "semantic_hash": "92aa9a7681442d310128ed07ba02a266"
+  },
+  "loopguard/tests/verify/test_verdict.py": {
+    "mtime": 1785631259.013677,
+    "ast_hash": "2350f449a1ac44a2d330a1cd9f85dc60",
+    "semantic_hash": "2350f449a1ac44a2d330a1cd9f85dc60"
+  },
+  "scripts/create_release_candidate.py": {
+    "mtime": 1785631259.013879,
+    "ast_hash": "584637e02c9d08b65f0bfc50065ee6f0",
+    "semantic_hash": "584637e02c9d08b65f0bfc50065ee6f0"
+  },
+  "scripts/verify_client_release.sh": {
+    "mtime": 1785631259.014038,
+    "ast_hash": "f412bf9c7d41808fa8cf014b23b59a60",
+    "semantic_hash": "f412bf9c7d41808fa8cf014b23b59a60"
+  },
+  "scripts/verify_release.py": {
+    "mtime": 1785631259.0141857,
+    "ast_hash": "60a5eff0abf0f860d65d512855819506",
+    "semantic_hash": "60a5eff0abf0f860d65d512855819506"
+  },
+  "scripts/verify_release.sh": {
+    "mtime": 1785631259.0143292,
+    "ast_hash": "068376160362364d123c5c6ace75f2c4",
+    "semantic_hash": "068376160362364d123c5c6ace75f2c4"
+  },
+  "services/control-api/alembic/env.py": {
+    "mtime": 1785631259.0158286,
+    "ast_hash": "65959668a88fafa7da5d0a169388a7fd",
+    "semantic_hash": "65959668a88fafa7da5d0a169388a7fd"
+  },
+  "services/control-api/alembic/versions/0001_initial.py": {
+    "mtime": 1785631259.0168912,
+    "ast_hash": "4966765045e10040869f2860d226004b",
+    "semantic_hash": "4966765045e10040869f2860d226004b"
+  },
+  "services/control-api/alembic/versions/0002_control_queries.py": {
+    "mtime": 1785631259.0174818,
+    "ast_hash": "3f74e74bf88b5748320c4ee9f8ab3c19",
+    "semantic_hash": "3f74e74bf88b5748320c4ee9f8ab3c19"
+  },
+  "services/control-api/alembic/versions/0003_repair_workflow.py": {
+    "mtime": 1785631259.0176857,
+    "ast_hash": "33041aa5ba01d446a32286ba566a812c",
+    "semantic_hash": "33041aa5ba01d446a32286ba566a812c"
+  },
+  "services/control-api/alembic/versions/0004_billing.py": {
+    "mtime": 1785631259.0177941,
+    "ast_hash": "ba037f08b8317965184cd237406a5ece",
+    "semantic_hash": "ba037f08b8317965184cd237406a5ece"
+  },
+  "services/control-api/load/k6-ingest.js": {
+    "mtime": 1785631259.017905,
+    "ast_hash": "333e7146239445d63f9a7cd00445f539",
+    "semantic_hash": "333e7146239445d63f9a7cd00445f539"
+  },
+  "services/control-api/load/k6-stream.js": {
+    "mtime": 1785631259.0179932,
+    "ast_hash": "ba9b59f38a90f63e86be34b0c961cfbb",
+    "semantic_hash": "ba9b59f38a90f63e86be34b0c961cfbb"
+  },
+  "services/control-api/pyproject.toml": {
+    "mtime": 1785631259.0183375,
+    "ast_hash": "f9d6eb1d80cd1303cd17e0ff1253870d",
+    "semantic_hash": "f9d6eb1d80cd1303cd17e0ff1253870d"
+  },
+  "services/control-api/scripts/__init__.py": {
+    "mtime": 1785631259.0185516,
+    "ast_hash": "fccbb5f2743514f5d26ed35d7e3b4db2",
+    "semantic_hash": "fccbb5f2743514f5d26ed35d7e3b4db2"
+  },
+  "services/control-api/scripts/backup.sh": {
+    "mtime": 1785631259.0186536,
+    "ast_hash": "c42c4e9debb6ffb8d5a74d1e9dace13e",
+    "semantic_hash": "c42c4e9debb6ffb8d5a74d1e9dace13e"
+  },
+  "services/control-api/scripts/export_openapi.py": {
+    "mtime": 1785631259.0188618,
+    "ast_hash": "d8c68ad30440f7147a7e17838f072b42",
+    "semantic_hash": "d8c68ad30440f7147a7e17838f072b42"
+  },
+  "services/control-api/scripts/migration_probe.py": {
+    "mtime": 1785631259.0189576,
+    "ast_hash": "802542accb712c0140e1c6bd18374a21",
+    "semantic_hash": "802542accb712c0140e1c6bd18374a21"
+  },
+  "services/control-api/scripts/probe_migration_baseline.sh": {
+    "mtime": 1785631259.019061,
+    "ast_hash": "5d33b7c9977a33e220f04e0997163757",
+    "semantic_hash": "5d33b7c9977a33e220f04e0997163757"
+  },
+  "services/control-api/scripts/probe_migration_current.sh": {
+    "mtime": 1785631259.0191548,
+    "ast_hash": "4a241175a18664070ad3aa599452f3ae",
+    "semantic_hash": "4a241175a18664070ad3aa599452f3ae"
+  },
+  "services/control-api/scripts/recovery_integrity.py": {
+    "mtime": 1785631259.0192611,
+    "ast_hash": "32607ccbe8d7463fe54386b0e58e248c",
+    "semantic_hash": "32607ccbe8d7463fe54386b0e58e248c"
+  },
+  "services/control-api/scripts/rehearse_migration.sh": {
+    "mtime": 1785631259.0193532,
+    "ast_hash": "066c692d93d6632ed6b2ed64067a8e0a",
+    "semantic_hash": "066c692d93d6632ed6b2ed64067a8e0a"
+  },
+  "services/control-api/scripts/rehearse_region_failover.sh": {
+    "mtime": 1785631259.0194545,
+    "ast_hash": "29cb98f1994f2df1dc38f37939674a9e",
+    "semantic_hash": "29cb98f1994f2df1dc38f37939674a9e"
+  },
+  "services/control-api/scripts/restore.sh": {
+    "mtime": 1785631259.019637,
+    "ast_hash": "08006c63c2d6c07a54b1e3d21a38a538",
+    "semantic_hash": "08006c63c2d6c07a54b1e3d21a38a538"
+  },
+  "services/control-api/scripts/snapshot_integrity.sql": {
+    "mtime": 1785631259.0197299,
+    "ast_hash": "13b05fd06d20cf4d8760c02d41e89c30",
+    "semantic_hash": "13b05fd06d20cf4d8760c02d41e89c30"
+  },
+  "services/control-api/src/loopguard_api/__init__.py": {
+    "mtime": 1785631259.0199695,
+    "ast_hash": "32f28b7f04c3d2924604dcaa2584d9ab",
+    "semantic_hash": "32f28b7f04c3d2924604dcaa2584d9ab"
+  },
+  "services/control-api/src/loopguard_api/action_signing.py": {
+    "mtime": 1785631259.0201657,
+    "ast_hash": "7fc3658e2d4b8bc1b1b21fa3dd4f3c3d",
+    "semantic_hash": "7fc3658e2d4b8bc1b1b21fa3dd4f3c3d"
+  },
+  "services/control-api/src/loopguard_api/actions.py": {
+    "mtime": 1785631259.0203674,
+    "ast_hash": "b8005c49b096a8e2c43fedfbbcfe54fa",
+    "semantic_hash": "b8005c49b096a8e2c43fedfbbcfe54fa"
+  },
+  "services/control-api/src/loopguard_api/app.py": {
+    "mtime": 1785631259.0205722,
+    "ast_hash": "7cbc51d1fed02887ed6ccd6bd9973ba5",
+    "semantic_hash": "7cbc51d1fed02887ed6ccd6bd9973ba5"
+  },
+  "services/control-api/src/loopguard_api/artifacts.py": {
+    "mtime": 1785631259.0207553,
+    "ast_hash": "96ba4050b675fac2cf362155b8fe9529",
+    "semantic_hash": "96ba4050b675fac2cf362155b8fe9529"
+  },
+  "services/control-api/src/loopguard_api/audit.py": {
+    "mtime": 1785631259.0209303,
+    "ast_hash": "cbd343787a027dfe54fb4786e1b22fcd",
+    "semantic_hash": "cbd343787a027dfe54fb4786e1b22fcd"
+  },
+  "services/control-api/src/loopguard_api/auth.py": {
+    "mtime": 1785631259.021129,
+    "ast_hash": "eceec56eb10be9f4628f79f63053fc0d",
+    "semantic_hash": "eceec56eb10be9f4628f79f63053fc0d"
+  },
+  "services/control-api/src/loopguard_api/authorization.py": {
+    "mtime": 1785631259.0212803,
+    "ast_hash": "88cc1ecc2d4a284f5616ed6eeca53259",
+    "semantic_hash": "88cc1ecc2d4a284f5616ed6eeca53259"
+  },
+  "services/control-api/src/loopguard_api/billing.py": {
+    "mtime": 1785631259.021835,
+    "ast_hash": "7d4b287d4eeffbe929d9fbe29766e744",
+    "semantic_hash": "7d4b287d4eeffbe929d9fbe29766e744"
+  },
+  "services/control-api/src/loopguard_api/capacity.py": {
+    "mtime": 1785631259.0219743,
+    "ast_hash": "4fbeb1cd5ecada87dfc9d0f5fb0894b7",
+    "semantic_hash": "4fbeb1cd5ecada87dfc9d0f5fb0894b7"
+  },
+  "services/control-api/src/loopguard_api/client_queries.py": {
+    "mtime": 1785631259.0221865,
+    "ast_hash": "51d95a89d2334e62bd1e38cd2ea42b88",
+    "semantic_hash": "51d95a89d2334e62bd1e38cd2ea42b88"
+  },
+  "services/control-api/src/loopguard_api/db.py": {
+    "mtime": 1785631259.0223725,
+    "ast_hash": "778c6484bc9fe035ad887567faaef19d",
+    "semantic_hash": "778c6484bc9fe035ad887567faaef19d"
+  },
+  "services/control-api/src/loopguard_api/device_pairing.py": {
+    "mtime": 1785631259.0225177,
+    "ast_hash": "e77a422fedd386b2253ed66a004e3b7b",
+    "semantic_hash": "e77a422fedd386b2253ed66a004e3b7b"
+  },
+  "services/control-api/src/loopguard_api/enterprise_identity.py": {
+    "mtime": 1785631259.022756,
+    "ast_hash": "fb444da3485baa341fe0900262371f05",
+    "semantic_hash": "fb444da3485baa341fe0900262371f05"
+  },
+  "services/control-api/src/loopguard_api/errors.py": {
+    "mtime": 1785631259.0228984,
+    "ast_hash": "4d3f9a91455c7313151b63d407a0d3e7",
+    "semantic_hash": "4d3f9a91455c7313151b63d407a0d3e7"
+  },
+  "services/control-api/src/loopguard_api/hook_ingest.py": {
+    "mtime": 1785631259.0230637,
+    "ast_hash": "5861f4a3bbf8580f28fb7c438988d3c8",
+    "semantic_hash": "5861f4a3bbf8580f28fb7c438988d3c8"
+  },
+  "services/control-api/src/loopguard_api/metering.py": {
+    "mtime": 1785631259.023649,
+    "ast_hash": "0ab210b4c2fdd6660820d79dfae1db16",
+    "semantic_hash": "0ab210b4c2fdd6660820d79dfae1db16"
+  },
+  "services/control-api/src/loopguard_api/models.py": {
+    "mtime": 1785631259.0238166,
+    "ast_hash": "f8f78521aff24589e83e5ccbeb13b9c7",
+    "semantic_hash": "f8f78521aff24589e83e5ccbeb13b9c7"
+  },
+  "services/control-api/src/loopguard_api/notifications.py": {
+    "mtime": 1785631259.0240176,
+    "ast_hash": "dd1c27899404245217dae668aa7604f6",
+    "semantic_hash": "dd1c27899404245217dae668aa7604f6"
+  },
+  "services/control-api/src/loopguard_api/pairing.py": {
+    "mtime": 1785631259.0242193,
+    "ast_hash": "4004718a0dc41b0979346f53aff891bb",
+    "semantic_hash": "4004718a0dc41b0979346f53aff891bb"
+  },
+  "services/control-api/src/loopguard_api/privacy.py": {
+    "mtime": 1785631259.0243957,
+    "ast_hash": "33137bb1fd9da6f39e16a745386a422b",
+    "semantic_hash": "33137bb1fd9da6f39e16a745386a422b"
+  },
+  "services/control-api/src/loopguard_api/quotas.py": {
+    "mtime": 1785631259.024568,
+    "ast_hash": "eae2f71787b9ba94d7069d9f26a76281",
+    "semantic_hash": "eae2f71787b9ba94d7069d9f26a76281"
+  },
+  "services/control-api/src/loopguard_api/relay.py": {
+    "mtime": 1785631259.024732,
+    "ast_hash": "e2011cb74eeb3c453abbebb0ba6ccaf8",
+    "semantic_hash": "e2011cb74eeb3c453abbebb0ba6ccaf8"
+  },
+  "services/control-api/src/loopguard_api/repair_temporal.py": {
+    "mtime": 1785631259.0249,
+    "ast_hash": "4d2cd05a9e30145287a8442b16a52602",
+    "semantic_hash": "4d2cd05a9e30145287a8442b16a52602"
+  },
+  "services/control-api/src/loopguard_api/repair_workflow.py": {
+    "mtime": 1785631259.0251377,
+    "ast_hash": "aff07f60c166ddcf04d70909ce29f79b",
+    "semantic_hash": "aff07f60c166ddcf04d70909ce29f79b"
+  },
+  "services/control-api/src/loopguard_api/retention.py": {
+    "mtime": 1785631259.0252516,
+    "ast_hash": "4e67b5804d9066b7134e99f90d39193d",
+    "semantic_hash": "4e67b5804d9066b7134e99f90d39193d"
+  },
+  "services/control-api/src/loopguard_api/routes/__init__.py": {
+    "mtime": 1785631259.0254536,
+    "ast_hash": "3df9bcb0cf6c148220084c49044beda2",
+    "semantic_hash": "3df9bcb0cf6c148220084c49044beda2"
+  },
+  "services/control-api/src/loopguard_api/routes/actions.py": {
+    "mtime": 1785631259.0255742,
+    "ast_hash": "603a5574b2a281d4a9265a58bf41e7e9",
+    "semantic_hash": "603a5574b2a281d4a9265a58bf41e7e9"
+  },
+  "services/control-api/src/loopguard_api/routes/artifacts.py": {
+    "mtime": 1785631259.0257888,
+    "ast_hash": "caf29b5f964d2e80ff13a4a0494ab50b",
+    "semantic_hash": "caf29b5f964d2e80ff13a4a0494ab50b"
+  },
+  "services/control-api/src/loopguard_api/routes/audit.py": {
+    "mtime": 1785631259.0259688,
+    "ast_hash": "ab1069c15d520cc4deb7b611927eb449",
+    "semantic_hash": "ab1069c15d520cc4deb7b611927eb449"
+  },
+  "services/control-api/src/loopguard_api/routes/billing.py": {
+    "mtime": 1785631259.0261562,
+    "ast_hash": "71997a652f2e8d0dacc5373212282d4f",
+    "semantic_hash": "71997a652f2e8d0dacc5373212282d4f"
+  },
+  "services/control-api/src/loopguard_api/routes/capabilities.py": {
+    "mtime": 1785631259.0263164,
+    "ast_hash": "b69430dcc0a8fe2da3fa07ce4bdc0330",
+    "semantic_hash": "b69430dcc0a8fe2da3fa07ce4bdc0330"
+  },
+  "services/control-api/src/loopguard_api/routes/changes.py": {
+    "mtime": 1785631259.0264647,
+    "ast_hash": "9c9b2ba19f84527be3317ba1f8873b0c",
+    "semantic_hash": "9c9b2ba19f84527be3317ba1f8873b0c"
+  },
+  "services/control-api/src/loopguard_api/routes/costs.py": {
+    "mtime": 1785631259.0268106,
+    "ast_hash": "dbf844bdd020ea6356095c5700db5c9a",
+    "semantic_hash": "dbf844bdd020ea6356095c5700db5c9a"
+  },
+  "services/control-api/src/loopguard_api/routes/devices.py": {
+    "mtime": 1785631259.0270271,
+    "ast_hash": "058bfdec40e6d9eee8f356d7c6d8f964",
+    "semantic_hash": "058bfdec40e6d9eee8f356d7c6d8f964"
+  },
+  "services/control-api/src/loopguard_api/routes/hooks.py": {
+    "mtime": 1785631259.0274029,
+    "ast_hash": "58e136ee7bb335138fea6bd3b7a9d799",
+    "semantic_hash": "58e136ee7bb335138fea6bd3b7a9d799"
+  },
+  "services/control-api/src/loopguard_api/routes/hosts.py": {
+    "mtime": 1785631259.0276012,
+    "ast_hash": "3cd813388889312015842b26fc91f1ac",
+    "semantic_hash": "3cd813388889312015842b26fc91f1ac"
+  },
+  "services/control-api/src/loopguard_api/routes/preferences.py": {
+    "mtime": 1785631259.0277004,
+    "ast_hash": "a7e01d1629d804b4a392ac78055decf0",
+    "semantic_hash": "a7e01d1629d804b4a392ac78055decf0"
+  },
+  "services/control-api/src/loopguard_api/routes/repair_intake.py": {
+    "mtime": 1785631259.0278304,
+    "ast_hash": "4d5bf7ad663a327f2566165619b67a17",
+    "semantic_hash": "4d5bf7ad663a327f2566165619b67a17"
+  },
+  "services/control-api/src/loopguard_api/routes/repairs.py": {
+    "mtime": 1785631259.0280113,
+    "ast_hash": "0a111652a1e48069dc1dd980e33e9d16",
+    "semantic_hash": "0a111652a1e48069dc1dd980e33e9d16"
+  },
+  "services/control-api/src/loopguard_api/routes/scim.py": {
+    "mtime": 1785631259.0282447,
+    "ast_hash": "bc0862b1180ac1300b853125365a6ba6",
+    "semantic_hash": "bc0862b1180ac1300b853125365a6ba6"
+  },
+  "services/control-api/src/loopguard_api/routes/sessions.py": {
+    "mtime": 1785631259.028345,
+    "ast_hash": "6bfc4d6d8deb710d227bbfaf109bfb73",
+    "semantic_hash": "6bfc4d6d8deb710d227bbfaf109bfb73"
+  },
+  "services/control-api/src/loopguard_api/routes/verifications.py": {
+    "mtime": 1785631259.0284345,
+    "ast_hash": "5927f639437d9b67bfc6b175244b81b8",
+    "semantic_hash": "5927f639437d9b67bfc6b175244b81b8"
+  },
+  "services/control-api/src/loopguard_api/settings.py": {
+    "mtime": 1785631259.0285432,
+    "ast_hash": "883b58cb3937fde2269a179749394ca7",
+    "semantic_hash": "883b58cb3937fde2269a179749394ca7"
+  },
+  "services/control-api/src/loopguard_api/stream_tickets.py": {
+    "mtime": 1785631259.0287106,
+    "ast_hash": "5f89c5f696df92b48b953e441deb41a6",
+    "semantic_hash": "5f89c5f696df92b48b953e441deb41a6"
+  },
+  "services/control-api/src/loopguard_api/subscriptions.py": {
+    "mtime": 1785631259.0288477,
+    "ast_hash": "d599e57b32972acc258607b23ded8ca8",
+    "semantic_hash": "d599e57b32972acc258607b23ded8ca8"
+  },
+  "services/control-api/src/loopguard_api/support.py": {
+    "mtime": 1785631259.0293148,
+    "ast_hash": "bdeb82b97e147db2aa639907fad27b77",
+    "semantic_hash": "bdeb82b97e147db2aa639907fad27b77"
+  },
+  "services/control-api/src/loopguard_api/telemetry.py": {
+    "mtime": 1785631259.0294955,
+    "ast_hash": "a1ea0fc67d0773a1f0e2f50f4a1cc3ce",
+    "semantic_hash": "a1ea0fc67d0773a1f0e2f50f4a1cc3ce"
+  },
+  "services/control-api/src/loopguard_api/worker.py": {
+    "mtime": 1785631259.0296936,
+    "ast_hash": "054f4c7ef3aea434d599136191f020fa",
+    "semantic_hash": "054f4c7ef3aea434d599136191f020fa"
+  },
+  "services/control-api/src/loopguard_api/workflows.py": {
+    "mtime": 1785631259.0298588,
+    "ast_hash": "9ac3792730f83896ee32ffdc26296be7",
+    "semantic_hash": "9ac3792730f83896ee32ffdc26296be7"
+  },
+  "services/control-api/tests/__init__.py": {
+    "mtime": 1785631259.0300598,
+    "ast_hash": "ee3f9315595963b54f9576b3abf51fd0",
+    "semantic_hash": "ee3f9315595963b54f9576b3abf51fd0"
+  },
+  "services/control-api/tests/chaos/test_relay_recovery.py": {
+    "mtime": 1785631259.0302591,
+    "ast_hash": "1835671c8a7a2b97b05e49358624a9ac",
+    "semantic_hash": "1835671c8a7a2b97b05e49358624a9ac"
+  },
+  "services/control-api/tests/chaos/test_workflow_recovery.py": {
+    "mtime": 1785631259.0304081,
+    "ast_hash": "1a38b29ffae83500ea187c43edff12f7",
+    "semantic_hash": "1a38b29ffae83500ea187c43edff12f7"
+  },
+  "services/control-api/tests/operations/test_release.py": {
+    "mtime": 1785631259.0310075,
+    "ast_hash": "f1bfebd9472a30dcb5b514c64823f582",
+    "semantic_hash": "f1bfebd9472a30dcb5b514c64823f582"
+  },
+  "services/control-api/tests/operations/test_restore.py": {
+    "mtime": 1785631259.0311491,
+    "ast_hash": "bb3ecfff64514e3fd2b4d577501ed35f",
+    "semantic_hash": "bb3ecfff64514e3fd2b4d577501ed35f"
+  },
+  "services/control-api/tests/security/test_abuse_paths.py": {
+    "mtime": 1785631259.0313616,
+    "ast_hash": "c72107a75e936f493d0233e71447403b",
+    "semantic_hash": "c72107a75e936f493d0233e71447403b"
+  },
+  "services/control-api/tests/test_actions.py": {
+    "mtime": 1785631259.0315602,
+    "ast_hash": "4172dbcdba195c1e67e368f4815bc778",
+    "semantic_hash": "4172dbcdba195c1e67e368f4815bc778"
+  },
+  "services/control-api/tests/test_artifacts.py": {
+    "mtime": 1785631259.031753,
+    "ast_hash": "8c4d529187dcece29bd289123888b7a3",
+    "semantic_hash": "8c4d529187dcece29bd289123888b7a3"
+  },
+  "services/control-api/tests/test_audit.py": {
+    "mtime": 1785631259.0319307,
+    "ast_hash": "a5c3046c681e9c2240fbdaf921b4c578",
+    "semantic_hash": "a5c3046c681e9c2240fbdaf921b4c578"
+  },
+  "services/control-api/tests/test_auth.py": {
+    "mtime": 1785631259.0320885,
+    "ast_hash": "ea23b35e0de579a2dcad023750f5c6d7",
+    "semantic_hash": "ea23b35e0de579a2dcad023750f5c6d7"
+  },
+  "services/control-api/tests/test_billing.py": {
+    "mtime": 1785631259.0322099,
+    "ast_hash": "a127dce6ae9a58967a94b6a6af2d4ccd",
+    "semantic_hash": "a127dce6ae9a58967a94b6a6af2d4ccd"
+  },
+  "services/control-api/tests/test_capacity.py": {
+    "mtime": 1785631259.0323153,
+    "ast_hash": "13b18246efbbdad21ce349cfa1116d28",
+    "semantic_hash": "13b18246efbbdad21ce349cfa1116d28"
+  },
+  "services/control-api/tests/test_client_api_matrix.py": {
+    "mtime": 1785631259.0325062,
+    "ast_hash": "9884c7b7e35dd251560c0e7f410a1ea6",
+    "semantic_hash": "9884c7b7e35dd251560c0e7f410a1ea6"
+  },
+  "services/control-api/tests/test_control_queries.py": {
+    "mtime": 1785631259.0326161,
+    "ast_hash": "8f8556e16951046d989aa379fce956d8",
+    "semantic_hash": "8f8556e16951046d989aa379fce956d8"
+  },
+  "services/control-api/tests/test_enterprise_identity.py": {
+    "mtime": 1785631259.0327306,
+    "ast_hash": "ac2db57430b74de9993132d1c9930c77",
+    "semantic_hash": "ac2db57430b74de9993132d1c9930c77"
+  },
+  "services/control-api/tests/test_error_contract.py": {
+    "mtime": 1785631259.0329294,
+    "ast_hash": "f74be8772bcc413110616cb2da0233c5",
+    "semantic_hash": "f74be8772bcc413110616cb2da0233c5"
+  },
+  "services/control-api/tests/test_health.py": {
+    "mtime": 1785631259.0330434,
+    "ast_hash": "d2ee89c29804fba3ddd7d43194dd9a0f",
+    "semantic_hash": "d2ee89c29804fba3ddd7d43194dd9a0f"
+  },
+  "services/control-api/tests/test_hook_ingest.py": {
+    "mtime": 1785631259.033237,
+    "ast_hash": "67a109e2b6dea9adbef1e3ca706c55e6",
+    "semantic_hash": "67a109e2b6dea9adbef1e3ca706c55e6"
+  },
+  "services/control-api/tests/test_metering.py": {
+    "mtime": 1785631259.033345,
+    "ast_hash": "5c42bf54fdb664ced5f3f29a60484f2f",
+    "semantic_hash": "5c42bf54fdb664ced5f3f29a60484f2f"
+  },
+  "services/control-api/tests/test_openapi_contract.py": {
+    "mtime": 1785631259.0335214,
+    "ast_hash": "9fd921f040558be563e4b3e1e50ae36d",
+    "semantic_hash": "9fd921f040558be563e4b3e1e50ae36d"
+  },
+  "services/control-api/tests/test_pairing_relay.py": {
+    "mtime": 1785631259.034054,
+    "ast_hash": "f37931fb5432c09d18b7d05e062b04aa",
+    "semantic_hash": "f37931fb5432c09d18b7d05e062b04aa"
+  },
+  "services/control-api/tests/test_postgres_rls.py": {
+    "mtime": 1785631259.0342574,
+    "ast_hash": "fe8153ef82376af6a9b706c96d00dac1",
+    "semantic_hash": "fe8153ef82376af6a9b706c96d00dac1"
+  },
+  "services/control-api/tests/test_privacy_workflows.py": {
+    "mtime": 1785631259.0344563,
+    "ast_hash": "54e152fe7fc2c0f1ba1c66768a7194d3",
+    "semantic_hash": "54e152fe7fc2c0f1ba1c66768a7194d3"
+  },
+  "services/control-api/tests/test_repair_intake.py": {
+    "mtime": 1785631259.0345778,
+    "ast_hash": "02173befd84aafa667ab9a014df52790",
+    "semantic_hash": "02173befd84aafa667ab9a014df52790"
+  },
+  "services/control-api/tests/test_repair_workflow.py": {
+    "mtime": 1785631259.0347826,
+    "ast_hash": "40a0f1a92457505047e4353c5e35b873",
+    "semantic_hash": "40a0f1a92457505047e4353c5e35b873"
+  },
+  "services/control-api/tests/test_repairs_api.py": {
+    "mtime": 1785631259.0349693,
+    "ast_hash": "d0a82c21d05179b482d7eef0781a175a",
+    "semantic_hash": "d0a82c21d05179b482d7eef0781a175a"
+  },
+  "services/control-api/tests/test_session_stream.py": {
+    "mtime": 1785631259.0350788,
+    "ast_hash": "0127804271d898bf942cbf91461442f6",
+    "semantic_hash": "0127804271d898bf942cbf91461442f6"
+  },
+  "services/control-api/tests/test_support_access.py": {
+    "mtime": 1785631259.0351863,
+    "ast_hash": "677046656c88a45f3283ff11715f228c",
+    "semantic_hash": "677046656c88a45f3283ff11715f228c"
+  },
+  "services/control-api/tests/test_telemetry.py": {
+    "mtime": 1785631259.0360408,
+    "ast_hash": "1d48bbee4454eb70b465eb66c37fc28f",
+    "semantic_hash": "1d48bbee4454eb70b465eb66c37fc28f"
+  },
+  "services/control-api/tests/test_tenant_isolation.py": {
+    "mtime": 1785631259.036239,
+    "ast_hash": "2a2bd4b1cdcaeff4c380aa8f0794d768",
+    "semantic_hash": "2a2bd4b1cdcaeff4c380aa8f0794d768"
+  },
+  "services/control-api/tests/test_worker.py": {
+    "mtime": 1785631259.0363364,
+    "ast_hash": "36623ee187399680a3c3add43dc101e9",
+    "semantic_hash": "36623ee187399680a3c3add43dc101e9"
+  },
+  "services/control-api/tests/test_workflows.py": {
+    "mtime": 1785631259.0365212,
+    "ast_hash": "ee70b119a849022c042ff3d0d8365cc7",
+    "semantic_hash": "ee70b119a849022c042ff3d0d8365cc7"
+  },
+  "skills-lock.json": {
+    "mtime": 1782832970.7058532,
+    "ast_hash": "e484f8dc68dc06e55b7f09f4925a6150",
+    "semantic_hash": "e484f8dc68dc06e55b7f09f4925a6150"
+  },
+  ".github/ISSUE_TEMPLATE/bug.yml": {
+    "mtime": 1785631258.8578162,
+    "ast_hash": "06e9dcf1a78d13eabfb4bf54b1dff76b",
+    "semantic_hash": "06e9dcf1a78d13eabfb4bf54b1dff76b"
+  },
+  ".github/ISSUE_TEMPLATE/feature.yml": {
+    "mtime": 1785631258.858591,
+    "ast_hash": "fb23c3df21d80ad2f44bb3c63adb5003",
+    "semantic_hash": "fb23c3df21d80ad2f44bb3c63adb5003"
+  },
+  ".github/pull_request_template.md": {
+    "mtime": 1785631258.8587027,
+    "ast_hash": "aa43f7e0cb1930c450c8c9721c8ae0cd",
+    "semantic_hash": "aa43f7e0cb1930c450c8c9721c8ae0cd"
+  },
+  ".github/workflows/client-release.yml": {
+    "mtime": 1785631258.8589683,
+    "ast_hash": "43dbe9a49f5d6bf7e88fc8a3bb5e53a6",
+    "semantic_hash": "43dbe9a49f5d6bf7e88fc8a3bb5e53a6"
+  },
+  ".github/workflows/control-foundation.yml": {
+    "mtime": 1785631258.8591602,
+    "ast_hash": "007b73741d16c3347914c5761bc547b3",
+    "semantic_hash": "007b73741d16c3347914c5761bc547b3"
+  },
+  ".github/workflows/deploy.yml": {
+    "mtime": 1785631258.859304,
+    "ast_hash": "dc74130a70991e48a9d9eb33d6ba01c7",
+    "semantic_hash": "dc74130a70991e48a9d9eb33d6ba01c7"
+  },
+  ".github/workflows/docs.yml": {
+    "mtime": 1785631258.8594916,
+    "ast_hash": "0fe7a174fd00b000431344234f750ce8",
+    "semantic_hash": "0fe7a174fd00b000431344234f750ce8"
+  },
+  ".github/workflows/release.yml": {
+    "mtime": 1785631258.8596215,
+    "ast_hash": "a1ec5ee0acae62066fbedd2fac16c8ff",
+    "semantic_hash": "a1ec5ee0acae62066fbedd2fac16c8ff"
+  },
+  ".github/workflows/security.yml": {
+    "mtime": 1785631258.8598008,
+    "ast_hash": "2c453fbb5029cdc14b6915bfc11a280e",
+    "semantic_hash": "2c453fbb5029cdc14b6915bfc11a280e"
+  },
+  "CHANGELOG.md": {
+    "mtime": 1785631258.8606026,
+    "ast_hash": "5d89b1993c8d1b9c4c2da48ffc82ed04",
+    "semantic_hash": "5d89b1993c8d1b9c4c2da48ffc82ed04"
+  },
+  "CODE_OF_CONDUCT.md": {
+    "mtime": 1785631258.8607054,
+    "ast_hash": "7b2b628974b6648161cfab56dfb45bec",
+    "semantic_hash": "7b2b628974b6648161cfab56dfb45bec"
+  },
+  "CONTRIBUTING.md": {
+    "mtime": 1785631258.8608282,
+    "ast_hash": "b7d2befdc30f9f04e647fbcf6be147d5",
+    "semantic_hash": "b7d2befdc30f9f04e647fbcf6be147d5"
+  },
+  "README.md": {
+    "mtime": 1785631258.861135,
+    "ast_hash": "675af94c67204c80669da165208b6b07",
+    "semantic_hash": "675af94c67204c80669da165208b6b07"
+  },
+  "SECURITY.md": {
+    "mtime": 1785631258.861285,
+    "ast_hash": "023a3ebdbc5d99ec5e6d2d23c5c6c13d",
+    "semantic_hash": "023a3ebdbc5d99ec5e6d2d23c5c6c13d"
+  },
+  "apps/ios/project.yml": {
+    "mtime": 1785631258.877134,
+    "ast_hash": "fca195ef3c4327a063c9837a723be548",
+    "semantic_hash": "fca195ef3c4327a063c9837a723be548"
+  },
+  "cloud-app/.expo/README.md": {
+    "mtime": 1782579968.258189,
+    "ast_hash": "5b7704d0d342e4ae362671b70b5d86bc",
+    "semantic_hash": "5b7704d0d342e4ae362671b70b5d86bc"
+  },
+  "cloud-app/README.md": {
+    "mtime": 1785631258.9213016,
+    "ast_hash": "30e654185e290e63403eac31ba284828",
+    "semantic_hash": "30e654185e290e63403eac31ba284828"
+  },
+  "cloud-app/design.md": {
+    "mtime": 1782836765.6774828,
+    "ast_hash": "e7d487ac35ca26c88d5a06ef6ec0fd5d",
+    "semantic_hash": "e7d487ac35ca26c88d5a06ef6ec0fd5d"
+  },
+  "contracts/control-api-endpoints.md": {
+    "mtime": 1785631258.9215243,
+    "ast_hash": "d3b9915dc7bdd9155e1c2034ba3c89ec",
+    "semantic_hash": "d3b9915dc7bdd9155e1c2034ba3c89ec"
+  },
+  "docs/getting-started/product-guide.md": {
+    "mtime": 1785631258.9230354,
+    "ast_hash": "4a862404e27bf63a9d45c0db27b84403",
+    "semantic_hash": "4a862404e27bf63a9d45c0db27b84403"
+  },
+  "docs/getting-started/quickstart.md": {
+    "mtime": 1785631258.9231634,
+    "ast_hash": "c902f580f9cafeaa5020e31ffc8c29d0",
+    "semantic_hash": "c902f580f9cafeaa5020e31ffc8c29d0"
+  },
+  "docs/how-to/respond-to-loop.md": {
+    "mtime": 1785631258.923328,
+    "ast_hash": "3c8be5c960011fd9bb296af14a1d527d",
+    "semantic_hash": "3c8be5c960011fd9bb296af14a1d527d"
+  },
+  "docs/migrations/demo-v1-to-control-v1.md": {
+    "mtime": 1785631258.9237728,
+    "ast_hash": "5bcfbd45188c07925f4a4bb3f1d1132a",
+    "semantic_hash": "5bcfbd45188c07925f4a4bb3f1d1132a"
+  },
+  "docs/operations/billing.md": {
+    "mtime": 1785631258.9239469,
+    "ast_hash": "650865e1b439cbffffd54cf3692b3a88",
+    "semantic_hash": "650865e1b439cbffffd54cf3692b3a88"
+  },
+  "docs/operations/capacity.md": {
+    "mtime": 1785631258.9240706,
+    "ast_hash": "0a1659cc3522041e0a1a68a67cb32081",
+    "semantic_hash": "0a1659cc3522041e0a1a68a67cb32081"
+  },
+  "docs/operations/client-release.md": {
+    "mtime": 1785631258.9243486,
+    "ast_hash": "9cf40aceba86cbe81a3ceceed44c2bea",
+    "semantic_hash": "9cf40aceba86cbe81a3ceceed44c2bea"
+  },
+  "docs/operations/dashboards.md": {
+    "mtime": 1785631258.9246466,
+    "ast_hash": "5f3bb7f08c45b4999a6797a426da3bb4",
+    "semantic_hash": "5f3bb7f08c45b4999a6797a426da3bb4"
+  },
+  "docs/operations/deployment.md": {
+    "mtime": 1785631258.9247565,
+    "ast_hash": "17db59aaf43eef11f4eabfd66b452279",
+    "semantic_hash": "17db59aaf43eef11f4eabfd66b452279"
+  },
+  "docs/operations/disaster-recovery.md": {
+    "mtime": 1785631258.9248564,
+    "ast_hash": "bf7dc2115b96455a3560b882416e1f23",
+    "semantic_hash": "bf7dc2115b96455a3560b882416e1f23"
+  },
+  "docs/operations/incident-response.md": {
+    "mtime": 1785631258.9249551,
+    "ast_hash": "5fdd1f00e13905b269c4fa647779182a",
+    "semantic_hash": "5fdd1f00e13905b269c4fa647779182a"
+  },
+  "docs/operations/metering.md": {
+    "mtime": 1785631258.925051,
+    "ast_hash": "d3385dbb808d6697205ee63930f259b2",
+    "semantic_hash": "d3385dbb808d6697205ee63930f259b2"
+  },
+  "docs/operations/production-readiness.md": {
+    "mtime": 1785631258.9254138,
+    "ast_hash": "d7b5b2c3c2cfb6597771876bc27b2989",
+    "semantic_hash": "d7b5b2c3c2cfb6597771876bc27b2989"
+  },
+  "docs/operations/release-process.md": {
+    "mtime": 1785631258.9255295,
+    "ast_hash": "a84815156ad72c7c2698088542497851",
+    "semantic_hash": "a84815156ad72c7c2698088542497851"
+  },
+  "docs/operations/runbooks/action-security.md": {
+    "mtime": 1785631258.925892,
+    "ast_hash": "e410f3172a53cdf45a2b2357beb78ad6",
+    "semantic_hash": "e410f3172a53cdf45a2b2357beb78ad6"
+  },
+  "docs/operations/runbooks/relay-outage.md": {
+    "mtime": 1785631258.9262495,
+    "ast_hash": "2f1f6a57ea30ca6402a759d7ad23160a",
+    "semantic_hash": "2f1f6a57ea30ca6402a759d7ad23160a"
+  },
+  "docs/operations/runbooks/repair-disable.md": {
+    "mtime": 1785631258.9269693,
+    "ast_hash": "82b2e093a245579508b99bf909049312",
+    "semantic_hash": "82b2e093a245579508b99bf909049312"
+  },
+  "docs/operations/slos.md": {
+    "mtime": 1785631258.9272456,
+    "ast_hash": "b56a02fb7cee5fc77bdb13b52ab85fe0",
+    "semantic_hash": "b56a02fb7cee5fc77bdb13b52ab85fe0"
+  },
+  "docs/operations/support.md": {
+    "mtime": 1785631258.9273512,
+    "ast_hash": "c4db9ff81e43e70c38b2688c46d81a62",
+    "semantic_hash": "c4db9ff81e43e70c38b2688c46d81a62"
+  },
+  "docs/operations/tabletop-exercises.md": {
+    "mtime": 1785631258.9274416,
+    "ast_hash": "2a5fad1d9769b98920f4af5af532a618",
+    "semantic_hash": "2a5fad1d9769b98920f4af5af532a618"
+  },
+  "docs/privacy/data-inventory.md": {
+    "mtime": 1785631258.9276252,
+    "ast_hash": "ff62a70a86fa797e26f920342d050f0f",
+    "semantic_hash": "ff62a70a86fa797e26f920342d050f0f"
+  },
+  "docs/product/control-surfaces.md": {
+    "mtime": 1785631258.9278336,
+    "ast_hash": "0a1fd39a38c5060c9871a3eb55aba5e2",
+    "semantic_hash": "0a1fd39a38c5060c9871a3eb55aba5e2"
+  },
+  "docs/product/design-system.md": {
+    "mtime": 1785631258.928036,
+    "ast_hash": "922c8a658d86cbae2718d77ef251d2f8",
+    "semantic_hash": "922c8a658d86cbae2718d77ef251d2f8"
+  },
+  "docs/product/pricing-and-limits.md": {
+    "mtime": 1785631258.9281256,
+    "ast_hash": "360972e1b5209dc1914c98cfee7045c3",
+    "semantic_hash": "360972e1b5209dc1914c98cfee7045c3"
+  },
+  "docs/reference/cli.md": {
+    "mtime": 1785631258.9283779,
+    "ast_hash": "02e1b892d4210790cd58d362e6038995",
+    "semantic_hash": "02e1b892d4210790cd58d362e6038995"
+  },
+  "docs/reference/cloud-retention.md": {
+    "mtime": 1785631258.9285507,
+    "ast_hash": "5f7e0be2b0990ba53ed0378e63cb0ea5",
+    "semantic_hash": "5f7e0be2b0990ba53ed0378e63cb0ea5"
+  },
+  "docs/reference/configuration.md": {
+    "mtime": 1785631258.9287362,
+    "ast_hash": "0c7d0d89d50af8ac7a01af75a478131f",
+    "semantic_hash": "0c7d0d89d50af8ac7a01af75a478131f"
+  },
+  "docs/reference/control-api-errors.md": {
+    "mtime": 1785631258.9288456,
+    "ast_hash": "5708e1b4c04dea36b63e39f971e41e54",
+    "semantic_hash": "5708e1b4c04dea36b63e39f971e41e54"
+  },
+  "docs/reference/control-api.md": {
+    "mtime": 1785631258.9290829,
+    "ast_hash": "518530995df121cfe9602d5c041b2c95",
+    "semantic_hash": "518530995df121cfe9602d5c041b2c95"
+  },
+  "docs/reference/errors.md": {
+    "mtime": 1785631258.9297304,
+    "ast_hash": "ba9924a28173abe9396f1b2e42491dd4",
+    "semantic_hash": "ba9924a28173abe9396f1b2e42491dd4"
+  },
+  "docs/reference/versioning.md": {
+    "mtime": 1785631258.929955,
+    "ast_hash": "fd27004d072e5955d8e7c95fa2072853",
+    "semantic_hash": "fd27004d072e5955d8e7c95fa2072853"
+  },
+  "docs/security/threat-model.md": {
+    "mtime": 1785631258.9300957,
+    "ast_hash": "d1f2f4fa90981ccb92c0d37d4c647ffe",
+    "semantic_hash": "d1f2f4fa90981ccb92c0d37d4c647ffe"
+  },
+  "docs/security/trust-boundaries.md": {
+    "mtime": 1785631258.930203,
+    "ast_hash": "74b00045ecb98dfce6a294c2e87accaa",
+    "semantic_hash": "74b00045ecb98dfce6a294c2e87accaa"
+  },
+  "docs/superpowers/CLAUDE_CODE_IMPLEMENTATION_PROMPT.md": {
+    "mtime": 1784037531.58203,
+    "ast_hash": "0a1bd3733bf789a5b0ce604606432877",
+    "semantic_hash": "0a1bd3733bf789a5b0ce604606432877"
+  },
+  "docs/superpowers/plans/2026-06-27-loopguard-cloud-app.md": {
+    "mtime": 1782575547.9279723,
+    "ast_hash": "77b3950ef59018066b55488c309ea3fe",
+    "semantic_hash": "77b3950ef59018066b55488c309ea3fe"
+  },
+  "docs/superpowers/plans/2026-06-27-loopguard-v2-real-product.md": {
+    "mtime": 1782575547.928416,
+    "ast_hash": "6f75c0feab56ac0ebaadd83b88576e28",
+    "semantic_hash": "6f75c0feab56ac0ebaadd83b88576e28"
+  },
+  "docs/superpowers/plans/2026-06-30-loopguard-phone-ui-redesign.md": {
+    "mtime": 1782835027.2966304,
+    "ast_hash": "526b60b5d289da2770cb86a60a14490c",
+    "semantic_hash": "526b60b5d289da2770cb86a60a14490c"
+  },
+  "docs/superpowers/plans/2026-07-02-agent-integrations.md": {
+    "mtime": 1785631258.9311528,
+    "ast_hash": "9c0966d468e2bd6aaf4f6c20d756c5f4",
+    "semantic_hash": "9c0966d468e2bd6aaf4f6c20d756c5f4"
+  },
+  "docs/superpowers/plans/2026-07-02-auto-heal-pipelines.md": {
+    "mtime": 1784037443.876411,
+    "ast_hash": "adc171526beefd2971cf120f1f9cab71",
+    "semantic_hash": "adc171526beefd2971cf120f1f9cab71"
+  },
+  "docs/superpowers/plans/2026-07-02-browser-acceleration.md": {
+    "mtime": 1784037241.2390285,
+    "ast_hash": "cdc905accfd2ad67860d94ed77ac5aff",
+    "semantic_hash": "cdc905accfd2ad67860d94ed77ac5aff"
+  },
+  "docs/superpowers/plans/2026-07-02-cloud-control-plane.md": {
+    "mtime": 1784037241.3368218,
+    "ast_hash": "2882fb13749522797b81b93c6fd1c4c6",
+    "semantic_hash": "2882fb13749522797b81b93c6fd1c4c6"
+  },
+  "docs/superpowers/plans/2026-07-02-context-coordination.md": {
+    "mtime": 1784037214.28751,
+    "ast_hash": "a6403207f2e5441abc80b4a1fa80a8ad",
+    "semantic_hash": "a6403207f2e5441abc80b4a1fa80a8ad"
+  },
+  "docs/superpowers/plans/2026-07-02-control-plane-foundation.md": {
+    "mtime": 1785631258.932443,
+    "ast_hash": "0d708bc972e48416c4bb0c83f5057c05",
+    "semantic_hash": "0d708bc972e48416c4bb0c83f5057c05"
+  },
+  "docs/superpowers/plans/2026-07-02-control-surfaces.md": {
+    "mtime": 1784037443.9579365,
+    "ast_hash": "16730708491a9b001f571d4767c97d58",
+    "semantic_hash": "16730708491a9b001f571d4767c97d58"
+  },
+  "docs/superpowers/plans/2026-07-02-loopguard-productization-master.md": {
+    "mtime": 1784037561.698272,
+    "ast_hash": "5ac404f5366e8d59fe95cc16df1cac38",
+    "semantic_hash": "5ac404f5366e8d59fe95cc16df1cac38"
+  },
+  "docs/superpowers/plans/2026-07-02-model-routing-cost-control.md": {
+    "mtime": 1784037241.0451076,
+    "ast_hash": "08f1a5ac2dad9a75e29194401ef6d2ef",
+    "semantic_hash": "08f1a5ac2dad9a75e29194401ef6d2ef"
+  },
+  "docs/superpowers/plans/2026-07-02-preference-engine.md": {
+    "mtime": 1784037241.1442595,
+    "ast_hash": "51ada8736200429f7742825d9cbeb893",
+    "semantic_hash": "51ada8736200429f7742825d9cbeb893"
+  },
+  "docs/superpowers/plans/2026-07-02-production-hardening.md": {
+    "mtime": 1784037241.6486056,
+    "ast_hash": "7103975308518298232c421027827a14",
+    "semantic_hash": "7103975308518298232c421027827a14"
+  },
+  "docs/superpowers/plans/2026-07-02-regression-verification.md": {
+    "mtime": 1784037214.3699927,
+    "ast_hash": "f1ecb595394b2864d61c2e2d6cb26113",
+    "semantic_hash": "f1ecb595394b2864d61c2e2d6cb26113"
+  },
+  "docs/superpowers/progress/loopguard-production.md": {
+    "mtime": 1785631258.9326625,
+    "ast_hash": "c6ac35dd74d2fc035c13bf822cb4f3cd",
+    "semantic_hash": "c6ac35dd74d2fc035c13bf822cb4f3cd"
+  },
+  "docs/superpowers/specs/2026-06-27-loopguard-cloud-app-design.md": {
+    "mtime": 1782575547.9286127,
+    "ast_hash": "ff1aa79b9a4853d1968a1cff501a0626",
+    "semantic_hash": "ff1aa79b9a4853d1968a1cff501a0626"
+  },
+  "docs/superpowers/specs/2026-06-27-loopguard-v2-real-product-design.md": {
+    "mtime": 1782575547.9287615,
+    "ast_hash": "c3ef74471e51761e06d45e872c41292b",
+    "semantic_hash": "c3ef74471e51761e06d45e872c41292b"
+  },
+  "docs/superpowers/specs/2026-06-30-loopguard-phone-ui-redesign.md": {
+    "mtime": 1782835027.2132542,
+    "ast_hash": "9dbba535c2b99af53666d50359e87492",
+    "semantic_hash": "9dbba535c2b99af53666d50359e87492"
+  },
+  "docs/superpowers/specs/2026-07-02-loopguard-reliability-control-plane-design.md": {
+    "mtime": 1785631258.9330287,
+    "ast_hash": "c02bb009ef98034a07997cd91c15e06e",
+    "semantic_hash": "c02bb009ef98034a07997cd91c15e06e"
+  },
+  "docs/tutorials/protect-first-session.md": {
+    "mtime": 1785631258.9332159,
+    "ast_hash": "f55ac5af8ba1fa4708f6652fe236c1ae",
+    "semantic_hash": "f55ac5af8ba1fa4708f6652fe236c1ae"
+  },
+  "infra/helm/loopguard/Chart.yaml": {
+    "mtime": 1785631258.9334438,
+    "ast_hash": "8652270386f5703837031caf6a8e981b",
+    "semantic_hash": "8652270386f5703837031caf6a8e981b"
+  },
+  "infra/helm/loopguard/templates/canary.yaml": {
+    "mtime": 1785631258.934229,
+    "ast_hash": "0b0218ca2f96d0ee75bc406e4c732182",
+    "semantic_hash": "0b0218ca2f96d0ee75bc406e4c732182"
+  },
+  "infra/helm/loopguard/templates/control-api.yaml": {
+    "mtime": 1785631258.9343233,
+    "ast_hash": "985ece53f167daca79296d9b19abd704",
+    "semantic_hash": "985ece53f167daca79296d9b19abd704"
+  },
+  "infra/helm/loopguard/templates/migration-job.yaml": {
+    "mtime": 1785631258.9344099,
+    "ast_hash": "e9938fd536de7b21365d25149cc9a7c7",
+    "semantic_hash": "e9938fd536de7b21365d25149cc9a7c7"
+  },
+  "infra/helm/loopguard/templates/network-policy.yaml": {
+    "mtime": 1785631258.9344964,
+    "ast_hash": "9ffc1d4883b059d4cd79e707eb5dea25",
+    "semantic_hash": "9ffc1d4883b059d4cd79e707eb5dea25"
+  },
+  "infra/helm/loopguard/templates/web.yaml": {
+    "mtime": 1785631258.9345906,
+    "ast_hash": "f32774af40f2c6f13ae4aa86ee39b43c",
+    "semantic_hash": "f32774af40f2c6f13ae4aa86ee39b43c"
+  },
+  "infra/helm/loopguard/templates/worker.yaml": {
+    "mtime": 1785631258.9346826,
+    "ast_hash": "d6e647f4020d5f0e761b6effb300dc5e",
+    "semantic_hash": "d6e647f4020d5f0e761b6effb300dc5e"
+  },
+  "infra/helm/loopguard/values-production.yaml": {
+    "mtime": 1785631258.9347703,
+    "ast_hash": "bca09c9e198256ec0135657a65210dea",
+    "semantic_hash": "bca09c9e198256ec0135657a65210dea"
+  },
+  "infra/helm/loopguard/values-staging.yaml": {
+    "mtime": 1785631258.9348528,
+    "ast_hash": "0f3e2aee1ac403c292209695efa831d3",
+    "semantic_hash": "0f3e2aee1ac403c292209695efa831d3"
+  },
+  "infra/helm/loopguard/values.yaml": {
+    "mtime": 1785631258.9349432,
+    "ast_hash": "8ccf586263e6e3d6080777b4d1c4ff5e",
+    "semantic_hash": "8ccf586263e6e3d6080777b4d1c4ff5e"
+  },
+  "loopguard/README.md": {
+    "mtime": 1785631258.9379578,
+    "ast_hash": "d099c0021a19431d0bc2c69fa1dade96",
+    "semantic_hash": "d099c0021a19431d0bc2c69fa1dade96"
+  },
+  "loopguard/docs/architecture.md": {
+    "mtime": 1782523062.0295026,
+    "ast_hash": "1b8de8ad5b87fbb2fac26ec4e639a85c",
+    "semantic_hash": "1b8de8ad5b87fbb2fac26ec4e639a85c"
+  },
+  "loopguard/docs/auto-heal-runbook.md": {
+    "mtime": 1785631258.9381628,
+    "ast_hash": "e67c66eee9fedfe0d9df877d8ffc45bd",
+    "semantic_hash": "e67c66eee9fedfe0d9df877d8ffc45bd"
+  },
+  "loopguard/docs/browser-performance.md": {
+    "mtime": 1785631258.9383137,
+    "ast_hash": "e4b94caddeb99ae79989f4f2b78396be",
+    "semantic_hash": "e4b94caddeb99ae79989f4f2b78396be"
+  },
+  "loopguard/docs/cerebras_setup.md": {
+    "mtime": 1782523062.0296342,
+    "ast_hash": "7f755ef1b081f60e9af438dbd52b4f16",
+    "semantic_hash": "7f755ef1b081f60e9af438dbd52b4f16"
+  },
+  "loopguard/docs/demo_script.md": {
+    "mtime": 1782523062.0297742,
+    "ast_hash": "961a208a1717590186591ead3e8fcda6",
+    "semantic_hash": "961a208a1717590186591ead3e8fcda6"
+  },
+  "loopguard/docs/getting-started-protected-session.md": {
+    "mtime": 1785631258.9385157,
+    "ast_hash": "bab9a1b5688a389402e03a5d1c3fe610",
+    "semantic_hash": "bab9a1b5688a389402e03a5d1c3fe610"
+  },
+  "loopguard/docs/integration-compatibility.md": {
+    "mtime": 1785631258.9386652,
+    "ast_hash": "a46bc9c647e069c3d74e4462159e6c8c",
+    "semantic_hash": "a46bc9c647e069c3d74e4462159e6c8c"
+  },
+  "loopguard/src/loopguard/demo_projects/config-hunt/README.md": {
+    "mtime": 1782585300.293075,
+    "ast_hash": "57babf6eb225c6eb31a94ad61a05ff0d",
+    "semantic_hash": "57babf6eb225c6eb31a94ad61a05ff0d"
+  },
+  "loopguard/src/loopguard/demo_projects/npm-manifest/README.md": {
+    "mtime": 1782585300.2936966,
+    "ast_hash": "62ad438b45de9b494c2f8c91802fa1e5",
+    "semantic_hash": "62ad438b45de9b494c2f8c91802fa1e5"
+  },
+  "loopguard/src/loopguard/demo_projects/sandbox/README.md": {
+    "mtime": 1782585300.2943277,
+    "ast_hash": "0759de30a4c35d184cc21185ff2feba4",
+    "semantic_hash": "0759de30a4c35d184cc21185ff2feba4"
+  },
+  "loopguard/tests/fixtures/heal/expected_pr.md": {
+    "mtime": 1785631259.0007105,
+    "ast_hash": "9fa45004a8edd0e312b348c106963e5e",
+    "semantic_hash": "9fa45004a8edd0e312b348c106963e5e"
+  },
+  "services/control-api/README.md": {
+    "mtime": 1785631259.015346,
+    "ast_hash": "92388c4339f786be1ad3bb00105d504e",
+    "semantic_hash": "92388c4339f786be1ad3bb00105d504e"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/action-review-dark-chromium-darwin.png": {
+    "mtime": 1785631258.8816044,
+    "ast_hash": "19a5307626d554c39b71d3638688797e",
+    "semantic_hash": "19a5307626d554c39b71d3638688797e"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/action-review-light-chromium-darwin.png": {
+    "mtime": 1785631258.8820612,
+    "ast_hash": "791bcfa96118a5961e8b66e3f632c9ae",
+    "semantic_hash": "791bcfa96118a5961e8b66e3f632c9ae"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/changes-dark-chromium-darwin.png": {
+    "mtime": 1785631258.882393,
+    "ast_hash": "868bd076f98dde6aef7d07a275c080b4",
+    "semantic_hash": "868bd076f98dde6aef7d07a275c080b4"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/changes-light-chromium-darwin.png": {
+    "mtime": 1785631258.8827972,
+    "ast_hash": "05454dee0825b7c2b704db2520705290",
+    "semantic_hash": "05454dee0825b7c2b704db2520705290"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/devices-settings-dark-chromium-darwin.png": {
+    "mtime": 1785631258.8831353,
+    "ast_hash": "f0c49c9802fd9b86e6064a8c77a4b565",
+    "semantic_hash": "f0c49c9802fd9b86e6064a8c77a4b565"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/devices-settings-light-chromium-darwin.png": {
+    "mtime": 1785631258.8834703,
+    "ast_hash": "0a1fa2e932d152b47f33849be7808ef0",
+    "semantic_hash": "0a1fa2e932d152b47f33849be7808ef0"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/hosts-integrations-dark-chromium-darwin.png": {
+    "mtime": 1785631258.8838038,
+    "ast_hash": "89a86629769a3c4048ded64db86607fa",
+    "semantic_hash": "89a86629769a3c4048ded64db86607fa"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/hosts-integrations-light-chromium-darwin.png": {
+    "mtime": 1785631258.8841023,
+    "ast_hash": "858832c0e0202b9b26c09f563df29fda",
+    "semantic_hash": "858832c0e0202b9b26c09f563df29fda"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/inbox-1536px-chromium-darwin.png": {
+    "mtime": 1785631258.8845403,
+    "ast_hash": "a456c982ae123b9974fc55be5e469dab",
+    "semantic_hash": "a456c982ae123b9974fc55be5e469dab"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/inbox-320px-chromium-darwin.png": {
+    "mtime": 1785631258.8852627,
+    "ast_hash": "633beca2d95617d6706eaa898fd02ec7",
+    "semantic_hash": "633beca2d95617d6706eaa898fd02ec7"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/inbox-768px-chromium-darwin.png": {
+    "mtime": 1785631258.8855882,
+    "ast_hash": "668d0a20492a4d2392938150ab584a71",
+    "semantic_hash": "668d0a20492a4d2392938150ab584a71"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/inbox-dark-chromium-darwin.png": {
+    "mtime": 1785631258.8859992,
+    "ast_hash": "450b5408f4267140796dc5f842687333",
+    "semantic_hash": "450b5408f4267140796dc5f842687333"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/inbox-high-contrast-reduced-motion-chromium-darwin.png": {
+    "mtime": 1785631258.8865283,
+    "ast_hash": "82f411968ea16d3473093138854f0927",
+    "semantic_hash": "82f411968ea16d3473093138854f0927"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/inbox-light-chromium-darwin.png": {
+    "mtime": 1785631258.8870192,
+    "ast_hash": "924f42d2a82703422afc748c5764036f",
+    "semantic_hash": "924f42d2a82703422afc748c5764036f"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/policies-dark-chromium-darwin.png": {
+    "mtime": 1785631258.8874557,
+    "ast_hash": "ceb39e57b38b6daeef209e28cdc96132",
+    "semantic_hash": "ceb39e57b38b6daeef209e28cdc96132"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/policies-light-chromium-darwin.png": {
+    "mtime": 1785631258.887883,
+    "ast_hash": "04f364d8144f5a5648115735084870dc",
+    "semantic_hash": "04f364d8144f5a5648115735084870dc"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/run-detail-dark-chromium-darwin.png": {
+    "mtime": 1785631258.8890882,
+    "ast_hash": "773d655bb01c8323b9f46d55f22881ca",
+    "semantic_hash": "773d655bb01c8323b9f46d55f22881ca"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/run-detail-light-chromium-darwin.png": {
+    "mtime": 1785631258.8906474,
+    "ast_hash": "9bf441ac2603594545557dc261620ed1",
+    "semantic_hash": "9bf441ac2603594545557dc261620ed1"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/verification-dark-chromium-darwin.png": {
+    "mtime": 1785631258.8909633,
+    "ast_hash": "571bf835bcc97b3dd7f53e41b4ff2a23",
+    "semantic_hash": "571bf835bcc97b3dd7f53e41b4ff2a23"
+  },
+  "apps/web/e2e/visual.spec.ts-snapshots/verification-light-chromium-darwin.png": {
+    "mtime": 1785631258.8921845,
+    "ast_hash": "10ac7cc7680c17d6198847dfee38a000",
+    "semantic_hash": "10ac7cc7680c17d6198847dfee38a000"
+  }
+}

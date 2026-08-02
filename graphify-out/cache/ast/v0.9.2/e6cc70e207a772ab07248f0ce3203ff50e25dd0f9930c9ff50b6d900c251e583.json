@@ -1,0 +1,1 @@
+{"nodes": [{"id": "pkg_fixture_python_project", "label": "fixture-python-project", "file_type": "code", "type": "package", "ecosystem": "python", "source_file": "loopguard/tests/fixtures/verify/python_project/pyproject.toml", "source_location": "L1", "version": "0.0.0"}], "edges": []}
