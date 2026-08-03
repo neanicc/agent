@@ -9,6 +9,7 @@ import shlex
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -153,7 +154,8 @@ case "$event" in
   SessionStart|UserPromptSubmit|PreToolUse|PermissionRequest|PostToolUse|PreCompact|Stop) ;;
   *) printf '%s\\n' 'LoopGuard: unsupported Codex hook event' >&2; exit 0 ;;
 esac
-exec loopguard hook-entry codex "$event" --integration-version 1
+script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
+exec "$script_dir/../../../bin/loopguard" hook-entry codex "$event" --integration-version 1
 """
 
 _PROJECT_LAUNCHER = """#!/bin/sh
@@ -164,7 +166,12 @@ exec {executable} hook-entry codex "$1" --integration-version 1
 """
 
 
-def materialize_codex_marketplace(home: Path, *, dry_run: bool = False) -> CodexMarketplace:
+def materialize_codex_marketplace(
+    home: Path,
+    *,
+    executable: str | None = None,
+    dry_run: bool = False,
+) -> CodexMarketplace:
     """Write a checksum-pinned local marketplace without changing Codex configuration."""
     files = _plugin_file_bytes()
     checksum = _tree_checksum(files)
@@ -181,6 +188,16 @@ def materialize_codex_marketplace(home: Path, *, dry_run: bool = False) -> Codex
         changed = changed or needs_write
         if needs_write and not dry_run:
             _write_owned_file(destination, content, executable=relative == "bin/loopguard-hook")
+    runtime_path = root / "bin" / "loopguard"
+    runtime_bytes = _runtime_launcher(executable)
+    needs_runtime_write = _owned_file_needs_write(
+        runtime_path,
+        runtime_bytes,
+        executable=True,
+    )
+    changed = changed or needs_runtime_write
+    if needs_runtime_write and not dry_run:
+        _write_owned_file(runtime_path, runtime_bytes, executable=True)
     marketplace_bytes = _json_bytes(_marketplace())
     manifest_path = root / ".agents" / "plugins" / "marketplace.json"
     needs_marketplace_write = _owned_file_needs_write(manifest_path, marketplace_bytes)
@@ -199,11 +216,16 @@ def materialize_codex_marketplace(home: Path, *, dry_run: bool = False) -> Codex
 def install_codex_plugin(
     home: Path,
     *,
+    executable: str | None = None,
     codex_executable: str = "codex",
     command_runner: Any = subprocess.run,
     dry_run: bool = False,
 ) -> CodexIntegrationResult:
-    marketplace = materialize_codex_marketplace(home, dry_run=dry_run)
+    marketplace = materialize_codex_marketplace(
+        home,
+        executable=executable,
+        dry_run=dry_run,
+    )
     hook_checksum = _tree_checksum(_plugin_file_bytes())
     if dry_run:
         return CodexIntegrationResult(
@@ -817,6 +839,28 @@ def _plugin_file_bytes() -> dict[str, bytes]:
         "hooks/hooks.json": _json_bytes(_plugin_hooks()),
         "bin/loopguard-hook": _PLUGIN_LAUNCHER.encode(),
     }
+
+
+def _runtime_launcher(executable: str | None) -> bytes:
+    if executable is None:
+        executable = str(Path(sys.executable).parent / "loopguard")
+    candidate = Path(executable).expanduser()
+    if not candidate.is_absolute():
+        discovered = shutil.which(executable)
+        if discovered is None:
+            raise CodexInstallError("LoopGuard hook executable could not be resolved")
+        candidate = Path(discovered)
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError as exc:
+        raise CodexInstallError("LoopGuard hook executable could not be resolved") from exc
+    if not resolved.is_file() or (os.name == "posix" and not os.access(resolved, os.X_OK)):
+        raise CodexInstallError("LoopGuard hook executable must be an executable file")
+    return (
+        "#!/bin/sh\n"
+        "set -eu\n"
+        f"exec {shlex.quote(str(resolved))} \"$@\"\n"
+    ).encode()
 
 
 def _definition_checksum(expected: Mapping[str, Mapping[str, object]]) -> str:

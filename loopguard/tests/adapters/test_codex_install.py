@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import stat
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -195,6 +196,35 @@ def test_materialized_marketplace_is_pinned_and_plugin_relative(tmp_path: Path) 
         "bin/loopguard-hook",
     ):
         assert (checked_in / relative).read_bytes() == (result.plugin_path / relative).read_bytes()
+
+
+def test_materialized_marketplace_launcher_does_not_depend_on_path(tmp_path: Path) -> None:
+    executable = tmp_path / "venv" / "bin" / "loopguard"
+    executable.parent.mkdir(parents=True)
+    executable.write_text("#!/bin/sh\nprintf '%s\\n' \"$@\"\n")
+    executable.chmod(0o755)
+
+    marketplace = materialize_codex_marketplace(
+        tmp_path / "integrations",
+        executable=str(executable),
+    )
+    hook = marketplace.plugin_path / "bin" / "loopguard-hook"
+    result = subprocess.run(
+        [str(hook), "SessionStart"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == [
+        "hook-entry",
+        "codex",
+        "SessionStart",
+        "--integration-version",
+        "1",
+    ]
 
 
 def test_dry_run_reports_changes_without_writing(tmp_path: Path) -> None:

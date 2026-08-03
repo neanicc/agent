@@ -1082,6 +1082,7 @@ class _GuidedSetupActions:
             if codex_plugin_available(version) and self.scope == "user":
                 result = install_codex_plugin(
                     self.paths.home / "integrations",
+                    executable=str(_service_executable(None)),
                     dry_run=dry_run,
                 )
             else:
@@ -1469,6 +1470,7 @@ def integrations_install_codex(
             ensure_private_home(paths.home)
             result = install_codex_plugin(
                 paths.home / "integrations",
+                executable=str(_service_executable(Path(executable))),
                 codex_executable=codex_executable,
                 dry_run=dry_run,
             )

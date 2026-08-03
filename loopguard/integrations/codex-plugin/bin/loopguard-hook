@@ -5,4 +5,5 @@ case "$event" in
   SessionStart|UserPromptSubmit|PreToolUse|PermissionRequest|PostToolUse|PreCompact|Stop) ;;
   *) printf '%s\n' 'LoopGuard: unsupported Codex hook event' >&2; exit 0 ;;
 esac
-exec loopguard hook-entry codex "$event" --integration-version 1
+script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
+exec "$script_dir/../../../bin/loopguard" hook-entry codex "$event" --integration-version 1
