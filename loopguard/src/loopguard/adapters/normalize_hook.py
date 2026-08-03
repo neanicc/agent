@@ -165,8 +165,6 @@ def normalize_hook(
         "raw": snapshot,
         "execution_environment": execution_environment,
     }
-    if hook_name == "PermissionRequest":
-        seed["observed_at"] = timestamp.isoformat()
     event_seed = _canonical_json(seed, error_code="invalid_input")
     event_id = _stable_id("hook", event_seed)
 

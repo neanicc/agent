@@ -843,7 +843,17 @@ def _plugin_file_bytes() -> dict[str, bytes]:
 
 def _runtime_launcher(executable: str | None) -> bytes:
     if executable is None:
-        executable = str(Path(sys.executable).parent / "loopguard")
+        executable = shutil.which("loopguard")
+        if executable is None:
+            executable_name = "loopguard.exe" if os.name == "nt" else "loopguard"
+            candidates = (
+                Path(sys.executable).parent / executable_name,
+                Path(sys.executable).parent / "Scripts" / executable_name,
+            )
+            executable = next(
+                (str(candidate) for candidate in candidates if candidate.is_file()),
+                executable_name,
+            )
     candidate = Path(executable).expanduser()
     if not candidate.is_absolute():
         discovered = shutil.which(executable)

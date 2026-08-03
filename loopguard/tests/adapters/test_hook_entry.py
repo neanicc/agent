@@ -146,6 +146,35 @@ def test_permission_request_is_a_typed_action_request_not_a_tool_call(tmp_path):
     assert "tool.call" not in normalized.event.model_dump_json()
 
 
+def test_permission_request_identity_does_not_change_across_clock_boundaries(tmp_path):
+    repository = _make_git_repo(tmp_path)
+    raw = {
+        "session_id": "vendor-session",
+        "turn_id": "turn-1",
+        "cwd": str(repository),
+        "tool_name": "Bash",
+        "tool_input": {"command": "git push"},
+    }
+
+    before = normalize_hook(
+        "codex",
+        "PermissionRequest",
+        raw,
+        now=lambda: datetime(2026, 7, 15, 12, 0, 0, tzinfo=timezone.utc),
+    )
+    after = normalize_hook(
+        "codex",
+        "PermissionRequest",
+        raw,
+        now=lambda: datetime(2026, 7, 15, 12, 0, 1, tzinfo=timezone.utc),
+    )
+
+    assert before.event.event_id == after.event.event_id
+    assert before.action_request is not None and after.action_request is not None
+    assert before.action_request.action_id == after.action_request.action_id
+    assert before.action_request.nonce == after.action_request.nonce
+
+
 def test_codex_rejects_hook_events_it_does_not_officially_expose(tmp_path):
     repository = _make_git_repo(tmp_path)
 

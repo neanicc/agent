@@ -198,6 +198,9 @@ def test_materialized_marketplace_is_pinned_and_plugin_relative(tmp_path: Path) 
         assert (checked_in / relative).read_bytes() == (result.plugin_path / relative).read_bytes()
 
 
+@pytest.mark.skipif(
+    os.name != "posix", reason="the plugin launcher is a POSIX shell script"
+)
 def test_materialized_marketplace_launcher_does_not_depend_on_path(tmp_path: Path) -> None:
     executable = tmp_path / "venv" / "bin" / "loopguard"
     executable.parent.mkdir(parents=True)
