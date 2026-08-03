@@ -4,6 +4,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -32,6 +33,36 @@ def _event(event_id: str, *, repo_id: str = "r", session_id: str = "s") -> Contr
         session=SessionRef(host_id="host", repo_id=repo_id, session_id=session_id),
         payload={"private": f"body-{event_id}"},
     )
+
+
+def _kill_subprocess_after_commit(code: str, path: Path, source_root: Path) -> None:
+    ready = path.with_name(f"{path.name}.committed")
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(source_root)
+    process = subprocess.Popen(
+        [sys.executable, "-c", code, str(path), str(ready)],
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    deadline = time.monotonic() + 10
+    try:
+        while not ready.exists():
+            returncode = process.poll()
+            if returncode is not None:
+                stdout, stderr = process.communicate()
+                pytest.fail(
+                    f"crash-test subprocess exited before commit ({returncode}): "
+                    f"{stdout}{stderr}"
+                )
+            if time.monotonic() >= deadline:
+                pytest.fail("crash-test subprocess did not acknowledge its commit")
+            time.sleep(0.01)
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.wait(timeout=10)
 
 
 def _create_version_one_schema(
@@ -180,8 +211,8 @@ def test_abrupt_subprocess_exit_after_commit_replays_acknowledged_event(tmp_path
     path = tmp_path / "events.db"
     source_root = Path(__file__).parents[2] / "src"
     code = """
-import os
 import sys
+import time
 from pathlib import Path
 from loopguard.control.events import ControlEvent, EventKind, SessionRef
 from loopguard.control.store import EventStore
@@ -194,17 +225,10 @@ store.append(ControlEvent(
     session=SessionRef(host_id="h", repo_id="r", session_id="s"),
     payload={"private": "committed-before-abrupt-exit"},
 ))
-os._exit(0)
+Path(sys.argv[2]).write_text("committed")
+time.sleep(30)
 """
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(source_root)
-    completed = subprocess.run(
-        [sys.executable, "-c", code, str(path)],
-        env=env,
-        check=False,
-        timeout=10,
-    )
-    assert completed.returncode == 0
+    _kill_subprocess_after_commit(code, path, source_root)
 
     with EventStore.for_test(path, key=b"abrupt-exit-key") as reopened:
         replay = reopened.read_local_after(0, 10)
@@ -218,8 +242,8 @@ def test_acknowledged_wal_with_deleted_main_database_is_preserved_and_rejected(t
     wal_path = path.with_name(f"{path.name}-wal")
     source_root = Path(__file__).parents[2] / "src"
     code = """
-import os
 import sys
+import time
 from pathlib import Path
 from loopguard.control.events import ControlEvent, EventKind, SessionRef
 from loopguard.control.store import EventStore
@@ -231,11 +255,10 @@ store.append(ControlEvent(
     source="subprocess",
     session=SessionRef(host_id="h", repo_id="r", session_id="s"),
 ))
-os._exit(0)
+Path(sys.argv[2]).write_text("committed")
+time.sleep(30)
 """
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(source_root)
-    subprocess.run([sys.executable, "-c", code, str(path)], env=env, check=True, timeout=10)
+    _kill_subprocess_after_commit(code, path, source_root)
     assert wal_path.exists()
     wal_before = wal_path.read_bytes()
     path.unlink()
@@ -267,8 +290,8 @@ def test_acknowledged_event_recovers_with_incomplete_trailing_wal_frame(tmp_path
     wal_path = path.with_name(f"{path.name}-wal")
     source_root = Path(__file__).parents[2] / "src"
     code = """
-import os
 import sys
+import time
 from pathlib import Path
 from loopguard.control.events import ControlEvent, EventKind, SessionRef
 from loopguard.control.store import EventStore
@@ -280,11 +303,10 @@ store.append(ControlEvent(
     source="subprocess",
     session=SessionRef(host_id="h", repo_id="r", session_id="s"),
 ))
-os._exit(0)
+Path(sys.argv[2]).write_text("committed")
+time.sleep(30)
 """
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(source_root)
-    subprocess.run([sys.executable, "-c", code, str(path)], env=env, check=True, timeout=10)
+    _kill_subprocess_after_commit(code, path, source_root)
     with wal_path.open("ab") as wal:
         wal.write(b"incomplete-frame-tail")
 
@@ -302,8 +324,8 @@ def test_nonempty_truncated_wal_header_fails_closed_and_preserves_state(tmp_path
         store.append(_event("older-checkpointed-event"))
 
     code = """
-import os
 import sys
+import time
 from pathlib import Path
 from loopguard.control.events import ControlEvent, EventKind, SessionRef
 from loopguard.control.store import EventStore
@@ -315,11 +337,10 @@ store.append(ControlEvent(
     source="subprocess",
     session=SessionRef(host_id="h", repo_id="r", session_id="s"),
 ))
-os._exit(0)
+Path(sys.argv[2]).write_text("committed")
+time.sleep(30)
 """
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(source_root)
-    subprocess.run([sys.executable, "-c", code, str(path)], env=env, check=True, timeout=10)
+    _kill_subprocess_after_commit(code, path, source_root)
     wal_contents = wal_path.read_bytes()
     assert len(wal_contents) > 32
     wal_path.write_bytes(wal_contents[:16])
@@ -373,8 +394,8 @@ def test_corrupt_wal_is_a_named_startup_failure(tmp_path):
     wal_path = path.with_name(f"{path.name}-wal")
     source_root = Path(__file__).parents[2] / "src"
     code = """
-import os
 import sys
+import time
 from pathlib import Path
 from loopguard.control.events import ControlEvent, EventKind, SessionRef
 from loopguard.control.store import EventStore
@@ -386,11 +407,10 @@ store.append(ControlEvent(
     source="subprocess",
     session=SessionRef(host_id="h", repo_id="r", session_id="s"),
 ))
-os._exit(0)
+Path(sys.argv[2]).write_text("committed")
+time.sleep(30)
 """
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(source_root)
-    subprocess.run([sys.executable, "-c", code, str(path)], env=env, check=True, timeout=10)
+    _kill_subprocess_after_commit(code, path, source_root)
     assert wal_path.exists()
     corrupt_wal = bytearray(wal_path.read_bytes())
     assert len(corrupt_wal) > 80
