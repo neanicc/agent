@@ -13,6 +13,7 @@ final class AppModel {
     private(set) var repairCapability: AsyncViewState<EffectiveCapabilities> = .idle
     private(set) var pendingAction: ActionViewModel?
     private(set) var routedSessionID: String?
+    private(set) var routeErrorMessage: String?
     let auth: AuthSession
     let pairing: DevicePairingCoordinator
     let notifications: NotificationManager
@@ -116,6 +117,7 @@ final class AppModel {
         repairCapability = .idle
         pendingAction = nil
         routedSessionID = nil
+        routeErrorMessage = nil
     }
 
     func handleNotificationRoute(_ route: NotificationRoute) async {
@@ -126,10 +128,7 @@ final class AppModel {
                 await loadDashboard()
             }
             guard sessions.value?.contains(where: { $0.id == id }) == true else {
-                sessions = .failed(
-                    message: "The linked run is unavailable or outside your current access.",
-                    requestID: nil
-                )
+                routeErrorMessage = "The linked run is unavailable or outside your current access."
                 return
             }
             routedSessionID = id
@@ -145,16 +144,17 @@ final class AppModel {
                 addActionToInbox(request)
             } catch {
                 pendingAction = nil
-                inbox = .failed(
-                    message: "The linked action could not be refreshed. No approval was enabled.",
-                    requestID: nil
-                )
+                routeErrorMessage = "The linked action could not be refreshed. No approval was enabled."
             }
         }
     }
 
     func setRoutedSession(_ id: String?) {
         routedSessionID = id
+    }
+
+    func clearRouteError() {
+        routeErrorMessage = nil
     }
 
     func registerPushToken(_ token: String) async {

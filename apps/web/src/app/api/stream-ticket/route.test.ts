@@ -9,6 +9,7 @@ vi.mock("next/headers", () => ({
 
 vi.mock("@/auth", () => ({
   SESSION_COOKIE: "__Host-loopguard_session",
+  CSRF_COOKIE: "__Host-loopguard_csrf",
   refreshBrowserSession: async (session: unknown) => session,
   unsealSession: async (value: string | undefined) =>
     value === "sealed-session"
@@ -25,7 +26,7 @@ describe("stream ticket BFF", () => {
   beforeEach(() => {
     cookieGet.mockImplementation((name: string) => {
       if (name === "__Host-loopguard_session") return { value: "sealed-session" };
-      if (name === "loopguard_csrf") return { value: "csrf-value" };
+      if (name === "__Host-loopguard_csrf") return { value: "csrf-value" };
       return undefined;
     });
     vi.stubEnv("CONTROL_API_URL", "https://control.example.test/api");

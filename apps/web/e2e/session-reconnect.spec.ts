@@ -5,7 +5,7 @@ import { event, ids, mockControlApi } from "./fixtures";
 test("a cursor gap replays before newer live events render", async ({ page }) => {
   const ticketCursors: number[] = [];
   await page.context().addCookies([
-    { name: "loopguard_csrf", value: "csrf-test", url: "http://127.0.0.1:3113" },
+    { name: "__Host-loopguard_csrf", value: "csrf-test", url: "https://127.0.0.1:3113", secure: true },
   ]);
   await page.addInitScript(() => {
     const NativeSocket = window.WebSocket;

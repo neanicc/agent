@@ -41,7 +41,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       session,
       secureCookieOptions(webSessionTTLSeconds()),
     );
-    cookieStore.set(CSRF_COOKIE, randomBase64URL(32), secureCookieOptions(8 * 60 * 60, false));
+    cookieStore.set(CSRF_COOKIE, randomBase64URL(32), secureCookieOptions(webSessionTTLSeconds(), false));
     return Response.redirect(new URL(result.returnTo, request.url), 303);
   } catch {
     cookieStore.delete(TRANSACTION_COOKIE);

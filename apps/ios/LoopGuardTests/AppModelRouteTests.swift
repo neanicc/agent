@@ -38,7 +38,33 @@ struct AppModelRouteTests {
         #expect(model.pendingAction?.canSubmit == false)
     }
 
-    private func makeModel(transport: RouteTransport) -> AppModel {
+    @Test("a failed action refresh preserves the inbox and surfaces a route error")
+    func failedActionRouteKeepsInbox() async throws {
+        let model = makeModel(transport: FailingTransport())
+
+        await model.handleNotificationRoute(.action(id: "act_1"))
+
+        #expect(model.pendingAction == nil)
+        #expect(model.routeErrorMessage != nil)
+        if case .failed = model.inbox {
+            Issue.record("a route failure must not replace the inbox state")
+        }
+    }
+
+    @Test("a session deep link outside the loaded runs keeps them visible")
+    func missingSessionRouteKeepsRuns() async throws {
+        let model = makeModel(transport: FailingTransport(), fixtureMode: true)
+        await model.loadDashboard()
+        let loadedCount = model.sessions.value?.count ?? 0
+        #expect(loadedCount > 0)
+
+        await model.handleNotificationRoute(.session(id: "run-that-does-not-exist"))
+
+        #expect(model.routeErrorMessage != nil)
+        #expect(model.sessions.value?.count == loadedCount)
+    }
+
+    private func makeModel(transport: any ControlTransport, fixtureMode: Bool = false) -> AppModel {
         let keychain = KeychainStore(service: "dev.loopguard.route-tests.\(UUID().uuidString)")
         let api = ControlAPI(
             baseURL: URL(string: "https://api.test")!,
@@ -63,7 +89,8 @@ struct AppModelRouteTests {
             auth: AuthSession(configuration: configuration, keychain: keychain),
             pairing: DevicePairingCoordinator(api: UnusedPairingAPI(), keyStore: keyStore),
             notifications: NotificationManager(),
-            deviceKeyStore: keyStore
+            deviceKeyStore: keyStore,
+            fixtureMode: fixtureMode
         )
     }
 
@@ -122,6 +149,12 @@ private actor RouteTransport: ControlTransport {
                 headerFields: ["Content-Type": "application/json"]
             )!
         )
+    }
+}
+
+private actor FailingTransport: ControlTransport {
+    func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        throw URLError(.notConnectedToInternet)
     }
 }
 

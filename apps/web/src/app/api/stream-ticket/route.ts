@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 
 import {
+  CSRF_COOKIE,
   refreshBrowserSession,
   sealSession,
   secureCookieOptions,
@@ -41,13 +42,17 @@ export async function POST(request: NextRequest): Promise<Response> {
         await sealSession(refreshed),
         secureCookieOptions(webSessionTTLSeconds()),
       );
+      const csrfValue = cookieStore.get(CSRF_COOKIE)?.value;
+      if (csrfValue) {
+        cookieStore.set(CSRF_COOKIE, csrfValue, secureCookieOptions(webSessionTTLSeconds(), false));
+      }
     }
   } catch {
     cookieStore.delete(SESSION_COOKIE);
     return problem(401, "authentication_required", "Your session expired. Sign in again.");
   }
 
-  if (!equalSecret(request.headers.get("x-csrf-token"), cookieStore.get("loopguard_csrf")?.value)) {
+  if (!equalSecret(request.headers.get("x-csrf-token"), cookieStore.get(CSRF_COOKIE)?.value)) {
     return problem(403, "csrf_required", "Refresh the page before opening a session stream.");
   }
 

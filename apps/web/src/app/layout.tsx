@@ -10,6 +10,7 @@ import "@fontsource/space-grotesk/600.css";
 import "@fontsource/space-grotesk/700.css";
 import "@/styles/tokens.css";
 import "@/styles/globals.css";
+import { CSRF_COOKIE } from "@/auth";
 import { Providers } from "./providers";
 
 
@@ -26,7 +27,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const csrfToken = (await cookies()).get("loopguard_csrf")?.value ?? "";
+  const csrfToken = (await cookies()).get(CSRF_COOKIE)?.value ?? "";
   return (
     <html lang="en">
       <head>

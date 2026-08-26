@@ -72,6 +72,19 @@ struct MainTabView: View {
                 selection = .inbox
             }
         }
+        .alert(
+            "Couldn\u{2019}t open notification",
+            isPresented: Binding(
+                get: { model.routeErrorMessage != nil },
+                set: { presented in
+                    if !presented { model.clearRouteError() }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.routeErrorMessage ?? "")
+        }
         .task(id: routeTaskID) {
             guard let route = model.notifications.route else { return }
             await model.handleNotificationRoute(route)

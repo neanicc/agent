@@ -13,7 +13,7 @@ import { POST } from "./route";
 describe("web logout", () => {
   beforeEach(() => {
     cookieGet.mockImplementation((name: string) =>
-      name === "loopguard_csrf" ? { value: "csrf-value" } : undefined,
+      name === "__Host-loopguard_csrf" ? { value: "csrf-value" } : undefined,
     );
   });
 
@@ -38,7 +38,7 @@ describe("web logout", () => {
     expect(cookieDelete.mock.calls.map(([name]) => name)).toEqual([
       "__Host-loopguard_session",
       "__Host-loopguard_oidc",
-      "loopguard_csrf",
+      "__Host-loopguard_csrf",
     ]);
   });
 });

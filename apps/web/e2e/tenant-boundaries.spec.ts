@@ -33,7 +33,7 @@ test("administration pages render only the authenticated tenant fixtures", async
 test("device revocation is explicit and targets only the selected device", async ({ page }) => {
   const mutations: Array<{ method: string; path: string }> = [];
   await page.context().addCookies([
-    { name: "loopguard_csrf", value: "csrf-test", url: "http://127.0.0.1:3113" },
+    { name: "__Host-loopguard_csrf", value: "csrf-test", url: "https://127.0.0.1:3113", secure: true },
   ]);
   await mockControlApi(page, {
     onRequest: (route) => {

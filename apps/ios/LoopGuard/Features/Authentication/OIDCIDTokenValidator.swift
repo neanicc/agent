@@ -35,12 +35,17 @@ actor RemoteJWKSIDTokenValidator: IDTokenValidating {
         guard ["RS256", "PS256", "ES256"].contains(header.algorithm), !header.keyID.isEmpty else {
             throw IDTokenValidationError.unsupportedAlgorithm
         }
-        let set = try await keys(at: configuration.jwksEndpoint)
-        guard let key = set.keys.first(where: {
+        let matchesHeader: (JWK) -> Bool = {
             $0.keyID == header.keyID
                 && ($0.algorithm == nil || $0.algorithm == header.algorithm)
                 && ($0.use == nil || $0.use == "sig")
-        }) else {
+        }
+        var set = try await keys(at: configuration.jwksEndpoint)
+        if !set.keys.contains(where: matchesHeader) {
+            // An unknown kid usually means the IdP rotated keys after the set was cached.
+            set = try await keys(at: configuration.jwksEndpoint, forceRefresh: true)
+        }
+        guard let key = set.keys.first(where: matchesHeader) else {
             throw IDTokenValidationError.keyNotFound
         }
         let signedData = Data("\(segments[0]).\(segments[1])".utf8)
@@ -62,6 +67,9 @@ actor RemoteJWKSIDTokenValidator: IDTokenValidating {
         else {
             throw IDTokenValidationError.invalidClaims
         }
+        if payload.audience.values.count > 1, payload.authorizedParty != configuration.clientID {
+            throw IDTokenValidationError.invalidClaims
+        }
         return IDTokenClaims(
             issuer: payload.issuer,
             subject: payload.subject,
@@ -71,8 +79,8 @@ actor RemoteJWKSIDTokenValidator: IDTokenValidating {
         )
     }
 
-    private func keys(at url: URL) async throws -> JWKSet {
-        if let cached = cache[url] { return cached }
+    private func keys(at url: URL, forceRefresh: Bool = false) async throws -> JWKSet {
+        if !forceRefresh, let cached = cache[url] { return cached }
         var request = URLRequest(url: url)
         request.cachePolicy = .reloadRevalidatingCacheData
         request.timeoutInterval = 15
@@ -189,6 +197,7 @@ private struct JWTPayload: Decodable {
     let audience: Audience
     let expiresAt: TimeInterval
     let nonce: String
+    let authorizedParty: String?
 
     enum CodingKeys: String, CodingKey {
         case issuer = "iss"
@@ -196,6 +205,7 @@ private struct JWTPayload: Decodable {
         case audience = "aud"
         case expiresAt = "exp"
         case nonce
+        case authorizedParty = "azp"
     }
 }
 

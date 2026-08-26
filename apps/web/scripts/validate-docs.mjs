@@ -92,12 +92,12 @@ async function validateExternalLinks() {
           signal: AbortSignal.timeout(15_000),
           headers: { "User-Agent": "LoopGuard-docs-link-check/1" },
         });
-        if (response.status !== 405) break;
+        if (response.ok) break;
       } catch (error) {
         if (attempt === 1) errors.push(`external link ${url}: ${error.message}`);
       }
     }
-    if (response && response.status >= 500) errors.push(`external link ${url}: HTTP ${response.status}`);
+    if (response && !response.ok) errors.push(`external link ${url}: HTTP ${response.status}`);
   }
 }
 
@@ -105,15 +105,16 @@ function headingAnchors(source) {
   const result = new Set();
   const counts = new Map();
   for (const match of source.matchAll(/^#{1,6}\s+(.+?)\s*$/gm)) {
-    const base = match[1]
-      .toLowerCase()
-      .replace(/[`*_~]/g, "")
-      .replace(/[^a-z0-9 -]/g, "")
-      .trim()
-      .replace(/\s+/g, "-");
+    // Must mirror headingId + duplicate numbering in src/lib/docs.tsx.
+    const base =
+      match[1]
+        .toLowerCase()
+        .replace(/[`*_~]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "") || "section";
     const count = counts.get(base) ?? 0;
     counts.set(base, count + 1);
-    result.add(count ? `${base}-${count}` : base);
+    result.add(count ? `${base}-${count + 1}` : base);
   }
   return result;
 }

@@ -67,6 +67,64 @@ describe("WebAuthn action proof", () => {
     ).rejects.toThrow("credential user binding");
     expect(verifier).not.toHaveBeenCalled();
   });
+
+  test("accepts an authenticator that never implements a signature counter", async () => {
+    const verifier = vi.fn(async () => ({
+      verified: true,
+      authenticationInfo: {
+        credentialID: "credential-1",
+        newCounter: 0,
+        userVerified: true,
+        credentialDeviceType: "singleDevice" as const,
+        credentialBackedUp: false,
+        origin: "https://loopguard.test",
+        rpID: "loopguard.test",
+      },
+    }));
+
+    const result = await verifyActionAssertion(
+      {
+        actionChallenge: "canonical-action-challenge",
+        expectedOrigin: "https://loopguard.test",
+        expectedRPID: "loopguard.test",
+        expectedUserId: "user-1",
+        credential: { ...credential, counter: 0 },
+        response: fixtureResponse("canonical-action-challenge"),
+      },
+      verifier,
+    );
+
+    expect(result).toMatchObject({ verified: true, userVerified: true, newCounter: 0 });
+  });
+
+  test("still rejects a counter regression on a counter-bearing authenticator", async () => {
+    const verifier = vi.fn(async () => ({
+      verified: true,
+      authenticationInfo: {
+        credentialID: "credential-1",
+        newCounter: 0,
+        userVerified: true,
+        credentialDeviceType: "singleDevice" as const,
+        credentialBackedUp: false,
+        origin: "https://loopguard.test",
+        rpID: "loopguard.test",
+      },
+    }));
+
+    await expect(
+      verifyActionAssertion(
+        {
+          actionChallenge: "canonical-action-challenge",
+          expectedOrigin: "https://loopguard.test",
+          expectedRPID: "loopguard.test",
+          expectedUserId: "user-1",
+          credential,
+          response: fixtureResponse("canonical-action-challenge"),
+        },
+        verifier,
+      ),
+    ).rejects.toThrow("signature counter did not advance");
+  });
 });
 
 function fixtureResponse(challenge: string) {

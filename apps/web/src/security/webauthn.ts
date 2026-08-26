@@ -79,7 +79,15 @@ export async function verifyActionAssertion(
   ) {
     throw new TypeError("WebAuthn relying-party binding does not match");
   }
-  if (result.authenticationInfo.newCounter <= input.credential.counter && !input.credential.backedUp) {
+  // WebAuthn L3 §6.1.1 step 17: authenticators without a counter always report 0,
+  // so only enforce advancement once either side is nonzero.
+  const counterInUse =
+    result.authenticationInfo.newCounter !== 0 || input.credential.counter !== 0;
+  if (
+    counterInUse &&
+    result.authenticationInfo.newCounter <= input.credential.counter &&
+    !input.credential.backedUp
+  ) {
     throw new TypeError("WebAuthn signature counter did not advance");
   }
   return {

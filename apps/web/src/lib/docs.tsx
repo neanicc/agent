@@ -230,6 +230,7 @@ function docHref(value: string, slug: string): string | null {
   return `/docs/${resolved}${fragment ? `#${fragment}` : ""}`;
 }
 
+// Must mirror headingAnchors in scripts/validate-docs.mjs.
 function headingId(value: string): string {
   return value
     .toLowerCase()

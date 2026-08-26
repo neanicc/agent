@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 
 import {
+  CSRF_COOKIE,
   refreshBrowserSession,
   sealSession,
   secureCookieOptions,
@@ -67,6 +68,10 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
         await sealSession(refreshed),
         secureCookieOptions(webSessionTTLSeconds()),
       );
+      const csrfValue = cookieStore.get(CSRF_COOKIE)?.value;
+      if (csrfValue) {
+        cookieStore.set(CSRF_COOKIE, csrfValue, secureCookieOptions(webSessionTTLSeconds(), false));
+      }
     }
   } catch {
     cookieStore.delete(SESSION_COOKIE);
@@ -75,7 +80,7 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
 
   if (!SAFE_METHODS.has(method)) {
     const csrfHeader = request.headers.get("x-csrf-token");
-    const csrfCookie = cookieStore.get("loopguard_csrf")?.value;
+    const csrfCookie = cookieStore.get(CSRF_COOKIE)?.value;
     if (!equalSecret(csrfHeader, csrfCookie)) {
       return localProblem(403, "csrf_required", "Refresh the page and try the action again.");
     }

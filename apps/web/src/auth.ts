@@ -2,7 +2,7 @@ import { createRemoteJWKSet, EncryptJWT, jwtDecrypt, jwtVerify, type JWTPayload 
 
 export const SESSION_COOKIE = "__Host-loopguard_session";
 export const TRANSACTION_COOKIE = "__Host-loopguard_oidc";
-export const CSRF_COOKIE = "loopguard_csrf";
+export const CSRF_COOKIE = "__Host-loopguard_csrf";
 
 const TRANSACTION_TTL_SECONDS = 10 * 60;
 const CLOCK_TOLERANCE_SECONDS = 30;
